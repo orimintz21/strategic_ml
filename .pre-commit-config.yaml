@@ -1,0 +1,6 @@
+repos:
+-   repo: https://github.com/psf/black
+    rev: 24.2.0  # You can specify the version you want to use
+    hooks:
+    -   id: black
+        args: [--line-length, 80]
