@@ -45,5 +45,6 @@ class TestBasicCostFunctions(unittest.TestCase):
         expected_output = torch.linalg.norm(self.x - self.x_prime, ord=float("inf"))
         self.assertTrue(torch.isclose(output, expected_output))
 
+
 if __name__ == "__main__":
     unittest.main()
