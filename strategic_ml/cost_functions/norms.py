@@ -1,5 +1,7 @@
 """:file: cost_functions/norms.py
-
+In this file we implement basic norm cost functions.
+All cost functions inherit from the CostFunction class so they can be used
+in the strategic_ml package.
 """
 
 import torch
