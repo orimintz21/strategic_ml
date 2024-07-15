@@ -5,6 +5,7 @@
 import torch
 from torch import nn
 
+
 # Implementation
 class GSC(nn.Module):
     """
@@ -17,13 +18,12 @@ class GSC(nn.Module):
     The general idea of the GSC is that a GSC gets a model, and change the input
     x to x' based on the GSC's type.
     """
-    
+
     def __init__(self) -> None:
         super(GSC, self).__init__()
-    
 
-
-    def set_cost()-> None:
+    def set_cost() -> None:
         pass
 
-norm = torch.norm(3,'fro', 3)
+
+norm = torch.norm(3, "fro", 3)
