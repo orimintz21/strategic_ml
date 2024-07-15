@@ -1,13 +1,22 @@
 """
 :file: __init__.py
-This is the init file for the strategic_ml package.
+This is the init file for the strategic cost.
 """
 
-# Main modules and functions
-# TODO: Add main modules and functions here
+from .cost_function import CostFunction
+from .norms import (
+    CostNormL2,
+    CostNormL1,
+    CostMeanSquaredError,
+    CostWeightedLoss,
+    CostNormLInf,
+)
 
-# Functionality of the package
-# TODO: Add functionality here
-__all__: list = (
-    []
-)  # List of modules and functions to be imported when using 'from strategic_ml import *'
+__all__ = [
+    "CostFunction",
+    "CostNormL2",
+    "CostNormL1",
+    "CostMeanSquaredError",
+    "CostWeightedLoss",
+    "CostNormLInf",
+]
