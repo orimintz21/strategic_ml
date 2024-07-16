@@ -20,6 +20,7 @@ from .strategic_regularization import _StrategicRegularization
 
 from .loss_functions import _Loss
 
+from .models import _StrategicModel
 
 # Functionality of the package
 __all__: list = [
@@ -34,4 +35,6 @@ __all__: list = [
     "_StrategicRegularization",
     # Loss functions
     "_Loss",
+    # Models
+    "_StrategicModel",
 ]  # List of modules and functions to be imported when using 'from strategic_ml import *'
