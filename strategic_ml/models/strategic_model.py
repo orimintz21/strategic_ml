@@ -18,7 +18,7 @@ from torch import nn
 from typing import Optional
 
 # Internal imports
-from strategic_ml.gsc.generalized_strategic_delta import GSC
+from strategic_ml.gsc.generalized_strategic_delta import _GSC
 from strategic_ml.cost_functions.cost_function import _CostFunction
 from strategic_ml.strategic_regularization import _StrategicRegularization
 
@@ -26,7 +26,7 @@ from strategic_ml.strategic_regularization import _StrategicRegularization
 class _StrategicModel(nn.Module):
     def __init__(
         self,
-        delta: Optional[GSC] = None,
+        delta: Optional[_GSC] = None,
         cost: Optional[_CostFunction] = None,
         s_reg: Optional[_StrategicRegularization] = None,
     ) -> None:
@@ -60,20 +60,20 @@ class _StrategicModel(nn.Module):
         raise NotImplementedError()
 
     @property
-    def delta(self) -> GSC:
+    def delta(self) -> _GSC:
         """Getter for the delta.
 
         Returns:
-            GSC: the delta
+            _GSC: the delta
         """
         return self.delta
 
     @delta.setter
-    def delta(self, delta: GSC) -> None:
+    def delta(self, delta: _GSC) -> None:
         """Setter for the delta.
 
         Args:
-            delta (GSC): the delta to set
+            delta (_GSC): the delta to set
         """
         self.delta
 

@@ -4,13 +4,13 @@ When creating a new loss function, you should inherit from this class and implem
 
 import torch
 import torch.nn as nn
-from strategic_ml.gsc.generalized_strategic_delta import GSC
+from strategic_ml.gsc.generalized_strategic_delta import _GSC
 from typing import Optional
 
 
 class _Loss(nn.Module):
     def __init__(
-        self, model, delta: GSC, regularization_lambda: float = 0.01
+        self, model, delta: _GSC, regularization_lambda: float = 0.01
     ):  # TODO Add the SC base model, and add typying
         """
         Initialize the base loss class.
@@ -54,11 +54,11 @@ class _Loss(nn.Module):
         raise NotImplementedError("This method should be implemented by subclasses")
 
     @property
-    def delta(self) -> GSC:
+    def delta(self) -> _GSC:
         return self._delta
 
     @delta.setter
-    def delta(self, value: GSC) -> None:
+    def delta(self, value: _GSC) -> None:
         self._delta = value
 
     @property

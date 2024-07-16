@@ -1,12 +1,12 @@
 import torch
 from torch import nn
-from strategic_ml.gsc.generalized_strategic_delta import GSC
+from strategic_ml.gsc.generalized_strategic_delta import _GSC
 from loss import _Loss
 
 
 class StrategicHingeLoss(_Loss):
     def __init__(
-        self, model, delta: GSC, regularization_lambda: float = 0.01
+        self, model, delta: _GSC, regularization_lambda: float = 0.01
     ):  # TODO Add the SC base model, and add typying
         """
         Initialize the Strategic Hinge Loss class.
@@ -31,7 +31,7 @@ class StrategicHingeLoss(_Loss):
         """
         raise NotImplementedError()
 
-    def compute_loss(self, X: torch.torch.Tensor, y) -> float:
+    def compute_loss(self, X: torch.Tensor, y) -> float:
         """
         Compute the strategic hinge loss for the given inputs and labels.
 
@@ -41,9 +41,7 @@ class StrategicHingeLoss(_Loss):
         """
         raise NotImplementedError()
 
-    def compute_gradient(
-        self, X: torch.torch.Tensor, y: torch.torch.Tensor
-    ) -> torch.torch.Tensor:
+    def compute_gradient(self, X: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
         Compute the gradient of the strategic hinge loss.
 
