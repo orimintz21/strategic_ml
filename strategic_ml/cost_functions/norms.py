@@ -6,10 +6,10 @@ in the strategic_ml package.
 
 import torch
 
-from strategic_ml.cost_functions.cost_function import CostFunction
+from strategic_ml.cost_functions.cost_function import _CostFunction
 
 
-class CostNormL2(CostFunction):
+class CostNormL2(_CostFunction):
     def __init__(self) -> None:
         """
         Constructor for the L2 norm cost function.
@@ -30,12 +30,12 @@ class CostNormL2(CostFunction):
         return torch.linalg.norm(x - x_prime, ord=2)
 
 
-class CostMeanSquaredError(CostFunction):
+class CostMeanSquaredError(_CostFunction):
     def __init__(self) -> None:
         """
         Constructor for the mean squared error cost function.
         """
-        super(CostFunction, self).__init__()
+        super(_CostFunction, self).__init__()
 
     def forward(self, x: torch.Tensor, x_prime: torch.Tensor) -> torch.Tensor:
         """Calculates the mean squared error cost function.
@@ -51,7 +51,7 @@ class CostMeanSquaredError(CostFunction):
         return torch.mean((x - x_prime) ** 2)
 
 
-class CostWeightedLoss(CostFunction):
+class CostWeightedLoss(_CostFunction):
     def __init__(self, weights: torch.Tensor) -> None:
         """Constructor for the weighted loss cost function.
         Based on the mean squared error cost function.
@@ -59,7 +59,7 @@ class CostWeightedLoss(CostFunction):
         Args:
             weights (torch.Tensor): the weights to apply to the loss
         """
-        super(CostFunction, self).__init__()
+        super(_CostFunction, self).__init__()
         self.weights: torch.Tensor = weights
 
     def set_weights(self, weights: torch.Tensor) -> None:
@@ -70,6 +70,7 @@ class CostWeightedLoss(CostFunction):
         """
         self.weights = weights
 
+    @property
     def get_weights(self) -> torch.Tensor:
         """Gets the weights for the weighted loss cost function.
 
@@ -92,12 +93,12 @@ class CostWeightedLoss(CostFunction):
         return torch.sum(self.weights * (x - x_prime) ** 2)
 
 
-class CostNormL1(CostFunction):
+class CostNormL1(_CostFunction):
     def __init__(self) -> None:
         """
         Constructor for the L1 norm cost function.
         """
-        super(CostFunction, self).__init__()
+        super(_CostFunction, self).__init__()
 
     def forward(self, x: torch.Tensor, x_prime: torch.Tensor) -> torch.Tensor:
         """Calculates the L1 norm cost function.
@@ -113,12 +114,12 @@ class CostNormL1(CostFunction):
         return torch.linalg.norm(x - x_prime, ord=1)
 
 
-class CostNormLInf(CostFunction):
+class CostNormLInf(_CostFunction):
     def __init__(self) -> None:
         """
         Constructor for the LInf norm cost function.
         """
-        super(CostFunction, self).__init__()
+        super(_CostFunction, self).__init__()
 
     def forward(self, x: torch.Tensor, x_prime: torch.Tensor) -> torch.Tensor:
         """Calculates the LInf norm cost function.

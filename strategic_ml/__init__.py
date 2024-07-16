@@ -9,7 +9,7 @@ __author__ = "Ori Mintz & Kfir Cohen"
 
 # Main modules and functions
 from .cost_functions import (
-    CostFunction,
+    _CostFunction,
     CostNormL2,
     CostNormL1,
     CostMeanSquaredError,
@@ -20,7 +20,7 @@ from .cost_functions import (
 # Functionality of the package
 # TODO: Add functionality here
 __all__: list = [
-    "CostFunction",
+    "_CostFunction",
     "CostNormL2",
     "CostNormL1",
     "CostMeanSquaredError",

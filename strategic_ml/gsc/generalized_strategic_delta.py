@@ -22,8 +22,5 @@ class GSC(nn.Module):
     def __init__(self) -> None:
         super(GSC, self).__init__()
 
-    def set_cost() -> None:
-        pass
-
 
 norm = torch.norm(3, "fro", 3)

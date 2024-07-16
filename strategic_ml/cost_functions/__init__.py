@@ -3,7 +3,7 @@
 This is the init file for the strategic cost.
 """
 
-from .cost_function import CostFunction
+from .cost_function import _CostFunction
 from .norms import (
     CostNormL2,
     CostNormL1,
@@ -13,7 +13,7 @@ from .norms import (
 )
 
 __all__ = [
-    "CostFunction",
+    "_CostFunction",
     "CostNormL2",
     "CostNormL1",
     "CostMeanSquaredError",
