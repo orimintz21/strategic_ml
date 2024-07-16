@@ -6,10 +6,10 @@ import torch
 from torch import nn
 
 
-class CostFunction(nn.Module):
+class _CostFunction(nn.Module):
     def __init__(self) -> None:
-        """Constructor for the CostFunction class."""
-        super(CostFunction, self).__init__()
+        """Constructor for the _CostFunction class."""
+        super(_CostFunction, self).__init__()
 
     def forward(self, x: torch.Tensor, x_prime: torch.Tensor) -> torch.Tensor:
         """Calculates the cost function.
