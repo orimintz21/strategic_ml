@@ -24,9 +24,9 @@ class _StrategicRegularization(nn.Module):
 
 
         Raises:
-            NotImplementedError: 
+            NotImplementedError:
 
         Returns:
-            torch.Tensor: a 1x1 tensor 
+            torch.Tensor: a 1x1 tensor
         """
         raise NotImplementedError()
