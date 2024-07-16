@@ -22,6 +22,8 @@ from .loss_functions import _Loss
 
 from .models import _StrategicModel
 
+from .gsc import _GSC
+
 # Functionality of the package
 __all__: list = [
     # Costs
@@ -35,6 +37,8 @@ __all__: list = [
     "_StrategicRegularization",
     # Loss functions
     "_Loss",
+    # GSC
+    "_GSC",
     # Models
     "_StrategicModel",
 ]  # List of modules and functions to be imported when using 'from strategic_ml import *'
