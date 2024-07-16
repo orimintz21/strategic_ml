@@ -16,14 +16,22 @@ from .cost_functions import (
     CostWeightedLoss,
     CostNormLInf,
 )
+from .strategic_regularization import _StrategicRegularization
+
+from .loss_functions import _Loss
+
 
 # Functionality of the package
-# TODO: Add functionality here
 __all__: list = [
+    # Costs
     "_CostFunction",
     "CostNormL2",
     "CostNormL1",
     "CostMeanSquaredError",
     "CostWeightedLoss",
     "CostNormLInf",
+    # Strategic Regularization
+    "_StrategicRegularization",
+    # Loss functions
+    "_Loss",
 ]  # List of modules and functions to be imported when using 'from strategic_ml import *'
