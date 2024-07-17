@@ -16,11 +16,16 @@ from typing import Optional
 
 # Internal imports
 from strategic_ml.models import _StrategicModel
+from cost_functions import _CostFunction
 
 
 # Implementation
 class _GSC(nn.Module):
-    def __init__(self, model: Optional[_StrategicModel] = None) -> None:
+    def __init__(
+        self,
+        model: Optional[_StrategicModel] = None,
+        cost: Optional[_CostFunction] = None,
+    ) -> None:
         """Constructor for the _GSC class.
         When creating a new GSC model, you should inherit from this class.
         The model is the model that the GSC will use to calculate the strategic
@@ -29,19 +34,20 @@ class _GSC(nn.Module):
 
         Args:
             model (_StrategicModel): the model for the GSC.
+            cost (_CostFunction): the cost function for the GSC.
         """
         super(_GSC, self).__init__()
         if model is not None:
             self.model = model
 
-    def forward(
-        self, x: torch.Tensor, y: torch.Tensor, *args, **kwargs
-    ) -> torch.Tensor:
+        if cost is not None:
+            self.cost = cost
+
+    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """The forward method of the GSC class.
 
         Args:
             x (torch.Tensor): the data
-            y (torch.Tensor): the label
             *args: additional arguments
             **kwargs: additional keyword arguments
 
@@ -71,3 +77,21 @@ class _GSC(nn.Module):
             model (_StrategicModel): the model
         """
         self.model = model
+
+    @property
+    def cost(self) -> _CostFunction:
+        """Getter for the cost function.
+
+        Returns:
+            _CostFunction: the cost function
+        """
+        return self.cost
+
+    @cost.setter
+    def cost(self, cost: _CostFunction) -> None:
+        """Setter for the cost function.
+
+        Args:
+            cost (_CostFunction): the cost function
+        """
+        self.cost = cost
