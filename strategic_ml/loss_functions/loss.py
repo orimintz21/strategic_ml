@@ -10,18 +10,32 @@ from typing import Optional
 
 class _Loss(nn.Module):
     def __init__(
-        self, model, delta: _GSC, regularization_lambda: float = 0.01
-    ):  # TODO Add the SC base model, and add typying
+        self,
+        model: Optional[nn.Module] = None,
+        regularization_lambda: float = 0.01,
+    ) -> None:
         """
         Initialize the base loss class.
 
-        :param delta: Function to modify features strategically.
+        :param model: The strategic model.
         :param regularization_lambda: Regularization parameter.
-        :param model: Initial model parameters.
+        """
+        super(_Loss, self).__init__()
+        if model is not None:
+            self.model: nn.Module = model
+        self.regularization_lambda = regularization_lambda
+
+    def forward(self, X: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """
+        Compute the forward pass and calculate the loss.
+
+        :param X: Input features.
+        :param y: True labels.
+        :return: Loss value.
         """
         raise NotImplementedError()
 
-    def compute_loss(self, X: torch.Tensor, y: torch.Tensor) -> float:
+    def compute_loss(self, X: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
         Compute the loss for given inputs and labels.
 
@@ -29,19 +43,7 @@ class _Loss(nn.Module):
         :param y: True labels.
         :return: Loss value.
         """
-
         raise NotImplementedError()
-
-    def forward(self, X: torch.Tensor) -> torch.Tensor:
-        """
-        Compute the forward pass.
-
-        :param X: Input features.
-        :return: Predicted scores.
-        """
-        if self.w is None:
-            raise ValueError("Model is not initialized. Please set the model weights.")
-        return np.dot(X, self.w)
 
     def compute_gradient(self, X: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
@@ -51,15 +53,7 @@ class _Loss(nn.Module):
         :param y: True labels.
         :return: Gradient value.
         """
-        raise NotImplementedError("This method should be implemented by subclasses")
-
-    @property
-    def delta(self) -> _GSC:
-        return self._delta
-
-    @delta.setter
-    def delta(self, value: _GSC) -> None:
-        self._delta = value
+        raise NotImplementedError()
 
     @property
     def regularization_lambda(self) -> float:
@@ -70,9 +64,9 @@ class _Loss(nn.Module):
         self._regularization_lambda = value
 
     @property
-    def model(self) -> Optional[torch.Tensor]:
-        return self._w
+    def model(self) -> Optional[nn.Module]:
+        return self._model
 
     @model.setter
-    def model(self, value: Optional[torch.Tensor]) -> None:
-        self._w = value
+    def model(self, value: Optional[nn.Module]) -> None:
+        self._model = value
