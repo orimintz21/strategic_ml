@@ -50,11 +50,12 @@ x_prime = conditions * projection + (1 - conditions) * x
 
 # External imports
 import torch
-from typing import Optional 
+from typing import Optional
 
 # Internal imports
 from strategic_ml.gsc.generalized_strategic_delta import _GSC
 from strategic_ml.models import _StrategicModel
+from strategic_ml.models import LinearStrategicModel
 from strategic_ml.cost_functions import (
     _CostFunction,
     CostNormL2,
@@ -88,8 +89,7 @@ class _LinearGP(_GSC):
         """
         super(_LinearGP, self).__init__(strategic_model=strategic_model, cost=cost)
         if strategic_model is not None:
-            # assert isinstance(self.strategic_model, LinearStrategicModel), "The strategic model should be a StrategicModel"
-            pass
+            self._assert_model()
 
         if cost is not None:
             self._assert_cost()
@@ -108,17 +108,64 @@ class _LinearGP(_GSC):
             x (torch.Tensor): The input of the model.
             z (torch.Tensor): Meta data for the GP.
 
+        Raises:
+            AssertionError: If the cost or the model is None.
+            NotImplementedError: If the model is not a Linear model (This should not happen)
+
         Returns:
             torch.Tensor: x' the GP.
         """
 
         self._assert_cost()
-        assert self.strategic_model is not None, "The strategic model is None"
-        assert self.cost is not None, "The cost function is None"
+        self._assert_model()
         assert z.size() == torch.Size(
             [x.size(0), 1]
         ), "z should be of size [batch_size, 1]"
-        assert x.size(0) == z.size(0), "x and z should have the same batch size"
+
+        if isinstance(self.strategic_model, LinearStrategicModel):
+            # check again if the model is linear to avid linting errors
+            weights, bias = self.strategic_model.get_weights_and_bias()
+        else:
+            raise NotImplementedError("The model is not a Linear model")
+
+        if isinstance(self.cost, CostNormL2):
+            margin: torch.Tensor = self._calculate_margin(x, weights, bias)
+        elif isinstance(self.cost, CostWeightedLoss):
+            norm_waits: torch.Tensor = self.cost.get_weights
+            assert norm_waits is not None, "The weights of the cost function are None"
+            margin = self._calculate_margin(x, weights, bias, norm_waits)
+        else:
+            raise ValueError("The cost function is not supported")
+
+        assert margin.size() == torch.Size(
+            [x.size(0), 1]
+        ), "The margin should be of size [batch_size, 1]"
+
+        model_prediction_tanh: torch.Tensor = torch.tanh(
+            self.models_temp * (torch.matmul(x, weights) + bias)
+        )
+        z_neq_prediction: torch.Tensor = 1 - torch.sigmoid(
+            model_prediction_tanh * self.z_temp * z
+        )
+
+        assert len(z_neq_prediction.size()) == 1, "The margin should be one dimensional"
+        assert z_neq_prediction.size(0) == 1, "The margin should be of size 1"
+
+        margin_smaller_than_1: torch.Tensor = torch.sigmoid(
+            self.margin_temp * (1 - margin)
+        )
+
+        assert (
+            len(margin_smaller_than_1.size()) == 1
+        ), "The margin should be one dimensional"
+        assert margin_smaller_than_1.size(0) == 1, "The margin should be of size 1"
+
+        conditions: torch.Tensor = z_neq_prediction * margin_smaller_than_1
+
+        return (
+            conditions * self._calculate_projection(x, weights, bias)
+            + (1 - conditions) * x
+        )
 
     def _assert_cost(self) -> None:
         assert self.cost is not None, "The cost function is None"
@@ -126,6 +173,70 @@ class _LinearGP(_GSC):
             self.cost, CostWeightedLoss
         ), "The cost should be a  CostNormL2 or CostWeightedLoss"
 
+        if isinstance(self.cost, CostWeightedLoss):
+            raise NotImplementedError(
+                "The weighted loss cost function is not supported yet (TODO!!)"
+            )
+
     def _assert_model(self) -> None:
         assert self.strategic_model is not None, "The strategic model is None"
-        # assert isinstance(self.strategic_model, LinearStrategicModel), "The strategic model should be a StrategicModel"
+        assert isinstance(
+            self.strategic_model, LinearStrategicModel
+        ), "The strategic model should be a StrategicModel"
+
+    def _calculate_projection(
+        self,
+        x: torch.Tensor,
+        w: torch.Tensor,
+        b: torch.Tensor,
+        norm_waits: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """This method calculates the projection on the model.
+
+        Args:
+            x (torch.Tensor): The data
+            w (torch.Tensor): The weights of the model
+            b (torch.Tensor): The bias of the model
+            norm_waits (Optional[torch.Tensor]): The weights of the cost function
+
+        Returns:
+            torch.Tensor: The projection on the model
+        """
+        if norm_waits is None:
+            return x - ((torch.matmul(x, w) + b) / (torch.matmul(w, w))) * w
+
+        else:
+            inverse_norm_waits: torch.Tensor = torch.inverse(norm_waits)
+            return x - (
+                (torch.matmul(x, w) + b)
+                / (torch.matmul(w, torch.matmul(inverse_norm_waits, w)))
+            ) * torch.matmul(inverse_norm_waits, w)
+
+    def _calculate_margin(
+        self,
+        x: torch.Tensor,
+        w: torch.Tensor,
+        b: torch.Tensor,
+        norm_waits: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """This method calculates the projection on the model.
+
+        Args:
+            x (torch.Tensor): The data
+            w (torch.Tensor): The weights of the model
+            b (torch.Tensor): The bias of the model
+            norm_waits (Optional[torch.Tensor]): The weights of the cost function
+
+        Returns:
+            torch.Tensor: The margin from the model
+        """
+        if norm_waits is None:
+            # The equation is |w.T @ x + b| / ||w||
+            return torch.abs(torch.matmul(x, w) + b) / torch.sqrt((torch.matmul(w, w)))
+
+        else:
+            # The equation is |w.T @ x + b| / ||w||_{waits}
+            inverse_norm_waits: torch.Tensor = torch.inverse(norm_waits)
+            return torch.abs(torch.matmul(x, w) + b) / (
+                torch.sqrt(torch.matmul(w, torch.matmul(inverse_norm_waits, w)))
+            )
