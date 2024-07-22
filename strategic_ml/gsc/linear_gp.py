@@ -7,7 +7,7 @@ We can see that if model(x) == z then x is the best x' that we can choose.
 If for every x' in X, such that model(x') != z, we get cost(x,x') > 1, then
 the GP will be x (it is not worth to change x).
 
-If we assume that the model is linear and the cost is norm2, MSE, or weighted
+If we assume that the model is linear and the cost is norm2, or weighted
 norm, we see that if model(x) != z and the margin from the model is smaller then 
 1 using the norm to calculate the margin, then the GP will be the projection of 
 x on the model.
@@ -35,12 +35,14 @@ cost == the cost function
 
 The GP is calculated by the following formula:
 The first condition is that the model should be different from the label:
-We use cond1 = 1 - tanh(t2 * ( sigmoid(h(x) * t1) - z))
+1{z != sign(h(x))}
+We use cond1 = 1 - sigmoid(t2 * (tanh(h(x) * t1) * z))
 t1 and t2 are the temperature of the soft sign functions.
 
 The second condition is that the margin should be smaller than 1:
 We use a sigmoid function with the temperature of t3.
-cond2 = 1 - tanh(t3 * (1 - margin(w,b,x))
+if margin(w,b,x)>1 then cond2 = 0
+cond2 = sigmoid(t3 * (1 - margin(w,b,x))
 
 Then the GP is calculated by the following formula:
 x_prime = conditions * projection + (1 - conditions) * x
@@ -48,7 +50,7 @@ x_prime = conditions * projection + (1 - conditions) * x
 
 # External imports
 import torch
-from typing import Optional, Callable
+from typing import Optional 
 
 # Internal imports
 from strategic_ml.gsc.generalized_strategic_delta import _GSC
