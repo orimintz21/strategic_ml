@@ -57,16 +57,16 @@ class _Loss(nn.Module):
 
     @property
     def regularization_lambda(self) -> float:
-        return self._regularization_lambda
+        return self.regularization_lambda
 
     @regularization_lambda.setter
     def regularization_lambda(self, value: float) -> None:
-        self._regularization_lambda = value
+        self.regularization_lambda = value
 
     @property
     def model(self) -> Optional[nn.Module]:
-        return self._model
+        return self.model
 
     @model.setter
     def model(self, value: Optional[nn.Module]) -> None:
-        self._model = value
+        self.model = value
