@@ -30,14 +30,12 @@ class LinearStrategicModel(_StrategicModel):
         )
         super(LinearStrategicModel, self).__init__(delta=delta, model=model)
 
-
-
     def get_weights_and_bias(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         The get_weights_and_bias method returns the weights and bias of the model
 
         Raises:
-            NotImplementedError: if the model is not a Linear model 
+            NotImplementedError: if the model is not a Linear model
             (This should not happen)
 
         Returns:
@@ -47,4 +45,3 @@ class LinearStrategicModel(_StrategicModel):
             return self.model.weight, self.model.bias
 
         raise NotImplementedError("The model is not a Linear model")
-        
