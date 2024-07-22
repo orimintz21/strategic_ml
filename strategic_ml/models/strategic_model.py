@@ -19,48 +19,72 @@ from typing import Optional
 
 # Internal imports
 from strategic_ml.gsc.generalized_strategic_delta import _GSC
-from strategic_ml.cost_functions.cost_function import _CostFunction
-from strategic_ml.strategic_regularization import _StrategicRegularization
 
 
 class _StrategicModel(nn.Module):
     def __init__(
         self,
         delta: Optional[_GSC] = None,
-        cost: Optional[_CostFunction] = None,
-        s_reg: Optional[_StrategicRegularization] = None,
+        model: Optional[nn.Module] = None,
     ) -> None:
         """
         Constructor for the StrategicModel class.
         """
         super(_StrategicModel, self).__init__()
         if delta is not None:
-            self.delta = delta
-        if cost is not None:
-            self.cost = cost
-        if s_reg is not None:
-            self.s_reg = s_reg
+            self.delta: _GSC = delta
+        if model is not None:
+            self.model: nn.Module = model
 
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """This is the forward method of the StrategicModel class.
-        The strategic model is a wrapper for the model, so when calling the forward
-        method, the model will also take into account the strategic delta, the cost
-        function and the strategic regularization.
+        The strategic model is a wrapper for the model, so when calling the
+        forward method, the model will find x' using the delta, and then
+        calculate the output of the model using x'.
 
         Args:
             x (torch.Tensor): the input data
-
-        Raises:
-            NotImplementedError: this is an interface, you should implement this method in your subclass
+            *args: additional arguments
+            **kwargs: additional keyword arguments
 
         Returns:
             torch.Tensor: the output of the model
         """
+        assert self.delta is not None and self.model is not None
 
-        raise NotImplementedError()
+        x_prime: torch.Tensor = self.delta.forward(x, *args, **kwargs)
+        out: torch.Tensor = self.model(x_prime)
+        return out
 
-    @property
-    def delta(self) -> _GSC:
+    def __call__(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+        """This is the call method of the StrategicModel class.
+        The call method is a wrapper for the forward method.
+
+        Args:
+            x (torch.Tensor): the input data
+            *args: additional arguments
+            **kwargs: additional keyword arguments
+
+        Returns:
+            torch.Tensor: the output of the model
+        """
+        return self.forward(x, *args, **kwargs)
+
+    def forward_no_delta(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+        """This is the forward method for the underlying model.
+        In this function we do not apply the delta.
+
+        Args:
+            x (torch.Tensor):the input data
+            *args: additional arguments
+            **kwargs: additional keyword arguments
+
+        Returns:
+            torch.Tensor: the output of the model
+        """
+        return self.model(x)
+
+    def get_delta(self) -> _GSC:
         """Getter for the delta.
 
         Returns:
@@ -68,8 +92,7 @@ class _StrategicModel(nn.Module):
         """
         return self.delta
 
-    @delta.setter
-    def delta(self, delta: _GSC) -> None:
+    def set_delta(self, delta: _GSC) -> None:
         """Setter for the delta.
 
         Args:
@@ -77,38 +100,18 @@ class _StrategicModel(nn.Module):
         """
         self.delta
 
-    @property
-    def cost(self) -> _CostFunction:
-        """Getter for the cost function.
+    def get_underlying_model(self) -> nn.Module:
+        """Getter for the model.
 
         Returns:
-            _CostFunction: the cost function
+            nn.Module: the model
         """
-        return self.cost
+        return self.model
 
-    @cost.setter
-    def cost(self, cost: _CostFunction) -> None:
-        """Setter for the cost function.
+    def set_underlying_model(self, model: nn.Module) -> None:
+        """Setter for the model.
 
         Args:
-            cost (_CostFunction): the cost function to set
+            model (nn.Module): the model to set
         """
-        self.cost
-
-    @property
-    def s_reg(self) -> _StrategicRegularization:
-        """Getter for the strategic regularization.
-
-        Returns:
-            _StrategicRegularization: the strategic regularization
-        """
-        return self.s_reg
-
-    @s_reg.setter
-    def s_reg(self, s_reg: _StrategicRegularization) -> None:
-        """Setter for the strategic regularization.
-
-        Args:
-            s_reg (_StrategicRegularization): the strategic regularization to set
-        """
-        self.s_reg
+        self.model = model
