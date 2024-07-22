@@ -20,7 +20,7 @@ from .strategic_regularization import _StrategicRegularization
 
 from .loss_functions import _Loss
 
-from .gsc import _GSC, _GP
+from .gsc import _GSC, _LinearGP
 
 from .models import _StrategicModel, LinearStrategicModel
 
@@ -40,7 +40,7 @@ __all__: list = [
     "_Loss",
     # GSC
     "_GSC",
-    "_GP",
+    "_LinearGP",
     # Models
     "_StrategicModel",
     "LinearStrategicModel",

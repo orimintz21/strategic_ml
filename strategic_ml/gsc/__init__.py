@@ -4,6 +4,6 @@ This is the init file for the GSC.
 """
 
 from generalized_strategic_delta import _GSC
-from gp import _GP
+from strategic_ml.gsc.linear_gp import _LinearGP
 
-__all__ = ["_GSC", "_GP"]
+__all__ = ["_GSC", "_LinearGP"]
