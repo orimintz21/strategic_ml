@@ -64,7 +64,6 @@ from strategic_ml.cost_functions import (
 )
 
 
-
 class _LinearGP(_GSC):
     def __init__(
         self,
@@ -100,9 +99,7 @@ class _LinearGP(_GSC):
         self.z_temp: float = z_temp
         self.margin_temp: float = margin_temp
 
-    def forward(
-        self, x: torch.Tensor, z: torch.Tensor = None
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, z: torch.Tensor = None) -> torch.Tensor:
         """The forward method of the LinearGP model.
         This function calculates x' based on the GP formula.
         For more information see the file prolog.

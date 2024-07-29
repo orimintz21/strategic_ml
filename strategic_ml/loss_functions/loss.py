@@ -32,7 +32,7 @@ class _Loss(nn.Module):
         :return: Loss value.
         """
         raise NotImplementedError()
-    
+
     @property
     def regularization_lambda(self) -> float:
         return self.regularization_lambda

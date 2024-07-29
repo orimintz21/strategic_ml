@@ -28,9 +28,7 @@ class LinearAdvDelta(_LinearGP):
             strategic_model, cost, cost_weight, models_temp, z_temp, margin_temp
         )
 
-    def forward(
-        self, x: torch.Tensor, z: torch.Tensor = None
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, z: torch.Tensor = None) -> torch.Tensor:
         """
 
         Args:
@@ -41,4 +39,4 @@ class LinearAdvDelta(_LinearGP):
             torch.Tensor: the modified data
         """
         assert z is not None
-        return super().forward(x,-z) 
+        return super().forward(x, -z)

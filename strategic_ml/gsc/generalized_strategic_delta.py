@@ -13,6 +13,7 @@ x to x' based on the GSC's type.
 import torch
 from torch import nn
 from typing import Optional
+
 # Internal imports
 from strategic_ml.models import _StrategicModel
 from cost_functions import _CostFunction
@@ -22,7 +23,7 @@ from cost_functions import _CostFunction
 class _GSC(nn.Module):
     def __init__(
         self,
-        strategic_model: _StrategicModel ,
+        strategic_model: _StrategicModel,
         cost: _CostFunction,
         cost_weight: float = 1.0,
         delta_model: Optional[nn.Module] = None,
