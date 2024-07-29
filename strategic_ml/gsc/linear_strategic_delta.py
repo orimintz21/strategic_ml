@@ -28,7 +28,7 @@ class LinearStrategicDelta(_LinearGP):
         z_temp: float = 1,
         margin_temp: float = 1,
     ) -> None:
-        super().__init__(
+        super(LinearStrategicDelta, self).__init__(
             strategic_model, cost, cost_weight, models_temp, z_temp, margin_temp
         )
 
