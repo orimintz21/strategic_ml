@@ -23,9 +23,9 @@ from cost_functions import _CostFunction
 class _GSC(nn.Module):
     def __init__(
         self,
-        strategic_model: Optional[_StrategicModel] = None,
-        cost: Optional[_CostFunction] = None,
-        cost_weight: Optional[float] = None,
+        strategic_model: _StrategicModel,
+        cost: _CostFunction,
+        cost_weight: float = 1.0,
         delta_model: Optional[nn.Module] = None,
         *args,
         **kwargs,
@@ -41,19 +41,15 @@ class _GSC(nn.Module):
         Args:
             strategic_model (_StrategicModel): the model for the GSC.
             cost (_CostFunction): the cost function for the GSC.
-            delta_model (Optional[nn.Module]): the delta model for the GSC
+            delta_model [nn.Module]: the delta model for the GSC
             this is the model that will be used to calculate the delta.
             Not all of the GSC models will use a delta model.
         """
         super(_GSC, self).__init__()
-        if strategic_model is not None:
-            self.strategic_model: _StrategicModel = strategic_model
 
-        if cost is not None:
-            self.cost: _CostFunction = cost
-
-        if cost_weight is not None:
-            self.cost_weight: float = cost_weight
+        self.strategic_model: _StrategicModel = strategic_model
+        self.cost: _CostFunction = cost
+        self.cost_weight: float = cost_weight
 
         if delta_model is not None:
             self.delta_model: nn.Module = delta_model

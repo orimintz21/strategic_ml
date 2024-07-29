@@ -15,7 +15,6 @@ delta, the cost function and the strategic regularization.
 # External imports
 import torch
 from torch import nn
-from typing import Optional
 
 # Internal imports
 from strategic_ml.gsc.generalized_strategic_delta import _GSC
@@ -24,17 +23,15 @@ from strategic_ml.gsc.generalized_strategic_delta import _GSC
 class _StrategicModel(nn.Module):
     def __init__(
         self,
-        delta: Optional[_GSC] = None,
-        model: Optional[nn.Module] = None,
+        delta: _GSC,
+        model: nn.Module,
     ) -> None:
         """
         Constructor for the StrategicModel class.
         """
         super(_StrategicModel, self).__init__()
-        if delta is not None:
-            self.delta: _GSC = delta
-        if model is not None:
-            self.model: nn.Module = model
+        self.delta: _GSC = delta
+        self.model: nn.Module = model
 
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """This is the forward method of the StrategicModel class.

@@ -67,9 +67,9 @@ from strategic_ml.cost_functions import (
 class _LinearGP(_GSC):
     def __init__(
         self,
+        cost: _CostFunction,
         strategic_model: Optional[_StrategicModel] = None,
-        cost: Optional[_CostFunction] = None,
-        cost_weight: Optional[float] = None,
+        cost_weight: float = 1.0,
         models_temp: float = 1.0,
         z_temp: float = 1.0,
         margin_temp: float = 1.0,
@@ -83,22 +83,18 @@ class _LinearGP(_GSC):
         delta_h(x,z) := argmax_{x' in X}(sigmoid{model(x') == z} - 1/2*weight*(cost(x,x')))
 
         Args:
-            strategic_model (Optional[_StrategicModel], optional): the strategic
+            strategic_model (_StrategicModel): the strategic
             that the delta is calculated on. Defaults to None.
-            cost (Optional[_CostFunction], optional): The cost function of the
+            cost (_CostFunction): The cost function of the
             delta. Defaults to None.
-            cost_weight (Optional[int], optional): The weight of the cost function.
+            cost_weight (int): The weight of the cost function.
             temperature (float): The temperature of the sigmoid function.
         """
         super(_LinearGP, self).__init__(
             strategic_model=strategic_model, cost=cost, cost_weight=cost_weight
         )
-        if strategic_model is not None:
-            self._assert_model()
-
-        if cost is not None:
-            self._assert_cost()
-
+        self._assert_model()
+        self._assert_cost()
         self.models_temp: float = models_temp
         self.z_temp: float = z_temp
         self.margin_temp: float = margin_temp
@@ -176,7 +172,6 @@ class _LinearGP(_GSC):
         )
 
     def _assert_cost(self) -> None:
-        assert self.cost is not None, "The cost function is None"
         assert isinstance(self.cost, CostNormL2) or isinstance(
             self.cost, CostWeightedLoss
         ), "The cost should be a  CostNormL2 or CostWeightedLoss"
@@ -187,8 +182,6 @@ class _LinearGP(_GSC):
             )
 
     def _assert_model(self) -> None:
-        assert self.strategic_model is not None, "The strategic model is None"
-        assert self.cost_weight is not None, "The cost weight is None"
         assert isinstance(
             self.strategic_model, LinearStrategicModel
         ), "The strategic model should be a StrategicModel"
@@ -206,7 +199,7 @@ class _LinearGP(_GSC):
             x (torch.Tensor): The data
             w (torch.Tensor): The weights of the model
             b (torch.Tensor): The bias of the model
-            norm_waits (Optional[torch.Tensor]): The weights of the cost function
+            norm_waits (torch.Tensor): The weights of the cost function
 
         Returns:
             torch.Tensor: The projection on the model
@@ -234,7 +227,7 @@ class _LinearGP(_GSC):
             x (torch.Tensor): The data
             w (torch.Tensor): The weights of the model
             b (torch.Tensor): The bias of the model
-            norm_waits (Optional[torch.Tensor]): The weights of the cost function
+            norm_waits (torch.Tensor): The weights of the cost function
 
         Returns:
             torch.Tensor: The margin from the model
