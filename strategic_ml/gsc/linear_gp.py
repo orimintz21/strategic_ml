@@ -99,7 +99,9 @@ class _LinearGP(_GSC):
         self.z_temp: float = z_temp
         self.margin_temp: float = margin_temp
 
-    def forward(self, x: torch.Tensor, z: torch.Tensor = None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, z: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """The forward method of the LinearGP model.
         This function calculates x' based on the GP formula.
         For more information see the file prolog.
@@ -170,7 +172,6 @@ class _LinearGP(_GSC):
         )
 
     def _assert_cost(self) -> None:
-        assert self.cost is not None, "The cost function is None"
         assert isinstance(self.cost, CostNormL2) or isinstance(
             self.cost, CostWeightedLoss
         ), "The cost should be a  CostNormL2 or CostWeightedLoss"
@@ -181,8 +182,6 @@ class _LinearGP(_GSC):
             )
 
     def _assert_model(self) -> None:
-        assert self.strategic_model is not None, "The strategic model is None"
-        assert self.cost_weight is not None, "The cost weight is None"
         assert isinstance(
             self.strategic_model, LinearStrategicModel
         ), "The strategic model should be a StrategicModel"
@@ -220,7 +219,7 @@ class _LinearGP(_GSC):
         x: torch.Tensor,
         w: torch.Tensor,
         b: torch.Tensor,
-        norm_waits: torch.Tensor = None,
+        norm_waits: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """This method calculates the projection on the model.
 
