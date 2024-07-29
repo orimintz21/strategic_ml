@@ -9,7 +9,7 @@ we can calculate the strategic delta in a closed form.
 
 # External imports
 import torch
-from typing import Optional, Tuple
+from typing import Tuple
 
 # Internal imports
 from strategic_ml.models import _StrategicModel
@@ -20,7 +20,7 @@ class LinearStrategicModel(_StrategicModel):
     def __init__(
         self,
         in_features: int,
-        delta: Optional[_GSC] = None,
+        delta: _GSC = None,
     ) -> None:
         """
         Constructor for the LinearStrategicModel class.

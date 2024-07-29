@@ -51,7 +51,6 @@ x_prime = conditions * projection + (1 - conditions) * x
 
 # External imports
 import torch
-from typing import Optional
 
 # Internal imports
 from strategic_ml.gsc.generalized_strategic_delta import _GSC
@@ -67,9 +66,9 @@ from strategic_ml.cost_functions import (
 class _LinearGP(_GSC):
     def __init__(
         self,
-        strategic_model: Optional[_StrategicModel] = None,
-        cost: Optional[_CostFunction] = None,
-        cost_weight: Optional[float] = None,
+        strategic_model: _StrategicModel = None,
+        cost: _CostFunction = None,
+        cost_weight: float = None,
         models_temp: float = 1.0,
         z_temp: float = 1.0,
         margin_temp: float = 1.0,
@@ -83,11 +82,11 @@ class _LinearGP(_GSC):
         delta_h(x,z) := argmax_{x' in X}(sigmoid{model(x') == z} - 1/2*weight*(cost(x,x')))
 
         Args:
-            strategic_model (Optional[_StrategicModel], optional): the strategic
+            strategic_model (_StrategicModel): the strategic
             that the delta is calculated on. Defaults to None.
-            cost (Optional[_CostFunction], optional): The cost function of the
+            cost (_CostFunction): The cost function of the
             delta. Defaults to None.
-            cost_weight (Optional[int], optional): The weight of the cost function.
+            cost_weight (int): The weight of the cost function.
             temperature (float): The temperature of the sigmoid function.
         """
         super(_LinearGP, self).__init__(
@@ -104,7 +103,7 @@ class _LinearGP(_GSC):
         self.margin_temp: float = margin_temp
 
     def forward(
-        self, x: torch.Tensor, z: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, z: torch.Tensor = None
     ) -> torch.Tensor:
         """The forward method of the LinearGP model.
         This function calculates x' based on the GP formula.
@@ -198,7 +197,7 @@ class _LinearGP(_GSC):
         x: torch.Tensor,
         w: torch.Tensor,
         b: torch.Tensor,
-        norm_waits: Optional[torch.Tensor] = None,
+        norm_waits: torch.Tensor = None,
     ) -> torch.Tensor:
         """This method calculates the projection on the model.
 
@@ -206,7 +205,7 @@ class _LinearGP(_GSC):
             x (torch.Tensor): The data
             w (torch.Tensor): The weights of the model
             b (torch.Tensor): The bias of the model
-            norm_waits (Optional[torch.Tensor]): The weights of the cost function
+            norm_waits (torch.Tensor): The weights of the cost function
 
         Returns:
             torch.Tensor: The projection on the model
@@ -226,7 +225,7 @@ class _LinearGP(_GSC):
         x: torch.Tensor,
         w: torch.Tensor,
         b: torch.Tensor,
-        norm_waits: Optional[torch.Tensor] = None,
+        norm_waits: torch.Tensor = None,
     ) -> torch.Tensor:
         """This method calculates the projection on the model.
 
@@ -234,7 +233,7 @@ class _LinearGP(_GSC):
             x (torch.Tensor): The data
             w (torch.Tensor): The weights of the model
             b (torch.Tensor): The bias of the model
-            norm_waits (Optional[torch.Tensor]): The weights of the cost function
+            norm_waits (torch.Tensor): The weights of the cost function
 
         Returns:
             torch.Tensor: The margin from the model

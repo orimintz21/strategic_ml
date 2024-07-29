@@ -5,13 +5,12 @@ When creating a new loss function, you should inherit from this class and implem
 import torch
 import torch.nn as nn
 from strategic_ml.gsc.generalized_strategic_delta import _GSC
-from typing import Optional
 
 
 class _Loss(nn.Module):
     def __init__(
         self,
-        model: Optional[nn.Module] = None,
+        model: nn.Module = None,
         regularization_lambda: float = 0.01,
     ) -> None:
         """
@@ -34,27 +33,7 @@ class _Loss(nn.Module):
         :return: Loss value.
         """
         raise NotImplementedError()
-
-    def compute_loss(self, X: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """
-        Compute the loss for given inputs and labels.
-
-        :param X: Input features.
-        :param y: True labels.
-        :return: Loss value.
-        """
-        raise NotImplementedError()
-
-    def compute_gradient(self, X: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """
-        Compute the gradient of the loss function.
-
-        :param X: Input features.
-        :param y: True labels.
-        :return: Gradient value.
-        """
-        raise NotImplementedError()
-
+    
     @property
     def regularization_lambda(self) -> float:
         return self.regularization_lambda
@@ -64,9 +43,9 @@ class _Loss(nn.Module):
         self.regularization_lambda = value
 
     @property
-    def model(self) -> Optional[nn.Module]:
+    def model(self) -> nn.Module:
         return self.model
 
     @model.setter
-    def model(self, value: Optional[nn.Module]) -> None:
+    def model(self, value: nn.Module) -> None:
         self.model = value
