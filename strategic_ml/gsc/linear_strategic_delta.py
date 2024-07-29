@@ -10,6 +10,7 @@ For more information see paper "Generalized Strategic Data Augmentation" and
 
 # External imports
 import torch
+from typing import Optional
 
 # Internal imports
 from strategic_ml.cost_functions.cost_function import _CostFunction
@@ -20,9 +21,9 @@ from strategic_ml.models.strategic_model import _StrategicModel
 class LinearStrategicDelta(_LinearGP):
     def __init__(
         self,
-        strategic_model: _StrategicModel = None,
-        cost: _CostFunction = None,
-        cost_weight: float = None,
+        cost: _CostFunction,
+        strategic_model: Optional[_StrategicModel] = None,
+        cost_weight: float = 1.0,
         models_temp: float = 1,
         z_temp: float = 1,
         margin_temp: float = 1,

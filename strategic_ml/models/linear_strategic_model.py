@@ -20,7 +20,7 @@ class LinearStrategicModel(_StrategicModel):
     def __init__(
         self,
         in_features: int,
-        delta: _GSC = None,
+        delta: _GSC,
     ) -> None:
         """
         Constructor for the LinearStrategicModel class.

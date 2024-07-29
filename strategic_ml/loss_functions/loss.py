@@ -10,7 +10,7 @@ from strategic_ml.gsc.generalized_strategic_delta import _GSC
 class _Loss(nn.Module):
     def __init__(
         self,
-        model: nn.Module = None,
+        model: nn.Module,
         regularization_lambda: float = 0.01,
     ) -> None:
         """
@@ -20,8 +20,7 @@ class _Loss(nn.Module):
         :param regularization_lambda: Regularization parameter.
         """
         super(_Loss, self).__init__()
-        if model is not None:
-            self.model: nn.Module = model
+        self.model: nn.Module = model
         self.regularization_lambda = regularization_lambda
 
     def forward(self, X: torch.Tensor, y: torch.Tensor) -> torch.Tensor:

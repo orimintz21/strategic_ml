@@ -51,6 +51,7 @@ x_prime = conditions * projection + (1 - conditions) * x
 
 # External imports
 import torch
+from typing import Optional
 
 # Internal imports
 from strategic_ml.gsc.generalized_strategic_delta import _GSC
@@ -63,12 +64,13 @@ from strategic_ml.cost_functions import (
 )
 
 
+
 class _LinearGP(_GSC):
     def __init__(
         self,
-        strategic_model: _StrategicModel = None,
-        cost: _CostFunction = None,
-        cost_weight: float = None,
+        cost: _CostFunction,
+        strategic_model: Optional[_StrategicModel] = None,
+        cost_weight: float = 1.0,
         models_temp: float = 1.0,
         z_temp: float = 1.0,
         margin_temp: float = 1.0,
@@ -92,12 +94,8 @@ class _LinearGP(_GSC):
         super(_LinearGP, self).__init__(
             strategic_model=strategic_model, cost=cost, cost_weight=cost_weight
         )
-        if strategic_model is not None:
-            self._assert_model()
-
-        if cost is not None:
-            self._assert_cost()
-
+        self._assert_model()
+        self._assert_cost()
         self.models_temp: float = models_temp
         self.z_temp: float = z_temp
         self.margin_temp: float = margin_temp
@@ -197,7 +195,7 @@ class _LinearGP(_GSC):
         x: torch.Tensor,
         w: torch.Tensor,
         b: torch.Tensor,
-        norm_waits: torch.Tensor = None,
+        norm_waits: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """This method calculates the projection on the model.
 
