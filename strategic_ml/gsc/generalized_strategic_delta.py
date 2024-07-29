@@ -25,6 +25,7 @@ class _GSC(nn.Module):
         self,
         strategic_model: Optional[_StrategicModel] = None,
         cost: Optional[_CostFunction] = None,
+        cost_weight: Optional[float] = None,
         delta_model: Optional[nn.Module] = None,
         *args,
         **kwargs,
@@ -50,6 +51,9 @@ class _GSC(nn.Module):
 
         if cost is not None:
             self.cost: _CostFunction = cost
+
+        if cost_weight is not None:
+            self.cost_weight: float = cost_weight
 
         if delta_model is not None:
             self.delta_model: nn.Module = delta_model
