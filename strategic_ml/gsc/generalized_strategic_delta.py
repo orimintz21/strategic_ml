@@ -12,18 +12,20 @@ x to x' based on the GSC's type.
 # External imports
 import torch
 from torch import nn
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 # Internal imports
-from strategic_ml.models import _StrategicModel
-from cost_functions import _CostFunction
+from strategic_ml.cost_functions import _CostFunction
+
+if TYPE_CHECKING:
+    from strategic_ml.models import _StrategicModel
 
 
 # Implementation
 class _GSC(nn.Module):
     def __init__(
         self,
-        strategic_model: _StrategicModel,
+        strategic_model: '_StrategicModel',
         cost: _CostFunction,
         cost_weight: float = 1.0,
         delta_model: Optional[nn.Module] = None,
@@ -47,7 +49,7 @@ class _GSC(nn.Module):
         """
         super(_GSC, self).__init__()
 
-        self.strategic_model: _StrategicModel = strategic_model
+        self.strategic_model: '_StrategicModel' = strategic_model
         self.cost: _CostFunction = cost
         self.cost_weight: float = cost_weight
 
@@ -81,19 +83,19 @@ class _GSC(nn.Module):
         """
         raise NotImplementedError()
 
-    def get_strategic_model(self) -> _StrategicModel:
+    def get_strategic_model(self) -> '_StrategicModel':
         """Getter for the strategic model.
 
         Returns:
-            _StrategicModel: the model
+            nn.Module: the model
         """
         return self.strategic_model
 
-    def set_strategic_model(self, model: _StrategicModel) -> None:
+    def set_strategic_model(self, model: '_StrategicModel') -> None:
         """Setter for the strategic model.
 
         Args:
-            model (_StrategicModel): the model
+            model (nn.Module): the model
         """
         self.strategic_model = model
 

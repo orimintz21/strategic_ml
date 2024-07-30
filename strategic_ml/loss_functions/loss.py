@@ -2,9 +2,9 @@
 When creating a new loss function, you should inherit from this class and implement the forward method.
 """
 
+# External imports
 import torch
 import torch.nn as nn
-from strategic_ml.gsc.generalized_strategic_delta import _GSC
 
 
 class _Loss(nn.Module):
@@ -21,9 +21,9 @@ class _Loss(nn.Module):
         """
         super(_Loss, self).__init__()
         self.model: nn.Module = model
-        self.regularization_lambda = regularization_lambda
+        self.regularization_lambda: float = regularization_lambda
 
-    def forward(self, X: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
         Compute the forward pass and calculate the loss.
 
@@ -34,17 +34,15 @@ class _Loss(nn.Module):
         raise NotImplementedError()
 
     @property
-    def regularization_lambda(self) -> float:
+    def get_regularization_lambda(self) -> float:
         return self.regularization_lambda
 
-    @regularization_lambda.setter
-    def regularization_lambda(self, value: float) -> None:
+    def set_regularization_lambda(self, value: float) -> None:
         self.regularization_lambda = value
 
     @property
-    def model(self) -> nn.Module:
+    def get_model(self) -> nn.Module:
         return self.model
 
-    @model.setter
-    def model(self, value: nn.Module) -> None:
+    def set_model(self, value: nn.Module) -> None:
         self.model = value

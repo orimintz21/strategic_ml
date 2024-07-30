@@ -22,17 +22,17 @@ class LinearStrategicDelta(_LinearGP):
     def __init__(
         self,
         cost: _CostFunction,
-        strategic_model: Optional[_StrategicModel] = None,
+        strategic_model: _StrategicModel,
         cost_weight: float = 1.0,
         models_temp: float = 1,
         z_temp: float = 1,
         margin_temp: float = 1,
     ) -> None:
         super(LinearStrategicDelta, self).__init__(
-            strategic_model, cost, cost_weight, models_temp, z_temp, margin_temp
+            cost, strategic_model, cost_weight, models_temp, z_temp, margin_temp
         )
 
-    def forward(self, x: torch.Tensor, z: torch.Tensor = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, z: Optional[torch.Tensor] = None) -> torch.Tensor:
         """This is the forward method of the LinearStrategicDelta model.
         This function calculates the delta based on the GP formula.
         Note that in this case the delta is a constant value of 1.

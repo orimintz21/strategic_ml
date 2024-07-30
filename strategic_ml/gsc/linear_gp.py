@@ -68,7 +68,7 @@ class _LinearGP(_GSC):
     def __init__(
         self,
         cost: _CostFunction,
-        strategic_model: Optional[_StrategicModel] = None,
+        strategic_model: _StrategicModel,
         cost_weight: float = 1.0,
         models_temp: float = 1.0,
         z_temp: float = 1.0,
@@ -84,7 +84,7 @@ class _LinearGP(_GSC):
 
         Args:
             strategic_model (_StrategicModel): the strategic
-            that the delta is calculated on. Defaults to None.
+            that the delta is calculated on.
             cost (_CostFunction): The cost function of the
             delta. Defaults to None.
             cost_weight (int): The weight of the cost function.
