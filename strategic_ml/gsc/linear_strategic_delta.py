@@ -46,4 +46,6 @@ class LinearStrategicDelta(_LinearGP):
         Returns:
             torch.Tensor: the modified data
         """
-        return super().forward(x, torch.Tensor(1))
+        # array of ones with the number of rows of x
+        ones = torch.ones((x.shape[0], 1))
+        return super().forward(x, ones)

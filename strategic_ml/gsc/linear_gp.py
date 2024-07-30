@@ -141,19 +141,20 @@ class _LinearGP(_GSC):
         else:
             raise ValueError("The cost function is not supported")
 
+        cost_weight: torch.Tensor = torch.tensor(self.cost_weight)
+
         assert margin.size() == torch.Size(
             [x.size(0), 1]
         ), "The margin should be of size [batch_size, 1]"
 
         model_prediction_tanh: torch.Tensor = torch.tanh(
-            self.models_temp * (torch.matmul(x, weights) + bias)
+            self.models_temp * (torch.matmul( x,weights) + bias)
         )
-        z_neq_prediction: torch.Tensor = 1 - torch.sigmoid(
+        z_neq_prediction: torch.Tensor = cost_weight - torch.sigmoid(
             model_prediction_tanh * self.z_temp * z
         )
 
-        assert len(z_neq_prediction.size()) == 1, "The margin should be one dimensional"
-        assert z_neq_prediction.size(0) == 1, "The margin should be of size 1"
+
 
         margin_smaller_than_1: torch.Tensor = torch.sigmoid(
             self.margin_temp * (1 - margin)
@@ -205,7 +206,7 @@ class _LinearGP(_GSC):
             torch.Tensor: The projection on the model
         """
         if norm_waits is None:
-            return x - ((torch.matmul(x, w) + b) / (torch.matmul(w, w))) * w
+            return x - ((torch.matmul(x, w.T) + b) / (torch.matmul(w, w))) * w
 
         else:
             inverse_norm_waits: torch.Tensor = torch.inverse(norm_waits)
@@ -234,7 +235,7 @@ class _LinearGP(_GSC):
         """
         if norm_waits is None:
             # The equation is |w.T @ x + b| / ||w||
-            return torch.abs(torch.matmul(x, w) + b) / torch.sqrt((torch.matmul(w, w)))
+            return torch.abs(torch.matmul(x, w.T) + b) / torch.sqrt((torch.sum(w**2)))
 
         else:
             # The equation is |w.T @ x + b| / ||w||_{waits}
