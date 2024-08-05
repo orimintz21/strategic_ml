@@ -20,7 +20,13 @@ from .strategic_regularization import _StrategicRegularization
 
 from .loss_functions import _Loss
 
-from .gsc import _GSC, _LinearGP, LinearAdvDelta, LinearStrategicDelta
+from .gsc import (
+    _GSC,
+    _LinearGP,
+    LinearAdvDelta,
+    LinearStrategicDelta,
+    LinearNoisyLabelDelta,
+)
 
 from .models import LinearStrategicModel
 
@@ -43,6 +49,7 @@ __all__: list = [
     "_LinearGP",
     "LinearAdvDelta",
     "LinearStrategicDelta",
+    "LinearNoisyLabelDelta",
     # Models
     "LinearStrategicModel",
 ]  # List of modules and functions to be imported when using 'from strategic_ml import *'
