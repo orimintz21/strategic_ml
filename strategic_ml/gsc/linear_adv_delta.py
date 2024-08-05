@@ -7,19 +7,19 @@ model to get a negative outcome (this is the reason that z==-y).
 
 # External imports
 import torch
+from torch import nn
 from typing import Optional
 
 # Internal imports
 from strategic_ml.cost_functions.cost_function import _CostFunction
 from strategic_ml.gsc import _LinearGP
-from strategic_ml.models.strategic_model import _StrategicModel
 
 
 class LinearAdvDelta(_LinearGP):
     def __init__(
         self,
         cost: _CostFunction,
-        strategic_model: _StrategicModel,
+        strategic_model: nn.Module,
         cost_weight: float = 1.0,
         models_temp: float = 1.0,
         z_temp: float = 1.0,
