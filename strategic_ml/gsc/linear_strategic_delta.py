@@ -32,7 +32,9 @@ class LinearStrategicDelta(_LinearGP):
             cost, strategic_model, cost_weight, models_temp, z_temp, margin_temp
         )
 
-    def forward(self, x: torch.Tensor, z: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, z: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """This is the forward method of the LinearStrategicDelta model.
         This function calculates the delta based on the GP formula.
         Note that in this case the delta is a constant value of 1.

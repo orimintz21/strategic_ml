@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 class _GSC(nn.Module):
     def __init__(
         self,
-        strategic_model: '_StrategicModel',
+        strategic_model: "_StrategicModel",
         cost: _CostFunction,
         cost_weight: float = 1.0,
         delta_model: Optional[nn.Module] = None,
@@ -49,7 +49,7 @@ class _GSC(nn.Module):
         """
         super(_GSC, self).__init__()
 
-        self.strategic_model: '_StrategicModel' = strategic_model
+        self.strategic_model: "_StrategicModel" = strategic_model
         self.cost: _CostFunction = cost
         self.cost_weight: float = cost_weight
 
@@ -83,7 +83,7 @@ class _GSC(nn.Module):
         """
         raise NotImplementedError()
 
-    def get_strategic_model(self) -> '_StrategicModel':
+    def get_strategic_model(self) -> "_StrategicModel":
         """Getter for the strategic model.
 
         Returns:
@@ -91,7 +91,7 @@ class _GSC(nn.Module):
         """
         return self.strategic_model
 
-    def set_strategic_model(self, model: '_StrategicModel') -> None:
+    def set_strategic_model(self, model: "_StrategicModel") -> None:
         """Setter for the strategic model.
 
         Args:

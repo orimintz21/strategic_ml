@@ -26,10 +26,12 @@ class LinearAdvDelta(_LinearGP):
         margin_temp: float = 1.0,
     ) -> None:
         super(LinearAdvDelta, self).__init__(
-            cost, strategic_model,cost_weight, models_temp, z_temp, margin_temp
+            cost, strategic_model, cost_weight, models_temp, z_temp, margin_temp
         )
 
-    def forward(self, x: torch.Tensor, z: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, z: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
 
         Args:

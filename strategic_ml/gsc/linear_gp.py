@@ -25,25 +25,27 @@ Therefore we need to use the sigmoid function to approximate the condition and
 the margin.
 
 Notions:
-h == model
 z == label of the GP (see "Generalized Strategic Classification and the Case of Aligned Incentives")
 x == input
 x_prime == the GP
 m == the weight of the cost
 w == the weights of the model
 b == the bias of the model
+h_{w,b} == model
 cost == the cost function
 
 The GP is calculated by the following formula:
 The first condition is that the model should be different from the label:
 1{z != sign(h(x))}
-We use cond1 = m - sigmoid(t2 * (tanh(h(x) * t1) * z))
+We use cond1 = 1 - sigmoid(t2 * (tanh(h(x) * t1) * z))
 t1 and t2 are the temperature of the soft sign functions.
 
-The second condition is that the margin should be smaller than 1:
+The second condition is that the cost of the movement should be smaller than
+the profit from the movement. Because the maximum profit is 2 and the distance
+is the margin, the condition is the following:
 We use a sigmoid function with the temperature of t3.
-if margin(w,b,x)>1 then cond2 = 0
-cond2 = sigmoid(t3 * (1 - margin(w,b,x))
+if margin(w,b,x)*m>2 then cond2 = 0
+cond2 = sigmoid(t3 * (2 - (m * margin(w,b,x)))
 
 Then the GP is calculated by the following formula:
 x_prime = conditions * projection + (1 - conditions) * x
@@ -119,19 +121,22 @@ class _LinearGP(_GSC):
             torch.Tensor: x' the GP.
         """
 
+        # Check the input
         self._assert_cost()
         self._assert_model()
+        batch_size: int = x.size(0)
         assert z is not None, "The label of the GP is None"
         assert z.size() == torch.Size(
-            [x.size(0), 1]
+            [batch_size, 1]
         ), "z should be of size [batch_size, 1]"
 
-        if isinstance(self.strategic_model, LinearStrategicModel):
-            # check again if the model is linear to avid linting errors
-            weights, bias = self.strategic_model.get_weights_and_bias()
-        else:
-            raise NotImplementedError("The model is not a Linear model")
+        # Get the weights and bias of the model
+        assert isinstance(
+            self.strategic_model, LinearStrategicModel
+        ), "The model should be a LinearStrategicModel"
+        weights, bias = self.strategic_model.get_weights_and_bias()
 
+        # Calculate the margin
         if isinstance(self.cost, CostNormL2):
             margin: torch.Tensor = self._calculate_margin(x, weights, bias)
         elif isinstance(self.cost, CostWeightedLoss):
@@ -143,34 +148,44 @@ class _LinearGP(_GSC):
 
         cost_weight: torch.Tensor = torch.tensor(self.cost_weight)
 
+        # Validate the margin
         assert margin.size() == torch.Size(
             [x.size(0), 1]
         ), "The margin should be of size [batch_size, 1]"
 
+        # Soft sign function
         model_prediction_tanh: torch.Tensor = torch.tanh(
-            self.models_temp * (torch.matmul( x,weights) + bias)
+            self.models_temp * ((x @ weights.T) + bias)
         )
-        z_neq_prediction: torch.Tensor = cost_weight - torch.sigmoid(
+
+        # Soft check if the model is different from z
+        z_neq_prediction: torch.Tensor = 1 - torch.sigmoid(
             model_prediction_tanh * self.z_temp * z
         )
 
-
-
-        margin_smaller_than_1: torch.Tensor = torch.sigmoid(
-            self.margin_temp * (1 - margin)
+        # Soft check if the movement is profitable
+        soft_movement_is_profitable: torch.Tensor = torch.sigmoid(
+            self.margin_temp * (2 - (margin * cost_weight))
         )
 
+        # Validate the conditions
+        assert z_neq_prediction.size() == torch.Size(
+            [batch_size, 1]
+        ), "z_neq_prediction should be of size [batch_size, 1]"
         assert (
-            len(margin_smaller_than_1.size()) == 1
-        ), "The margin should be one dimensional"
-        assert margin_smaller_than_1.size(0) == 1, "The margin should be of size 1"
+            soft_movement_is_profitable.size() == z_neq_prediction.size()
+        ), "soft_movement_is_profitable should be of the same size as z_neq_prediction"
 
-        conditions: torch.Tensor = z_neq_prediction * margin_smaller_than_1
+        # Combine the conditions
+        conditions: torch.Tensor = z_neq_prediction * soft_movement_is_profitable
 
-        return (
+        # Calculate the GP
+        x_prime: torch.Tensor = (
             conditions * self._calculate_projection(x, weights, bias)
             + (1 - conditions) * x
         )
+
+        return x_prime
 
     def _assert_cost(self) -> None:
         assert isinstance(self.cost, CostNormL2) or isinstance(
@@ -206,13 +221,13 @@ class _LinearGP(_GSC):
             torch.Tensor: The projection on the model
         """
         if norm_waits is None:
-            return x - ((torch.matmul(x, w.T) + b) / (torch.matmul(w, w))) * w
+            return x - ((torch.matmul(x, w.T) + b) / (torch.matmul(w, w.T))) * w
 
         else:
             inverse_norm_waits: torch.Tensor = torch.inverse(norm_waits)
             return x - (
                 (torch.matmul(x, w) + b)
-                / (torch.matmul(w, torch.matmul(inverse_norm_waits, w)))
+                / (torch.matmul(w, torch.matmul(inverse_norm_waits, w.T)))
             ) * torch.matmul(inverse_norm_waits, w)
 
     def _calculate_margin(
@@ -235,11 +250,13 @@ class _LinearGP(_GSC):
         """
         if norm_waits is None:
             # The equation is |w.T @ x + b| / ||w||
-            return torch.abs(torch.matmul(x, w.T) + b) / torch.sqrt((torch.sum(w**2)))
+            return torch.abs(torch.matmul(x, w.T) + b) / torch.sqrt(
+                torch.matmul(w, w.T)
+            )
 
         else:
             # The equation is |w.T @ x + b| / ||w||_{waits}
             inverse_norm_waits: torch.Tensor = torch.inverse(norm_waits)
-            return torch.abs(torch.matmul(x, w) + b) / (
-                torch.sqrt(torch.matmul(w, torch.matmul(inverse_norm_waits, w)))
+            return torch.abs(torch.matmul(x, w.T) + b) / (
+                torch.sqrt(torch.matmul(w, torch.matmul(inverse_norm_waits, w.T)))
             )

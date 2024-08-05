@@ -22,12 +22,11 @@ if TYPE_CHECKING:
     from strategic_ml.gsc.generalized_strategic_delta import _GSC
 
 
-
 class _StrategicModel(nn.Module):
     def __init__(
         self,
         model: nn.Module,
-        delta: Optional['_GSC'],
+        delta: Optional["_GSC"],
     ) -> None:
         """
         Constructor for the StrategicModel class.
@@ -36,8 +35,7 @@ class _StrategicModel(nn.Module):
         self.model: nn.Module = model
 
         if delta is not None:
-            self.delta:'_GSC' = delta
-
+            self.delta: "_GSC" = delta
 
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """This is the forward method of the StrategicModel class.
@@ -87,7 +85,7 @@ class _StrategicModel(nn.Module):
         """
         return self.model(x)
 
-    def get_delta(self) -> '_GSC':
+    def get_delta(self) -> "_GSC":
         """Getter for the delta.
 
         Returns:
@@ -95,7 +93,7 @@ class _StrategicModel(nn.Module):
         """
         return self.delta
 
-    def set_delta(self, delta: '_GSC') -> None:
+    def set_delta(self, delta: "_GSC") -> None:
         """Setter for the delta.
 
         Args:

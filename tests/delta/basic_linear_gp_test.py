@@ -1,6 +1,12 @@
 import torch
 import unittest
-from strategic_ml import CostNormL2, LinearStrategicModel, LinearStrategicDelta, LinearAdvDelta
+from strategic_ml import (
+    CostNormL2,
+    LinearStrategicModel,
+    LinearStrategicDelta,
+    LinearAdvDelta,
+)
+
 
 def create_data():
     # Set the random seed for reproducibility
@@ -23,11 +29,12 @@ def create_data():
     # Print the dataset
     return x, y
 
+
 class TestLinearStrategicDelta(unittest.TestCase):
     def setUp(self) -> None:
         print("Setting up the test")
         self.x, self.y = create_data()
-    
+
     def test_demo(self) -> None:
         # Create a strategic model
         strategic_model = LinearStrategicModel(in_features=2)
@@ -49,14 +56,11 @@ class TestLinearStrategicDelta(unittest.TestCase):
             output = loss(prediction, self.y)
             output.backward()
             optimizer.step()
-        
+
         print("The strategic model has been trained")
-        
 
         self.assertTrue(True)
 
 
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

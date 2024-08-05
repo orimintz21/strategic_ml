@@ -13,6 +13,7 @@ See more: "Generalized Strategic Classification and the Case of Aligned Incentiv
 # External imports
 import torch
 from torch import nn
+
 # Internal imports
 from strategic_ml.loss_functions import _Loss
 
