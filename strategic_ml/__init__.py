@@ -22,7 +22,7 @@ from .loss_functions import _Loss
 
 from .gsc import _GSC, _LinearGP, LinearAdvDelta, LinearStrategicDelta
 
-from .models import _StrategicModel, LinearStrategicModel
+from .models import LinearStrategicModel
 
 
 # Functionality of the package
@@ -44,6 +44,5 @@ __all__: list = [
     "LinearAdvDelta",
     "LinearStrategicDelta",
     # Models
-    "_StrategicModel",
     "LinearStrategicModel",
 ]  # List of modules and functions to be imported when using 'from strategic_ml import *'

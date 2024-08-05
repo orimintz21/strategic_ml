@@ -38,7 +38,7 @@ class _GSC(nn.Module):
 
 
         Args:
-            strategic_model (_StrategicModel): the model for the GSC.
+            strategic_model (nn.Module): the model for the GSC.
             cost (_CostFunction): the cost function for the GSC.
             delta_model [nn.Module]: the delta model for the GSC
             this is the model that will be used to calculate the delta.

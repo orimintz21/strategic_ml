@@ -85,7 +85,7 @@ class _LinearGP(_GSC):
         delta_h(x,z) := argmax_{x' in X}(sigmoid{model(x') == z} - 1/2*weight*(cost(x,x')))
 
         Args:
-            strategic_model (_StrategicModel): the strategic
+            strategic_model (nn.Module): the strategic
             that the delta is calculated on.
             cost (_CostFunction): The cost function of the
             delta. Defaults to None.
