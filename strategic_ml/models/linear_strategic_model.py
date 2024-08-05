@@ -9,39 +9,40 @@ we can calculate the strategic delta in a closed form.
 
 # External imports
 import torch
+from torch import nn
 from typing import Tuple
 
 # Internal imports
-from strategic_ml.models import _StrategicModel
-from strategic_ml.gsc import _GSC
 
 
-class LinearStrategicModel(_StrategicModel):
+class LinearStrategicModel(nn.Module):
     def __init__(
         self,
         in_features: int,
-        delta: _GSC,
     ) -> None:
         """
         Constructor for the LinearStrategicModel class.
+        This is a binary classification model therefore the output features is 1.
         """
-        model: torch.nn.Linear = torch.nn.Linear(
+        super(LinearStrategicModel, self).__init__()
+        self.model: torch.nn.Linear = torch.nn.Linear(
             in_features=in_features, out_features=1, bias=True
         )
-        super(LinearStrategicModel, self).__init__(delta=delta, model=model)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.model(x)
+
+    def __call__(self, x: torch.Tensor) -> torch.Tensor:
+        return self.forward(x)
+
+    def train(self, mode: bool = True) -> "LinearStrategicModel":
+        return super().train(mode)
 
     def get_weights_and_bias(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         The get_weights_and_bias method returns the weights and bias of the model
 
-        Raises:
-            NotImplementedError: if the model is not a Linear model
-            (This should not happen)
-
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: the weights and bias of the model
         """
-        if isinstance(self.model, torch.nn.Linear):
-            return self.model.weight, self.model.bias
-
-        raise NotImplementedError("The model is not a Linear model")
+        return self.model.weight, self.model.bias

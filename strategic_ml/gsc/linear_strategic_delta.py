@@ -10,29 +10,31 @@ For more information see paper "Generalized Strategic Data Augmentation" and
 
 # External imports
 import torch
+from torch import nn
 from typing import Optional
 
 # Internal imports
 from strategic_ml.cost_functions.cost_function import _CostFunction
 from strategic_ml.gsc import _LinearGP
-from strategic_ml.models.strategic_model import _StrategicModel
 
 
 class LinearStrategicDelta(_LinearGP):
     def __init__(
         self,
         cost: _CostFunction,
-        strategic_model: Optional[_StrategicModel] = None,
+        strategic_model: nn.Module,
         cost_weight: float = 1.0,
         models_temp: float = 1,
         z_temp: float = 1,
         margin_temp: float = 1,
     ) -> None:
         super(LinearStrategicDelta, self).__init__(
-            strategic_model, cost, cost_weight, models_temp, z_temp, margin_temp
+            cost, strategic_model, cost_weight, models_temp, z_temp, margin_temp
         )
 
-    def forward(self, x: torch.Tensor, z: torch.Tensor = None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, z: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """This is the forward method of the LinearStrategicDelta model.
         This function calculates the delta based on the GP formula.
         Note that in this case the delta is a constant value of 1.
@@ -46,4 +48,11 @@ class LinearStrategicDelta(_LinearGP):
         Returns:
             torch.Tensor: the modified data
         """
-        return super().forward(x, torch.Tensor(1))
+        # array of ones with the number of rows of x
+        ones = torch.ones((x.shape[0], 1))
+        return super().forward(x, ones)
+
+    def __call__(
+        self, x: torch.Tensor, z: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
+        return self.forward(x, z)
