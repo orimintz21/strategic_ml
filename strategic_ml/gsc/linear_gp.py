@@ -53,11 +53,11 @@ x_prime = conditions * projection + (1 - conditions) * x
 
 # External imports
 import torch
+from torch import nn
 from typing import Optional
 
 # Internal imports
 from strategic_ml.gsc.generalized_strategic_delta import _GSC
-from strategic_ml.models import _StrategicModel
 from strategic_ml.models import LinearStrategicModel
 from strategic_ml.cost_functions import (
     _CostFunction,
@@ -70,7 +70,7 @@ class _LinearGP(_GSC):
     def __init__(
         self,
         cost: _CostFunction,
-        strategic_model: _StrategicModel,
+        strategic_model: nn.Module,
         cost_weight: float = 1.0,
         models_temp: float = 1.0,
         z_temp: float = 1.0,
@@ -128,12 +128,14 @@ class _LinearGP(_GSC):
         assert z is not None, "The label of the GP is None"
         assert z.size() == torch.Size(
             [batch_size, 1]
-        ), "z should be of size [batch_size, 1]"
+        ), "z should be of size [batch_size, 1], but got {}".format(z.size())
 
         # Get the weights and bias of the model
         assert isinstance(
             self.strategic_model, LinearStrategicModel
-        ), "The model should be a LinearStrategicModel"
+        ), "The model should be a LinearStrategicModel, but got {}".format(
+            type(self.strategic_model)
+        )
         weights, bias = self.strategic_model.get_weights_and_bias()
 
         # Calculate the margin
@@ -150,8 +152,10 @@ class _LinearGP(_GSC):
 
         # Validate the margin
         assert margin.size() == torch.Size(
-            [x.size(0), 1]
-        ), "The margin should be of size [batch_size, 1]"
+            [batch_size, 1]
+        ), "The margin should be of size [batch_size, 1], but got {0} when batch_size is {1}".format(
+            margin.size(), batch_size
+        )
 
         # Soft sign function
         model_prediction_tanh: torch.Tensor = torch.tanh(
@@ -171,10 +175,14 @@ class _LinearGP(_GSC):
         # Validate the conditions
         assert z_neq_prediction.size() == torch.Size(
             [batch_size, 1]
-        ), "z_neq_prediction should be of size [batch_size, 1]"
+        ), "z_neq_prediction should be of size [batch_size, 1], but got {}".format(
+            z_neq_prediction.size()
+        )
         assert (
             soft_movement_is_profitable.size() == z_neq_prediction.size()
-        ), "soft_movement_is_profitable should be of the same size as z_neq_prediction"
+        ), "soft_movement_is_profitable should be of the same size as z_neq_prediction, but got {}".format(
+            soft_movement_is_profitable.size()
+        )
 
         # Combine the conditions
         conditions: torch.Tensor = z_neq_prediction * soft_movement_is_profitable

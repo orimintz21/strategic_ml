@@ -12,20 +12,17 @@ x to x' based on the GSC's type.
 # External imports
 import torch
 from torch import nn
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 
 # Internal imports
 from strategic_ml.cost_functions import _CostFunction
-
-if TYPE_CHECKING:
-    from strategic_ml.models import _StrategicModel
 
 
 # Implementation
 class _GSC(nn.Module):
     def __init__(
         self,
-        strategic_model: "_StrategicModel",
+        strategic_model: nn.Module,
         cost: _CostFunction,
         cost_weight: float = 1.0,
         delta_model: Optional[nn.Module] = None,
@@ -49,7 +46,7 @@ class _GSC(nn.Module):
         """
         super(_GSC, self).__init__()
 
-        self.strategic_model: "_StrategicModel" = strategic_model
+        self.strategic_model: nn.Module = strategic_model
         self.cost: _CostFunction = cost
         self.cost_weight: float = cost_weight
 
@@ -83,7 +80,7 @@ class _GSC(nn.Module):
         """
         raise NotImplementedError()
 
-    def get_strategic_model(self) -> "_StrategicModel":
+    def get_strategic_model(self) -> nn.Module:
         """Getter for the strategic model.
 
         Returns:
@@ -91,7 +88,7 @@ class _GSC(nn.Module):
         """
         return self.strategic_model
 
-    def set_strategic_model(self, model: "_StrategicModel") -> None:
+    def set_strategic_model(self, model: nn.Module) -> None:
         """Setter for the strategic model.
 
         Args:
@@ -114,13 +111,3 @@ class _GSC(nn.Module):
             cost (_CostFunction): the cost function
         """
         self.cost = cost
-
-    def set_arguments_for_training(self, *args, **kwargs) -> None:
-        """This method will set the arguments for the training of the delta model.
-        For example, optimizer, learning rate, etc.
-
-        Args:
-            *args: additional arguments
-            **kwargs: additional keyword arguments
-        """
-        raise NotImplementedError()

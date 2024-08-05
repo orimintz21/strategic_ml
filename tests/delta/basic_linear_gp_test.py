@@ -1,5 +1,6 @@
 import torch
 import unittest
+
 from strategic_ml import (
     CostNormL2,
     LinearStrategicModel,
@@ -25,8 +26,6 @@ def create_data():
     y1 = torch.ones(5, 1)
     y2 = -torch.ones(5, 1)
     y = torch.cat((y1, y2), dim=0)
-
-    # Print the dataset
     return x, y
 
 
@@ -36,6 +35,9 @@ class TestLinearStrategicDelta(unittest.TestCase):
         self.x, self.y = create_data()
 
     def test_demo(self) -> None:
+        """This test just checks that the flow of the code is correct.
+        It does not check the correctness of the code.
+        """
         # Create a strategic model
         strategic_model = LinearStrategicModel(in_features=2)
 
@@ -43,21 +45,33 @@ class TestLinearStrategicDelta(unittest.TestCase):
         cost = CostNormL2()
 
         # Create a strategic delta
-        strategic_delta = LinearStrategicDelta(cost, strategic_model)
-
-        strategic_model.set_delta(strategic_delta)
+        strategic_delta: LinearStrategicDelta = LinearStrategicDelta(
+            cost, strategic_model
+        )
 
         # Train the strategic model
-        optimizer = torch.optim.SGD(strategic_model.parameters(), lr=0.1)
+        optimizer = torch.optim.SGD(strategic_model.parameters(), lr=0.001)
         loss = torch.nn.MSELoss()
-        for _ in range(100):
+
+        strategic_model.train()
+        for _ in range(200):
+            with torch.no_grad():
+                delta_move: torch.Tensor = strategic_delta(self.x)
+            x_prime = delta_move
             optimizer.zero_grad()
-            prediction = strategic_model(self.x)
+            prediction = strategic_model(x_prime)
             output = loss(prediction, self.y)
             output.backward()
             optimizer.step()
-
         print("The strategic model has been trained")
+
+        # validate the the distance between the two points is less than 1
+        for x, y in zip(self.x, self.y):
+            x = x.unsqueeze(0)
+            x_prime_test = strategic_delta.forward(x)
+            print(cost(x, x_prime_test))
+            self.assertEqual(torch.sign(strategic_model(x)), y)
+            self.assertTrue(cost(x, x_prime_test) < 1)
 
         self.assertTrue(True)
 
