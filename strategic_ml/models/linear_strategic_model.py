@@ -10,7 +10,7 @@ we can calculate the strategic delta in a closed form.
 # External imports
 import torch
 from torch import nn
-from typing import Tuple
+from typing import Tuple, Optional
 
 # Internal imports
 
@@ -19,6 +19,8 @@ class LinearStrategicModel(nn.Module):
     def __init__(
         self,
         in_features: int,
+        weight: Optional[torch.Tensor] = None,
+        bias: Optional[torch.Tensor] = None,
     ) -> None:
         """
         Constructor for the LinearStrategicModel class.
@@ -28,6 +30,13 @@ class LinearStrategicModel(nn.Module):
         self.model: torch.nn.Linear = torch.nn.Linear(
             in_features=in_features, out_features=1, bias=True
         )
+        with torch.no_grad():
+            if weight is not None and bias is not None:
+                assert weight.shape[1] == in_features
+                assert weight.shape[0] == 1
+                assert bias.shape[0] == 1
+                self.model.weight.copy_(weight)
+                self.model.bias.copy_(bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
@@ -45,4 +54,4 @@ class LinearStrategicModel(nn.Module):
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: the weights and bias of the model
         """
-        return self.model.weight, self.model.bias
+        return self.model.weight.detach(), self.model.bias.detach()

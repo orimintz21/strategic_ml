@@ -26,7 +26,7 @@ class CostNormL2(_CostFunction):
         Returns:
             torch.Tensor: the L2 cost of moving from x to x_prime
         """
-        assert x.size() == x_prime.size()
+        assert x.size() == x_prime.size(), f"{x.size()} != {x_prime.size()}"
         return torch.linalg.norm(x - x_prime, ord=2)
 
 

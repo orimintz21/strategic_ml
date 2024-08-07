@@ -72,9 +72,7 @@ class _LinearGP(_GSC):
         cost: _CostFunction,
         strategic_model: nn.Module,
         cost_weight: float = 1.0,
-        models_temp: float = 1.0,
-        z_temp: float = 1.0,
-        margin_temp: float = 1.0,
+        epsilon: float = 0.01,
     ) -> None:
         """This is the LinearGP model. This model assumes that the model is linear.
         The reason for this assumption is that we can calculate the GP in a closed form
@@ -90,16 +88,16 @@ class _LinearGP(_GSC):
             cost (_CostFunction): The cost function of the
             delta. Defaults to None.
             cost_weight (int): The weight of the cost function.
-            temperature (float): The temperature of the sigmoid function.
+            epsilon (float): move to the negative/positive
+            direction of the model to make sure that the model will predict the
+            label correctly. Defaults to 0.01.
         """
         super(_LinearGP, self).__init__(
             strategic_model=strategic_model, cost=cost, cost_weight=cost_weight
         )
         self._assert_model()
         self._assert_cost()
-        self.models_temp: float = models_temp
-        self.z_temp: float = z_temp
-        self.margin_temp: float = margin_temp
+        self.epsilon: float = epsilon
 
     def forward(
         self, x: torch.Tensor, z: Optional[torch.Tensor] = None
@@ -137,73 +135,39 @@ class _LinearGP(_GSC):
             type(self.strategic_model)
         )
         weights, bias = self.strategic_model.get_weights_and_bias()
+        x_prime: Optional[torch.Tensor] = None
 
-        # Calculate the margin
-        if isinstance(self.cost, CostNormL2):
-            margin: torch.Tensor = self._calculate_margin(x, weights, bias)
-        elif isinstance(self.cost, CostWeightedLoss):
-            norm_waits: torch.Tensor = self.cost.get_weights
-            assert norm_waits is not None, "The weights of the cost function are None"
-            margin = self._calculate_margin(x, weights, bias, norm_waits)
-        else:
-            raise ValueError("The cost function is not supported")
+        for x_sample, z_sample in zip(x, z):
+            x_sample = x_sample.view(1, -1)
+            projection: torch.Tensor = self._calculate_projection(
+                x_sample, weights, bias, z_sample
+            )
 
-        cost_weight: torch.Tensor = torch.tensor(self.cost_weight)
+            assert (
+                torch.sign(self.strategic_model(projection)) == z_sample
+            ), "The projection is wrong, {}".format(self.strategic_model(projection))
 
-        # Validate the margin
-        assert margin.size() == torch.Size(
-            [batch_size, 1]
-        ), "The margin should be of size [batch_size, 1], but got {0} when batch_size is {1}".format(
-            margin.size(), batch_size
-        )
+            worth_to_move: bool = self._worth_to_move(x_sample, projection)
 
-        # Soft sign function
-        model_prediction_tanh: torch.Tensor = torch.tanh(
-            self.models_temp * ((x @ weights.T) + bias)
-        )
+            if (torch.sign(self.strategic_model(x_sample)) == z_sample) or (
+                not worth_to_move
+            ):
+                what_to_add = x_sample
+            else:
+                what_to_add = projection
 
-        # Soft check if the model is different from z
-        z_neq_prediction: torch.Tensor = 1 - torch.sigmoid(
-            model_prediction_tanh * self.z_temp * z
-        )
+            if x_prime is None:
+                x_prime = what_to_add
+            else:
+                x_prime = torch.cat((x_prime, what_to_add))
 
-        # Soft check if the movement is profitable
-        soft_movement_is_profitable: torch.Tensor = torch.sigmoid(
-            self.margin_temp * (2 - (margin * cost_weight))
-        )
-
-        # Validate the conditions
-        assert z_neq_prediction.size() == torch.Size(
-            [batch_size, 1]
-        ), "z_neq_prediction should be of size [batch_size, 1], but got {}".format(
-            z_neq_prediction.size()
-        )
-        assert (
-            soft_movement_is_profitable.size() == z_neq_prediction.size()
-        ), "soft_movement_is_profitable should be of the same size as z_neq_prediction, but got {}".format(
-            soft_movement_is_profitable.size()
-        )
-
-        # Combine the conditions
-        conditions: torch.Tensor = z_neq_prediction * soft_movement_is_profitable
-
-        # Calculate the GP
-        x_prime: torch.Tensor = (
-            conditions * self._calculate_projection(x, weights, bias)
-            + (1 - conditions) * x
-        )
-
+        assert x_prime is not None, "The x_prime is None after the loop"
         return x_prime
 
     def _assert_cost(self) -> None:
         assert isinstance(self.cost, CostNormL2) or isinstance(
             self.cost, CostWeightedLoss
         ), "The cost should be a  CostNormL2 or CostWeightedLoss"
-
-        if isinstance(self.cost, CostWeightedLoss):
-            raise NotImplementedError(
-                "The weighted loss cost function is not supported yet (TODO!!)"
-            )
 
     def _assert_model(self) -> None:
         assert isinstance(
@@ -215,6 +179,7 @@ class _LinearGP(_GSC):
         x: torch.Tensor,
         w: torch.Tensor,
         b: torch.Tensor,
+        z: torch.Tensor = torch.tensor([1]),
         norm_waits: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """This method calculates the projection on the model.
@@ -228,43 +193,27 @@ class _LinearGP(_GSC):
         Returns:
             torch.Tensor: The projection on the model
         """
+
+        assert z.size() == torch.Size(
+            [1]
+        ), "z should be of size [1], but got {}".format(z.size())
+
         if norm_waits is None:
-            return x - ((torch.matmul(x, w.T) + b) / (torch.matmul(w, w.T))) * w
+            norm_w = torch.matmul(w, w.T)
+            projection = x - ((torch.matmul(x, w.T) + b) / (torch.matmul(w, w.T))) * w
 
         else:
             inverse_norm_waits: torch.Tensor = torch.inverse(norm_waits)
-            return x - (
-                (torch.matmul(x, w) + b)
-                / (torch.matmul(w, torch.matmul(inverse_norm_waits, w.T)))
-            ) * torch.matmul(inverse_norm_waits, w)
-
-    def _calculate_margin(
-        self,
-        x: torch.Tensor,
-        w: torch.Tensor,
-        b: torch.Tensor,
-        norm_waits: Optional[torch.Tensor] = None,
-    ) -> torch.Tensor:
-        """This method calculates the projection on the model.
-
-        Args:
-            x (torch.Tensor): The data
-            w (torch.Tensor): The weights of the model
-            b (torch.Tensor): The bias of the model
-            norm_waits (torch.Tensor): The weights of the cost function
-
-        Returns:
-            torch.Tensor: The margin from the model
-        """
-        if norm_waits is None:
-            # The equation is |w.T @ x + b| / ||w||
-            return torch.abs(torch.matmul(x, w.T) + b) / torch.sqrt(
-                torch.matmul(w, w.T)
+            norm_w = torch.matmul(w, torch.matmul(inverse_norm_waits, w.T))
+            projection = x - ((torch.matmul(x, w) + b) / norm_w) * torch.matmul(
+                inverse_norm_waits, w
             )
 
-        else:
-            # The equation is |w.T @ x + b| / ||w||_{waits}
-            inverse_norm_waits: torch.Tensor = torch.inverse(norm_waits)
-            return torch.abs(torch.matmul(x, w.T) + b) / (
-                torch.sqrt(torch.matmul(w, torch.matmul(inverse_norm_waits, w.T)))
-            )
+        unit_w = w / norm_w
+        movement_direction = 1 if z == 1 else -1
+        projection_with_safety = projection + movement_direction * self.epsilon * unit_w
+        return projection_with_safety
+
+    def _worth_to_move(self, x: torch.Tensor, projection: torch.Tensor) -> bool:
+        cost_of_moment = self.cost_weight * self.cost(x, projection)
+        return bool(cost_of_moment < 2)
