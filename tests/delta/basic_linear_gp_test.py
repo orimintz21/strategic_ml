@@ -6,7 +6,7 @@ from strategic_ml import (
     LinearStrategicModel,
     LinearStrategicDelta,
     LinearAdvDelta,
-    LinearNoisyLabelDelta
+    LinearNoisyLabelDelta,
 )
 
 
@@ -29,28 +29,22 @@ def create_strategic_separable_data():
     y = torch.cat((y1, y2), dim=0)
     return x, y
 
-def create_strategic_noisy_data():
-    # Set the random seed for reproducibility
-    torch.manual_seed(0)
 
-    # Generate the first half of the points with the first index less than -5
-    x1 = torch.cat((torch.randn(5, 1) - 10, torch.randn(5, 1)), dim=1)
+def create_strategic_need_movement():
+    x_p = torch.Tensor([[1, -1], [1, 1]])
+    y_p = torch.Tensor([[1], [1]])
+    x_n = torch.Tensor([[-1, -1], [-1, 1]])
+    y_n = torch.Tensor([[-1], [-1]])
+    # for i in range(-1, 1):
+    #     x_p = torch.cat((x_p, torch.Tensor([[2, i]])), dim=0)
+    #     y_p = torch.cat((y_p, torch.Tensor([[1]])), dim=0)
+    #     x_n = torch.cat((x_n, torch.Tensor([[-1, i]])), dim=0)
+    #     y_n = torch.cat((y_n, torch.Tensor([[-1]])), dim=0)
 
-    # Generate the second half of the points with the first index greater than 5
-    x2 = torch.cat((torch.randn(5, 1) + 10, torch.randn(5, 1)), dim=1)
-
-    # Concatenate both parts to create the dataset
-    x = torch.cat((x1, x2), dim=0)
-
-    # Create labels: 1 for the first half, -1 for the second half
-    y1 = torch.ones(5, 1)
-    y2 = -torch.ones(5, 1)
-    y = torch.cat((y1, y2), dim=0)
-
-    # Create noisy labels
-    bernoulli_tensor = torch.bernoulli(0.5 * torch.ones(y.shape))
-    y_noisy = y * bernoulli_tensor
-    return x, y_noisy
+    x = torch.cat((x_p, x_n), dim=0)
+    y = torch.cat((y_p, y_n), dim=0)
+    print(x, y)
+    return x, y
 
 
 class TestLinearStrategicDelta(unittest.TestCase):
@@ -68,17 +62,17 @@ class TestLinearStrategicDelta(unittest.TestCase):
 
         # Create a strategic delta
         strategic_delta: LinearStrategicDelta = LinearStrategicDelta(
-            cost, strategic_model
+            cost,
+            strategic_model,
+            cost_weight=1.0,
         )
 
         # Train the strategic model
         optimizer = torch.optim.SGD(strategic_model.parameters(), lr=0.001)
-        loss = torch.nn.MSELoss()
-
+        loss = torch.nn.BCEWithLogitsLoss()
         strategic_model.train()
         for _ in range(200):
-            with torch.no_grad():
-                delta_move: torch.Tensor = strategic_delta(self.x)
+            delta_move: torch.Tensor = strategic_delta(self.x)
             x_prime = delta_move
             optimizer.zero_grad()
             prediction = strategic_model(x_prime)
@@ -91,11 +85,66 @@ class TestLinearStrategicDelta(unittest.TestCase):
         for x, y in zip(self.x, self.y):
             x = x.unsqueeze(0)
             x_prime_test = strategic_delta.forward(x)
-            print(cost(x, x_prime_test))
-            self.assertEqual(torch.sign(strategic_model(x)), y)
+            self.assertEqual(torch.sign(strategic_model(x_prime_test)), y)
+            print(f"""
+                cost = {cost(x, x_prime_test)},
+                y = {y},
+                x pred {(strategic_model(x))},
+                x_prime = {(strategic_model(x_prime_test))}
+                """
+            )
             self.assertTrue(cost(x, x_prime_test) < 1)
 
-        self.assertTrue(True)
+
+    def test_strategic_separable_needs_movement(self) -> None:
+        self.x, self.y = create_strategic_need_movement()
+        # Create a strategic model
+        strategic_model = LinearStrategicModel(
+            in_features=2         )
+        print(strategic_model.get_weights_and_bias())
+
+        # Create a cost function
+        cost = CostNormL2()
+
+        # Create a strategic delta
+        strategic_delta: LinearStrategicDelta = LinearStrategicDelta(
+            cost,
+            strategic_model,
+            cost_weight=1.0,
+        )
+
+        # Train the strategic model
+        loss_fn = torch.nn.BCEWithLogitsLoss()
+        optimizer = torch.optim.Adam(strategic_model.parameters(), lr=0.01)
+
+        strategic_model.train()
+        for _ in range(1401):
+            optimizer.zero_grad()
+            with torch.no_grad():
+                delta_move: torch.Tensor = strategic_delta(self.x)
+            output = strategic_model(delta_move)
+            loss = loss_fn(output, self.y)
+            loss.backward()
+            optimizer.step()
+        print("The strategic model has been trained")
+
+        # validate the the distance between the two points is less than 1
+        strategic_model.eval()
+        for x, y in zip(self.x, self.y):
+            x = x.unsqueeze(0)
+            x_prime_test = strategic_delta.forward(x)
+            print(
+                f"""
+                x = {x},
+                delta = {x_prime_test},
+                cost = {cost(x, x_prime_test)},
+                y = {y},
+                x pred {(strategic_model(x))},
+                x_prime = {(strategic_model(x_prime_test))}
+                """
+            )
+            self.assertEqual(torch.sign(strategic_model(x_prime_test)), y)
+        print(strategic_model.get_weights_and_bias())
 
 
 if __name__ == "__main__":
