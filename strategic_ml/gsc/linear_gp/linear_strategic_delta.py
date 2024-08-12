@@ -15,7 +15,7 @@ from typing import Optional
 
 # Internal imports
 from strategic_ml.cost_functions.cost_function import _CostFunction
-from strategic_ml.gsc import _LinearGP
+from strategic_ml.gsc.linear_gp.linear_gp import _LinearGP
 
 
 class LinearStrategicDelta(_LinearGP):
