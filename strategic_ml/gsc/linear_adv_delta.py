@@ -21,12 +21,10 @@ class LinearAdvDelta(_LinearGP):
         cost: _CostFunction,
         strategic_model: nn.Module,
         cost_weight: float = 1.0,
-        models_temp: float = 1.0,
-        z_temp: float = 1.0,
-        margin_temp: float = 1.0,
+        epsilon: float = 0.01,
     ) -> None:
         super(LinearAdvDelta, self).__init__(
-            cost, strategic_model, cost_weight, models_temp, z_temp, margin_temp
+            cost, strategic_model, cost_weight, epsilon
         )
 
     def forward(
