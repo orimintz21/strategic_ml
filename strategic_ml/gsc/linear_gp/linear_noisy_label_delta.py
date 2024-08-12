@@ -34,13 +34,13 @@ class LinearNoisyLabelDelta(_LinearGP):
         self.p_bernoulli: float = p_bernoulli
 
     def forward(
-        self, x: torch.Tensor, z: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, y: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
 
         Args:
             x (torch.Tensor): The data
-            z (torch.Tensor): y or None. If it is y, then the we use change each
+            y (torch.Tensor): y or None. If it is y, then the we use change each
             label with a probability p_bernoulli. If it is None, then we use
             a vector of Bernoulli samples with probability p_bernoulli. Defaults to None.
 
@@ -48,12 +48,12 @@ class LinearNoisyLabelDelta(_LinearGP):
             torch.Tensor: the modified data
         """
         bernoulli_tensor = self._create_bernoulli_tensor(x.shape[0], self.p_bernoulli)
-        if z is not None:
-            z = z * bernoulli_tensor
+        if y is not None:
+            y = y * bernoulli_tensor
         else:
-            z = bernoulli_tensor
+            y = bernoulli_tensor
 
-        return super().forward(x, z)
+        return super().find_x_prime(x, y)
 
     @staticmethod
     def _create_bernoulli_tensor(batch_size: int, p_bernoulli: float) -> torch.Tensor:

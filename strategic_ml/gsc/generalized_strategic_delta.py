@@ -12,14 +12,14 @@ x to x' based on the GSC's type.
 # External imports
 import torch
 from torch import nn
-from typing import Optional
+from typing import Any, Optional
 
 # Internal imports
 from strategic_ml.cost_functions import _CostFunction
 
 
 # Implementation
-class _GSC(nn.Module):
+class _GSC():
     def __init__(
         self,
         strategic_model: nn.Module,
@@ -68,7 +68,20 @@ class _GSC(nn.Module):
             torch.Tensor: x' - the modified data
         """
         raise NotImplementedError()
+    
+    def __call__(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+        """The call method of the GSC class.
 
+        Args:
+            x (torch.Tensor): the data
+            *args: additional arguments
+            **kwargs: additional keyword arguments
+
+        Returns:
+            torch.Tensor: x' - the modified data
+        """
+        return self.forward(x, *args, **kwargs)
+    
     def train_delta_model(self, x: torch.Tensor, *args, **kwargs) -> None:
         """This is the method that will train the delta model. It is
         part of the training of the strategic model. Some models will

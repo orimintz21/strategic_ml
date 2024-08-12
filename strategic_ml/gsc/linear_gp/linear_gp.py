@@ -98,12 +98,9 @@ class _LinearGP(_GSC):
         self._assert_model()
         self._assert_cost()
         self.epsilon: float = epsilon
-
-    def forward(
-        self, x: torch.Tensor, z: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
-        """The forward method of the LinearGP model.
-        This function calculates x' based on the GP formula.
+    
+    def find_x_prime(self, x: torch.Tensor, z:torch.Tensor) -> torch.Tensor:
+        """This function calculates x' based on the GP formula.
         For more information see the file prolog.
 
 
@@ -123,7 +120,6 @@ class _LinearGP(_GSC):
         self._assert_cost()
         self._assert_model()
         batch_size: int = x.size(0)
-        assert z is not None, "The label of the GP is None"
         assert z.size() == torch.Size(
             [batch_size, 1]
         ), "z should be of size [batch_size, 1], but got {}".format(z.size())

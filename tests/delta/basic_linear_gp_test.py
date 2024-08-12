@@ -11,6 +11,7 @@ from strategic_ml import (
 
 VERBOSE: bool = False
 
+
 def print_if_verbose(message: str) -> None:
     global VERBOSE
     if VERBOSE:
@@ -137,6 +138,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
             loss.backward()
             optimizer.step()
         print("The strategic model has been trained")
+        successful = 0
 
         # validate the the distance between the two points is less than 1
         strategic_model.eval()
@@ -154,7 +156,9 @@ class TestLinearStrategicDelta(unittest.TestCase):
                 """
             )
             self.assertEqual(torch.sign(strategic_model(x_prime_test)), y)
-
+            if torch.sign(strategic_model(x_prime_test)) == y:
+                successful += 1
+        print(f"Strategic: successful = {successful}")
 
 class TestLinearAdvDelta(unittest.TestCase):
     def setUp(self) -> None:
@@ -189,6 +193,7 @@ class TestLinearAdvDelta(unittest.TestCase):
             loss.backward()
             optimizer.step()
         print("The strategic model has been trained")
+        successful = 0
 
         # validate the the distance between the two points is less than 1
         strategic_model.eval()
@@ -206,9 +211,14 @@ class TestLinearAdvDelta(unittest.TestCase):
                 x_prime = {(strategic_model(x_prime_test))}
                 """
             )
+            if torch.sign(strategic_model(x_prime_test)) == y:
+                successful += 1
             # self.assertEqual(torch.sign(strategic_model(x_prime_test)), y)
+        print(f"Adv: successful = {successful}")
+
 
 # Test for the noisy label delta
+
 
 class TestLinearNoisyLabelDelta(unittest.TestCase):
     def setUp(self) -> None:
@@ -246,6 +256,7 @@ class TestLinearNoisyLabelDelta(unittest.TestCase):
         print("The strategic model has been trained")
 
         # validate the the distance between the two points is less than 1
+        successful = 0
         strategic_model.eval()
         for x, y in zip(self.x, self.y):
             x = x.unsqueeze(0)
@@ -261,7 +272,9 @@ class TestLinearNoisyLabelDelta(unittest.TestCase):
                 x_prime = {(strategic_model(x_prime_test))}
                 """
             )
-            # self.assertEqual(torch.sign(strategic_model(x_prime_test)), y)
+            if torch.sign(strategic_model(x_prime_test)) == y:
+                successful += 1
+        print(f"Noisy Label: successful = {successful}")
 
 
 if __name__ == "__main__":

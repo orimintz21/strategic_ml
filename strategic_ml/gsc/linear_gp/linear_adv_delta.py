@@ -28,16 +28,15 @@ class LinearAdvDelta(_LinearGP):
         )
 
     def forward(
-        self, x: torch.Tensor, z: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, y: torch.Tensor 
     ) -> torch.Tensor:
         """
 
         Args:
             x (torch.Tensor): The data
-            z (torch.Tensor): In this case we use -y as z. Use y as the input. Defaults to None.
+            y (torch.Tensor): The label.
 
         Returns:
             torch.Tensor: the modified data
         """
-        assert z is not None
-        return super().forward(x, -z)
+        return super().find_x_prime(x, -y)
