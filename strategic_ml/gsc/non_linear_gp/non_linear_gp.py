@@ -48,9 +48,7 @@ class _NonLinearGP(_GSC):
             )
 
             x_prime_sample = x_sample.clone().detach().requires_grad_(True)
-            optimizer = self.optimizer_class(
-                [x_prime_sample], **self.optimizer_params
-            )
+            optimizer = self.optimizer_class([x_prime_sample], **self.optimizer_params)
             scheduler = None
             if self.has_scheduler:
                 scheduler = self.scheduler_class(optimizer, **self.scheduler_params)
