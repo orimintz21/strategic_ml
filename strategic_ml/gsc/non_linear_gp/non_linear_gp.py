@@ -42,7 +42,7 @@ class _NonLinearGP(_GSC):
 
         x_prime: Optional[torch.Tensor] = None
         for x_sample, z_sample in zip(x, z):
-            x_sample = x_sample
+            x_sample = x_sample.unsqueeze(0)
             assert z_sample in [-1, 1], "z should be a label but it is {}".format(
                 z_sample
             )
