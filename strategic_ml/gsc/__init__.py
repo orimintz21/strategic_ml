@@ -4,10 +4,18 @@ This is the init file for the GSC.
 """
 
 from strategic_ml.gsc.generalized_strategic_delta import _GSC
-from strategic_ml.gsc.linear_gp import _LinearGP
-from strategic_ml.gsc.linear_gp import LinearAdvDelta
-from strategic_ml.gsc.linear_gp import LinearStrategicDelta
-from strategic_ml.gsc.linear_gp import LinearNoisyLabelDelta
+from strategic_ml.gsc.linear_gp import (
+    _LinearGP,
+    LinearAdvDelta,
+    LinearStrategicDelta,
+    LinearNoisyLabelDelta,
+)
+from strategic_ml.gsc.non_linear_gp import (
+    _NonLinearGP,
+    NonLinearStrategicDelta,
+    NonLinearNoisyLabelDelta,
+    NonLinearAdvDelta,
+)
 
 __all__ = [
     "_GSC",
@@ -15,4 +23,8 @@ __all__ = [
     "LinearAdvDelta",
     "LinearStrategicDelta",
     "LinearNoisyLabelDelta",
+    "_NonLinearGP",
+    "NonLinearStrategicDelta",
+    "NonLinearNoisyLabelDelta",
+    "NonLinearAdvDelta",
 ]

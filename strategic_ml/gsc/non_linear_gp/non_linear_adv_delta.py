@@ -1,30 +1,24 @@
-"""file: linear_adv_delta.py
-This is the LinearAdvDelta model.
-The LinearAdvDelta model calculates the delta based on the GP formula.
-The strategic delta calculates the movement of a user that tries to trick the
-model to get a negative outcome (this is the reason that z==-y).
-"""
-
 # External imports
 import torch
 from torch import nn
-from typing import Optional
+from typing import Dict, Any
 
 # Internal imports
 from strategic_ml.cost_functions.cost_function import _CostFunction
-from strategic_ml.gsc.linear_gp.linear_gp import _LinearGP
+from strategic_ml.gsc.non_linear_gp import _NonLinearGP
 
 
-class LinearAdvDelta(_LinearGP):
+class NonLinearAdvDelta(_NonLinearGP):
     def __init__(
         self,
         cost: _CostFunction,
         strategic_model: nn.Module,
         cost_weight: float = 1.0,
-        epsilon: float = 0.01,
+        *args,
+        training_params: Dict[str, Any],
     ) -> None:
-        super(LinearAdvDelta, self).__init__(
-            cost, strategic_model, cost_weight, epsilon
+        super(NonLinearAdvDelta, self).__init__(
+            cost, strategic_model, cost_weight, training_params=training_params
         )
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:

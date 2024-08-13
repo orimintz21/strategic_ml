@@ -160,6 +160,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
                 successful += 1
         print(f"Strategic: successful = {successful}")
 
+
 class TestLinearAdvDelta(unittest.TestCase):
     def setUp(self) -> None:
         pass
