@@ -54,6 +54,7 @@ class _NonLinearGP(_GSC):
                 scheduler = self.scheduler_class(optimizer, **self.scheduler_params)
 
             best_loss: float = float("inf")
+            best_x_prime: Optional[torch.Tensor] = None
             patience_counter: int = 0
 
             for epoch in range(self.num_epochs):
@@ -63,26 +64,31 @@ class _NonLinearGP(_GSC):
                 movement_cost = self.cost(x_sample, x_prime_sample)
                 loss = output - self.cost_weight * movement_cost
                 loss = -loss
+                with torch.no_grad():
+                    if loss.item() < best_loss:
+                        best_loss = loss.item()
+                        best_x_prime = x_prime_sample.clone().detach()
+                        patience_counter = 0
+
+                    else:
+                        if self.early_stopping == -1:
+                            continue
+
+                        patience_counter += 1
+                        if patience_counter >= self.early_stopping:
+                            # logging.info(
+                            #     "Early stopping triggered. epoch: {}".format(epoch)
+                            # )
+                            patience_counter = 0
+                            break
 
                 loss.backward()
                 optimizer.step()
                 if scheduler:
                     scheduler.step()
-
-                if loss.item() < best_loss:
-                    best_loss = loss.item()
-                    patience_counter = 0
-
-                else:
-                    if self.early_stopping == -1:
-                        continue
-
-                    patience_counter += 1
-                    if patience_counter >= self.early_stopping:
-                        logging.info(
-                            "Early stopping triggered. epoch: {}".format(epoch)
-                        )
-                        break
+            
+            if best_x_prime is not None:
+                x_prime_sample = best_x_prime
 
             if x_prime is None:
                 x_prime = x_prime_sample
