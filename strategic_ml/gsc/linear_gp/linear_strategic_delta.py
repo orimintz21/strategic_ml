@@ -15,7 +15,7 @@ from typing import Optional
 
 # Internal imports
 from strategic_ml.cost_functions.cost_function import _CostFunction
-from strategic_ml.gsc import _LinearGP
+from strategic_ml.gsc.linear_gp.linear_gp import _LinearGP
 
 
 class LinearStrategicDelta(_LinearGP):
@@ -30,9 +30,7 @@ class LinearStrategicDelta(_LinearGP):
             cost, strategic_model, cost_weight, epsilon
         )
 
-    def forward(
-        self, x: torch.Tensor, z: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """This is the forward method of the LinearStrategicDelta model.
         This function calculates the delta based on the GP formula.
         Note that in this case the delta is a constant value of 1.
@@ -40,17 +38,10 @@ class LinearStrategicDelta(_LinearGP):
 
         Args:
             x (torch.Tensor): The data
-            z (torch.Tensor): No need for that argument,
-            used for polymorphism. Defaults to None.
 
         Returns:
             torch.Tensor: the modified data
         """
         # array of ones with the number of rows of x
         ones = torch.ones((x.shape[0], 1))
-        return super().forward(x, ones)
-
-    def __call__(
-        self, x: torch.Tensor, z: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
-        return self.forward(x, z)
+        return super().find_x_prime(x, ones)

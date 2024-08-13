@@ -99,11 +99,8 @@ class _LinearGP(_GSC):
         self._assert_cost()
         self.epsilon: float = epsilon
 
-    def forward(
-        self, x: torch.Tensor, z: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
-        """The forward method of the LinearGP model.
-        This function calculates x' based on the GP formula.
+    def find_x_prime(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        """This function calculates x' based on the GP formula.
         For more information see the file prolog.
 
 
@@ -123,7 +120,6 @@ class _LinearGP(_GSC):
         self._assert_cost()
         self._assert_model()
         batch_size: int = x.size(0)
-        assert z is not None, "The label of the GP is None"
         assert z.size() == torch.Size(
             [batch_size, 1]
         ), "z should be of size [batch_size, 1], but got {}".format(z.size())
@@ -205,13 +201,12 @@ class _LinearGP(_GSC):
         else:
             inverse_norm_waits: torch.Tensor = torch.inverse(norm_waits)
             norm_w = torch.matmul(w, torch.matmul(inverse_norm_waits, w.T))
-            projection = x - ((torch.matmul(x, w) + b) / norm_w) * torch.matmul(
-                inverse_norm_waits, w
+            projection = x - ((torch.matmul(x, w.T) + b) / norm_w) * torch.matmul(
+                inverse_norm_waits, w.T
             )
 
         unit_w = w / norm_w
-        movement_direction = 1 if z == 1 else -1
-        projection_with_safety = projection + movement_direction * self.epsilon * unit_w
+        projection_with_safety = projection + z * self.epsilon * unit_w
         return projection_with_safety
 
     def _worth_to_move(self, x: torch.Tensor, projection: torch.Tensor) -> bool:

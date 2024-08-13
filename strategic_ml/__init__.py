@@ -26,6 +26,10 @@ from .gsc import (
     LinearAdvDelta,
     LinearStrategicDelta,
     LinearNoisyLabelDelta,
+    _NonLinearGP,
+    NonLinearStrategicDelta,
+    NonLinearNoisyLabelDelta,
+    NonLinearAdvDelta,
 )
 
 from .models import LinearStrategicModel
@@ -50,6 +54,10 @@ __all__: list = [
     "LinearAdvDelta",
     "LinearStrategicDelta",
     "LinearNoisyLabelDelta",
+    "_NonLinearGP",
+    "NonLinearStrategicDelta",
+    "NonLinearNoisyLabelDelta",
+    "NonLinearAdvDelta",
     # Models
     "LinearStrategicModel",
 ]  # List of modules and functions to be imported when using 'from strategic_ml import *'
