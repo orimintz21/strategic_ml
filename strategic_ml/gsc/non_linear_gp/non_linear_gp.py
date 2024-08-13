@@ -85,9 +85,9 @@ class _NonLinearGP(_GSC):
                         break
 
             if x_prime is None:
-                x_prime = x_prime_sample.unsqueeze(0)
+                x_prime = x_prime_sample
             else:
-                x_prime = torch.cat([x_prime, x_prime_sample.unsqueeze(0)], dim=0)
+                x_prime = torch.cat([x_prime, x_prime_sample], dim=0)
 
         assert (
             x_prime is not None
