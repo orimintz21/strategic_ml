@@ -21,7 +21,7 @@ class NonLinearStrategicDelta(_NonLinearGP):
             cost, strategic_model, cost_weight, training_params=training_params
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """
         Args:
             x (torch.Tensor): The data

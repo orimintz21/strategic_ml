@@ -49,7 +49,7 @@ class _NonLinearGP(_GSC):
 
             x_prime_sample = x_sample.clone().detach().requires_grad_(True)
             optimizer = self.optimizer_class(
-                self.strategic_model.parameters(), **self.optimizer_params
+                [x_prime_sample], **self.optimizer_params
             )
             scheduler = None
             if self.has_scheduler:
@@ -121,8 +121,7 @@ class _NonLinearGP(_GSC):
 
     def set_training_params(self) -> None:
         assert self.training_params is not None, "training_params should not be None"
-        assert "temp" in self.training_params, "temp should be in the training_params"
-        self.temp: float = self.training_params["temp"]
+        self.temp: float = self.training_params.get("temp", 1.0)
 
         self.num_epochs: int = self.training_params.get("num_epochs", 100)
 
