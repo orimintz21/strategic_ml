@@ -73,7 +73,10 @@ class _NonLinearGP(_GSC):
             if scheduler:
                 scheduler.step()
 
-            if self.early_stopping != -1 and patience_counter.max().item() >= self.early_stopping:
+            if (
+                self.early_stopping != -1
+                and patience_counter.max().item() >= self.early_stopping
+            ):
                 break
 
         x_prime = best_x_prime

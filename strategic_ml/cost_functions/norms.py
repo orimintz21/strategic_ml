@@ -17,7 +17,6 @@ class CostNormL2(_CostFunction):
         """
         super(CostNormL2, self).__init__(dim=dim)
 
-
     def forward(self, x: torch.Tensor, x_prime: torch.Tensor) -> torch.Tensor:
         """Calculates the L2 norm cost function.
 
@@ -38,7 +37,6 @@ class CostMeanSquaredError(_CostFunction):
         Constructor for the mean squared error cost function.
         """
         super(CostMeanSquaredError, self).__init__(dim=dim)
-        
 
     def forward(self, x: torch.Tensor, x_prime: torch.Tensor) -> torch.Tensor:
         """Calculates the mean squared error cost function.
@@ -58,14 +56,18 @@ class CostMeanSquaredError(_CostFunction):
 
 
 class CostWeightedLoss(_CostFunction):
-    def __init__(self, weights: torch.Tensor, dim: Optional[Union[int, List[int], Tuple[int]]] = None) -> None:
+    def __init__(
+        self,
+        weights: torch.Tensor,
+        dim: Optional[Union[int, List[int], Tuple[int]]] = None,
+    ) -> None:
         """Constructor for the weighted loss cost function.
         Based on the mean squared error cost function.
 
         Args:
             weights (torch.Tensor): the weights to apply to the loss
         """
-        super(CostWeightedLoss, self).__init__(dim = dim)
+        super(CostWeightedLoss, self).__init__(dim=dim)
         self.weights: torch.Tensor = weights
 
     def set_weights(self, weights: torch.Tensor) -> None:
@@ -98,10 +100,9 @@ class CostWeightedLoss(_CostFunction):
         assert x.size() == x_prime.size()
         distance = x - x_prime
         if self.dim is 1:
-            return torch.sqrt(torch.einsum('ij,ij->', distance, self.weights))
+            return torch.sqrt(torch.einsum("ij,ij->", distance, self.weights))
 
         return torch.sqrt(distance @ self.weights @ distance.T)
-
 
 
 class CostNormL1(_CostFunction):

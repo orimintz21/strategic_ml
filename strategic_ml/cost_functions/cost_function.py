@@ -4,7 +4,7 @@ When creating a new cost function, you should inherit from this class and implem
 
 import torch
 from torch import nn
-from typing import Optional, Union, List, Tuple 
+from typing import Optional, Union, List, Tuple
 
 
 class _CostFunction(nn.Module):
