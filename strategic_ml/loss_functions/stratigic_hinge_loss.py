@@ -16,10 +16,17 @@ from torch import nn
 
 # Internal imports
 from strategic_ml.loss_functions import _Loss
+from strategic_ml.gsc import _LinearGP
+from strategic_ml.models import LinearStrategicModel
 
 
 class StrategicHingeLoss(_Loss):
-    def __init__(self, model: nn.Module, regularization_lambda: float = 0.01) -> None:
+    def __init__(
+        self,
+        model: LinearStrategicModel,
+        delta: _LinearGP,
+        regularization_lambda: float = 0.01,
+    ) -> None:
         """
         Initialize the Strategic Hinge Loss class.
 
@@ -27,6 +34,13 @@ class StrategicHingeLoss(_Loss):
         :param regularization_lambda: Regularization parameter.
         """
         super(StrategicHingeLoss, self).__init__(model, regularization_lambda)
+        assert isinstance(
+            model, LinearStrategicModel
+        ), f"model should be an instance of LinearStrategicModel, but it is {type(model)}"
+        assert isinstance(
+            delta, _LinearGP
+        ), f"delta should be an instance of linear gp , but it is {type(delta)}"
+        self.delta = delta
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
@@ -36,4 +50,21 @@ class StrategicHingeLoss(_Loss):
         :param y: True labels as a torch.tensor.
         :return: Computed loss as a torch.tensor.
         """
-        raise NotImplementedError()
+        assert isinstance(
+            self.model, LinearStrategicModel
+        ), f"model should be an instance of LinearStrategicModel, but it is {type(self.model)}"
+        z = self.delta.get_z(x, y)
+        assert (
+            z.shape[0] == x.shape[0]
+        ), f"z should have the same number of samples as x, but z has {z.shape[0]} samples and x has {x.shape[0]} samples"
+        w, b = self.model.get_weights_and_bias_ref()
+        cost_weight = self.delta.get_cost_weight()
+        linear_output = torch.matmul(x, w.T) + b
+
+        norm = torch.linalg.norm(w, ord=2) + torch.linalg.norm(b, ord=2)
+
+        additional_term = 2 * cost_weight * z * y * norm
+
+        loss = torch.clamp(1 - y * linear_output - additional_term, min=0)
+
+        return loss.mean()

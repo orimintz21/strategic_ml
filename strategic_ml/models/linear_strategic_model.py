@@ -55,3 +55,12 @@ class LinearStrategicModel(nn.Module):
             Tuple[torch.Tensor, torch.Tensor]: the weights and bias of the model
         """
         return self.model.weight.detach(), self.model.bias.detach()
+
+    def get_weights_and_bias_ref(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        The get_weights_and_bias method returns the weights and bias of the model
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: the weights and bias of the model
+        """
+        return self.model.weight, self.model.bias

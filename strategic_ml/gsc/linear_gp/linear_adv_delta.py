@@ -38,3 +38,7 @@ class LinearAdvDelta(_LinearGP):
             torch.Tensor: the modified data
         """
         return super().find_x_prime(x, -y)
+
+    def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+
+        return y

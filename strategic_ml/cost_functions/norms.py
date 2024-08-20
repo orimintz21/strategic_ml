@@ -99,7 +99,7 @@ class CostWeightedLoss(_CostFunction):
         """
         assert x.size() == x_prime.size()
         distance = x - x_prime
-        if self.dim is 1:
+        if self.dim == 1:
             return torch.sqrt(torch.einsum("ij,ij->", distance, self.weights))
 
         return torch.sqrt(distance @ self.weights @ distance.T)

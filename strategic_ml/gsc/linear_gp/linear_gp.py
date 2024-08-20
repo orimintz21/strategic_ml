@@ -160,6 +160,9 @@ class _LinearGP(_GSC):
         assert x_prime is not None, "The x_prime is None after the loop"
         return x_prime
 
+    def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError("This is an abstract method")
+
     def _assert_cost(self) -> None:
         assert isinstance(self.cost, CostNormL2) or isinstance(
             self.cost, CostWeightedLoss

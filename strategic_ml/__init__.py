@@ -18,7 +18,7 @@ from .cost_functions import (
 )
 from .strategic_regularization import _StrategicRegularization
 
-from .loss_functions import _Loss
+from .loss_functions import _Loss, StrategicHingeLoss
 
 from .gsc import (
     _GSC,
@@ -48,6 +48,7 @@ __all__: list = [
     "_StrategicRegularization",
     # Loss functions
     "_Loss",
+    "StrategicHingeLoss",
     # GSC
     "_GSC",
     "_LinearGP",
