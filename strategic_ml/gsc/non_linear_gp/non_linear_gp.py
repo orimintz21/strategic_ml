@@ -40,71 +40,47 @@ class _NonLinearGP(_GSC):
             z.size(0) == batch_size
         ), f"z should have the same size as x, but it is {z.size(0)} and {batch_size}"
 
-        x_prime: Optional[torch.Tensor] = None
-        for x_sample, z_sample in zip(x, z):
-            x_sample = x_sample.unsqueeze(0)
-            assert z_sample in [-1, 1], "z should be a label but it is {}".format(
-                z_sample
-            )
+        x_prime = x.clone().detach().requires_grad_(True)
+        optimizer = self.optimizer_class([x_prime], **self.optimizer_params)
+        scheduler = None
+        if self.has_scheduler:
+            scheduler = self.scheduler_class(optimizer, **self.scheduler_params)
 
-            x_prime_sample = x_sample.clone().detach().requires_grad_(True)
-            optimizer = self.optimizer_class([x_prime_sample], **self.optimizer_params)
-            scheduler = None
-            if self.has_scheduler:
-                scheduler = self.scheduler_class(optimizer, **self.scheduler_params)
+        best_loss = torch.full((batch_size,), float("inf"), device=x.device)
+        best_x_prime = x_prime.clone().detach()
+        patience_counter = torch.zeros(batch_size, dtype=torch.int, device=x.device)
 
-            best_loss: float = float("inf")
-            best_x_prime: Optional[torch.Tensor] = None
-            patience_counter: int = 0
+        for epoch in range(self.num_epochs):
+            optimizer.zero_grad()
 
-            for epoch in range(self.num_epochs):
-                optimizer.zero_grad()
-                logits = self.strategic_model.forward(x_prime_sample) * z_sample
-                output = torch.tanh(logits * self.temp)
-                movement_cost = self.cost(x_sample, x_prime_sample)
-                loss = output - self.cost_weight * movement_cost
-                loss = -loss
-                with torch.no_grad():
-                    if loss.item() < best_loss:
-                        best_loss = loss.item()
-                        best_x_prime = x_prime_sample.clone().detach()
-                        patience_counter = 0
+            logits = self.strategic_model.forward(x_prime) * z.view(-1, 1)
+            output = torch.tanh(logits * self.temp).squeeze()
+            movement_cost = self.cost(x, x_prime).squeeze()
+            loss = output - self.cost_weight * movement_cost
+            loss = -loss  # Since we're maximizing, we minimize the negative loss
 
-                    else:
-                        if self.early_stopping == -1:
-                            continue
+            with torch.no_grad():
+                improved = loss < best_loss
+                best_loss[improved] = loss[improved]
+                best_x_prime[improved] = x_prime[improved].clone().detach()
 
-                        patience_counter += 1
-                        if patience_counter >= self.early_stopping:
-                            # logging.info(
-                            #     "Early stopping triggered. epoch: {}".format(epoch)
-                            # )
-                            patience_counter = 0
-                            break
+                if self.early_stopping != -1:
+                    patience_counter[~improved] += 1
+                    patience_counter[improved] = 0
 
-                loss.backward()
-                optimizer.step()
-                if scheduler:
-                    scheduler.step()
-            
-            if best_x_prime is not None:
-                x_prime_sample = best_x_prime
+            loss.sum().backward()  # We sum the loss to avoid interaction between samples
+            optimizer.step()
+            if scheduler:
+                scheduler.step()
 
-            if x_prime is None:
-                x_prime = x_prime_sample
-            else:
-                x_prime = torch.cat([x_prime, x_prime_sample], dim=0)
+            if self.early_stopping != -1 and patience_counter.max().item() >= self.early_stopping:
+                break
 
-        assert (
-            x_prime is not None
-        ), "x_prime should not be None in the end of the function"
-
+        x_prime = best_x_prime
         return x_prime
 
     def _set_optimizer_params(self) -> None:
-        self.optimizer_class = getattr(
-            optim, self.training_params.get("optimizer", "Adam")
-        )
+        self.optimizer_class = self.training_params.get("optimizer_class", optim.SGD)
         self.optimizer_params = self.training_params.get(
             "optimizer_params", {"lr": 0.01}
         )
@@ -113,11 +89,9 @@ class _NonLinearGP(_GSC):
         assert self.optimizer_class is not None, "call _set_optimizer_params first"
 
         self.has_scheduler = False
-        if "scheduler" in self.training_params:
+        if "scheduler_class" in self.training_params:
             self.has_scheduler = True
-            self.scheduler_class = getattr(
-                optim.lr_scheduler, self.training_params["scheduler"]
-            )
+            self.scheduler_class = self.training_params["scheduler_class"]
             self.scheduler_params = self.training_params.get("scheduler_params", {})
 
     def _set_early_stopping(self) -> None:

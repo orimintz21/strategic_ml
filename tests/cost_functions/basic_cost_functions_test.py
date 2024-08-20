@@ -30,6 +30,7 @@ class TestBasicCostFunctions(unittest.TestCase):
     def test_CostWeightedLoss(self):
         weighted_loss = CostWeightedLoss(self.weights)
         output = weighted_loss.forward(self.x, self.x_prime)
+        print(output)
         expected_output = torch.sum(self.weights * (self.x - self.x_prime) ** 2)
         self.assertTrue(torch.isclose(output, expected_output))
 
