@@ -124,3 +124,19 @@ class _GSC:
             cost (_CostFunction): the cost function
         """
         self.cost = cost
+
+    def get_cost_weight(self) -> float:
+        """Getter for the cost weight.
+
+        Returns:
+            float: the cost weight
+        """
+        return self.cost_weight
+
+    def set_cost_weight(self, cost_weight: float) -> None:
+        """Setter for the cost weight.
+
+        Args:
+            cost_weight (float): the cost weight
+        """
+        self.cost_weight = cost_weight

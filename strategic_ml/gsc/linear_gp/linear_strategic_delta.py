@@ -45,3 +45,7 @@ class LinearStrategicDelta(_LinearGP):
         # array of ones with the number of rows of x
         ones = torch.ones((x.shape[0], 1))
         return super().find_x_prime(x, ones)
+
+    def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        batch_size = x.shape[0]
+        return torch.ones((batch_size, 1))

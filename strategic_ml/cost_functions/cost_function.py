@@ -39,3 +39,19 @@ class _CostFunction(nn.Module):
             torch.Tensor: the cost of moving from x to x_prime
         """
         return self.forward(x, x_prime)
+
+    def get_dim(self) -> Optional[Union[int, List[int], Tuple[int]]]:
+        """Returns the dimension of the cost function.
+
+        Returns:
+            Optional[Union[int, List[int], Tuple[int]]]: the dimension of the cost function
+        """
+        return self.dim
+
+    def set_dim(self, dim: Optional[Union[int, List[int], Tuple[int]]]) -> None:
+        """Sets the dimension of the cost function.
+
+        Args:
+            dim (Optional[Union[int, List[int], Tuple[int]]]): the dimension of the cost function
+        """
+        self.dim = dim

@@ -24,7 +24,7 @@ TRAINING_PARAMS_SIMPLE: Dict[str, Any] = {
         "lr": 0.1,
     },
     "early_stopping": 30,
-    "temp": 3,
+    "temp": 0.3,
 }
 TRAINING_PARAMS: Dict[str, Any] = {
     "num_epochs": 1500,
@@ -206,96 +206,129 @@ class TestLinearStrategicDelta(unittest.TestCase):
 
     def test_linear_vs_non_linear_strategic(self) -> None:
         self.x, self.y = create_strategic_need_movement()
-        print(f"x = {self.x}")
-        print(f"y = {self.y}")
-        strategic_model1 = LinearStrategicModel(in_features=2)
-        strategic_model2 = LinearStrategicModel(in_features=2)
+        strategic_model = LinearStrategicModel(in_features=2)
         cost = CostNormL2(dim=1)
-        non_linear_strategic_delta_test: NonLinearStrategicDelta = (
-            NonLinearStrategicDelta(
-                cost=cost,
-                strategic_model=strategic_model1,
-                cost_weight=1.0,
-                training_params=TRAINING_PARAMS_SIMPLE,
-            )
+        non_linear_strategic_delta: NonLinearStrategicDelta = NonLinearStrategicDelta(
+            cost=cost,
+            strategic_model=strategic_model,
+            cost_weight=1.0,
+            training_params=TRAINING_PARAMS_SIMPLE,
         )
-        linear_strategic_delta_validation: LinearStrategicDelta = LinearStrategicDelta(
-            cost=cost, strategic_model=strategic_model1, cost_weight=1.0
+        linear_strategic_delta: LinearStrategicDelta = LinearStrategicDelta(
+            cost=cost, strategic_model=strategic_model, cost_weight=1.0
         )
 
-        non_linear_strategic_delta_validation: NonLinearStrategicDelta = (
-            NonLinearStrategicDelta(
-                cost=cost,
-                strategic_model=strategic_model2,
-                cost_weight=1.0,
-                training_params=TRAINING_PARAMS_SIMPLE,
-            )
-        )
-        linear_strategic_delta_test: LinearStrategicDelta = LinearStrategicDelta(
-            cost=cost, strategic_model=strategic_model2, cost_weight=1.0
-        )
+        loss_fn = torch.nn.MSELoss()
+        optimizer = torch.optim.SGD(strategic_model.parameters(), lr=0.001)
 
-        loss_fn = torch.nn.BCEWithLogitsLoss()
-        optimizer_linear = torch.optim.SGD(strategic_model1.parameters(), lr=1)
-        scheduler_linear = torch.optim.lr_scheduler.StepLR(
-            optimizer_linear, step_size=500, gamma=0.1
-        )
-        optimizer_non_linear = torch.optim.SGD(strategic_model2.parameters(), lr=1)
-        scheduler_non_linear = torch.optim.lr_scheduler.StepLR(
-            optimizer_non_linear, step_size=500, gamma=0.1
-        )
-
-        strategic_model1.train()
-        strategic_model2.train()
-
-        for i in range(1501):
+        strategic_model.train()
+        for i in range(1500):
             print(f"i = {i}")
-            print(f"model_for_linear = {strategic_model1.get_weights_and_bias()}")
-            print(f"model_for_non_linear = {strategic_model2.get_weights_and_bias()}")
-            if i == 600:
-                non_linear_strategic_delta_test.update_training_params(TRAINING_PARAMS)
-                non_linear_strategic_delta_validation.update_training_params(
-                    TRAINING_PARAMS
-                )
-
-            optimizer_non_linear.zero_grad()
-            optimizer_linear.zero_grad()
-            delta_move_linear_test: torch.Tensor = (
-                non_linear_strategic_delta_validation(self.x)
-            )
-            linear_delta_move_linear_test: torch.Tensor = linear_strategic_delta_test(
-                self.x
-            )
+            print(f"model = {strategic_model.get_weights_and_bias()}")
+            optimizer.zero_grad()
+            delta_move: torch.Tensor = non_linear_strategic_delta(self.x)
+            linear_delta_move: torch.Tensor = linear_strategic_delta(self.x)
             print(
-                f"linear test: delta_non_linear = {delta_move_linear_test}, delta_linear = {linear_delta_move_linear_test}"
+                f"delta_non_linear = {delta_move}, delta_linear = {linear_delta_move}"
             )
+            output = strategic_model(self.x)
+            loss = loss_fn(output, self.y)
+            loss.backward()
+            optimizer.step()
+            print(f"loss = {loss.item()}")
 
-            delta_move_non_linear_test: torch.Tensor = non_linear_strategic_delta_test(
-                self.x
-            )
-            linear_delta_move_non_linear_test: torch.Tensor = (
-                linear_strategic_delta_validation(self.x)
-            )
-            print(
-                f"non linear test: delta_non_linear = {delta_move_non_linear_test}, delta_linear = {linear_delta_move_non_linear_test}"
-            )
+    # def test_linear_vs_non_linear_strategic(self) -> None:
+    #     self.x, self.y = create_strategic_need_movement()
+    #     print(f"x = {self.x}")
+    #     print(f"y = {self.y}")
+    #     strategic_model1 = LinearStrategicModel(in_features=2)
+    #     strategic_model2 = LinearStrategicModel(in_features=2)
+    #     cost = CostNormL2(dim=1)
+    #     non_linear_strategic_delta_test: NonLinearStrategicDelta = (
+    #         NonLinearStrategicDelta(
+    #             cost=cost,
+    #             strategic_model=strategic_model1,
+    #             cost_weight=1.0,
+    #             training_params=TRAINING_PARAMS_SIMPLE,
+    #         )
+    #     )
+    #     linear_strategic_delta_validation: LinearStrategicDelta = LinearStrategicDelta(
+    #         cost=cost, strategic_model=strategic_model1, cost_weight=1.0
+    #     )
 
-            output_linear = strategic_model1(linear_delta_move_linear_test)
-            output_non_linear = strategic_model2(delta_move_non_linear_test)
+    #     non_linear_strategic_delta_validation: NonLinearStrategicDelta = (
+    #         NonLinearStrategicDelta(
+    #             cost=cost,
+    #             strategic_model=strategic_model2,
+    #             cost_weight=1.0,
+    #             training_params=TRAINING_PARAMS_SIMPLE,
+    #         )
+    #     )
+    #     linear_strategic_delta_test: LinearStrategicDelta = LinearStrategicDelta(
+    #         cost=cost, strategic_model=strategic_model2, cost_weight=1.0
+    #     )
 
-            loss_linear = loss_fn(output_linear, self.y)
-            loss_linear.backward()
-            loss_non_linear = loss_fn(output_non_linear, self.y)
-            loss_non_linear.backward()
+    #     loss_fn = torch.nn.BCEWithLogitsLoss()
+    #     optimizer_linear = torch.optim.SGD(strategic_model1.parameters(), lr=1)
+    #     scheduler_linear = torch.optim.lr_scheduler.StepLR(
+    #         optimizer_linear, step_size=500, gamma=0.1
+    #     )
+    #     optimizer_non_linear = torch.optim.SGD(strategic_model2.parameters(), lr=1)
+    #     scheduler_non_linear = torch.optim.lr_scheduler.StepLR(
+    #         optimizer_non_linear, step_size=500, gamma=0.1
+    #     )
 
-            optimizer_linear.step()
-            scheduler_linear.step()
-            optimizer_non_linear.step()
-            scheduler_non_linear.step()
+    #     strategic_model1.train()
+    #     strategic_model2.train()
 
-            print(
-                f"loss_linear = {loss_linear.item()}, loss_non_linear = {loss_non_linear.item()}"
-            )
+    #     for i in range(1501):
+    #         print(f"i = {i}")
+    #         print(f"model_for_linear = {strategic_model1.get_weights_and_bias()}")
+    #         print(f"model_for_non_linear = {strategic_model2.get_weights_and_bias()}")
+    #         if i == 600:
+    #             non_linear_strategic_delta_test.update_training_params(TRAINING_PARAMS)
+    #             non_linear_strategic_delta_validation.update_training_params(
+    #                 TRAINING_PARAMS
+    #             )
+
+    #         optimizer_non_linear.zero_grad()
+    #         optimizer_linear.zero_grad()
+    #         delta_move_linear_test: torch.Tensor = (
+    #             non_linear_strategic_delta_validation(self.x)
+    #         )
+    #         linear_delta_move_linear_test: torch.Tensor = linear_strategic_delta_test(
+    #             self.x
+    #         )
+    #         print(
+    #             f"linear test: delta_non_linear = {delta_move_linear_test}, delta_linear = {linear_delta_move_linear_test}"
+    #         )
+
+    #         delta_move_non_linear_test: torch.Tensor = non_linear_strategic_delta_test(
+    #             self.x
+    #         )
+    #         linear_delta_move_non_linear_test: torch.Tensor = (
+    #             linear_strategic_delta_validation(self.x)
+    #         )
+    #         print(
+    #             f"non linear test: delta_non_linear = {delta_move_non_linear_test}, delta_linear = {linear_delta_move_non_linear_test}"
+    #         )
+
+    #         output_linear = strategic_model1(linear_delta_move_linear_test)
+    #         output_non_linear = strategic_model2(delta_move_non_linear_test)
+
+    #         loss_linear = loss_fn(output_linear, self.y)
+    #         loss_linear.backward()
+    #         loss_non_linear = loss_fn(output_non_linear, self.y)
+    #         loss_non_linear.backward()
+
+    #         optimizer_linear.step()
+    #         scheduler_linear.step()
+    #         optimizer_non_linear.step()
+    #         scheduler_non_linear.step()
+
+    #         print(
+    #             f"loss_linear = {loss_linear.item()}, loss_non_linear = {loss_non_linear.item()}"
+    #         )
 
 
 # class TestNonLinearAdvDelta(unittest.TestCase):
