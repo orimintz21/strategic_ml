@@ -4,12 +4,14 @@ When creating a new cost function, you should inherit from this class and implem
 
 import torch
 from torch import nn
+from typing import Optional, Union, List, Tuple
 
 
 class _CostFunction(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, dim: Optional[Union[int, List[int], Tuple[int]]] = None) -> None:
         """Constructor for the _CostFunction class."""
         super(_CostFunction, self).__init__()
+        self.dim = dim
 
     def forward(self, x: torch.Tensor, x_prime: torch.Tensor) -> torch.Tensor:
         """Calculates the cost function.

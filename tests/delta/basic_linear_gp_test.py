@@ -71,7 +71,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
         strategic_model = LinearStrategicModel(in_features=2)
 
         # Create a cost function
-        cost = CostNormL2()
+        cost = CostNormL2(dim=1)
 
         # Create a strategic delta
         strategic_delta: LinearStrategicDelta = LinearStrategicDelta(
@@ -115,7 +115,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
         strategic_model = LinearStrategicModel(in_features=2)
 
         # Create a cost function
-        cost = CostNormL2()
+        cost = CostNormL2(dim=1)
 
         # Create a strategic delta
         strategic_delta: LinearStrategicDelta = LinearStrategicDelta(
@@ -171,7 +171,7 @@ class TestLinearAdvDelta(unittest.TestCase):
         strategic_model = LinearStrategicModel(in_features=2)
 
         # Create a cost function
-        cost = CostNormL2()
+        cost = CostNormL2(dim=1)
 
         # Create a strategic delta
         strategic_delta: LinearAdvDelta = LinearAdvDelta(
@@ -231,7 +231,7 @@ class TestLinearNoisyLabelDelta(unittest.TestCase):
         strategic_model = LinearStrategicModel(in_features=2)
 
         # Create a cost function
-        cost = CostNormL2()
+        cost = CostNormL2(dim=1)
 
         # Create a strategic delta
         strategic_delta: LinearNoisyLabelDelta = LinearNoisyLabelDelta(

@@ -5,16 +5,17 @@ in the strategic_ml package.
 """
 
 import torch
+from typing import Optional, Union, List, Tuple
 
 from strategic_ml.cost_functions.cost_function import _CostFunction
 
 
 class CostNormL2(_CostFunction):
-    def __init__(self) -> None:
+    def __init__(self, dim: Optional[Union[int, List[int], Tuple[int]]] = None) -> None:
         """
         Constructor for the L2 norm cost function.
         """
-        super(CostNormL2, self).__init__()
+        super(CostNormL2, self).__init__(dim=dim)
 
     def forward(self, x: torch.Tensor, x_prime: torch.Tensor) -> torch.Tensor:
         """Calculates the L2 norm cost function.
@@ -27,15 +28,15 @@ class CostNormL2(_CostFunction):
             torch.Tensor: the L2 cost of moving from x to x_prime
         """
         assert x.size() == x_prime.size(), f"{x.size()} != {x_prime.size()}"
-        return torch.linalg.norm(x - x_prime, ord=2)
+        return torch.linalg.norm(x - x_prime, dim=self.dim, ord=2)
 
 
 class CostMeanSquaredError(_CostFunction):
-    def __init__(self) -> None:
+    def __init__(self, dim: Optional[Union[int, List[int], Tuple[int]]] = None) -> None:
         """
         Constructor for the mean squared error cost function.
         """
-        super(_CostFunction, self).__init__()
+        super(CostMeanSquaredError, self).__init__(dim=dim)
 
     def forward(self, x: torch.Tensor, x_prime: torch.Tensor) -> torch.Tensor:
         """Calculates the mean squared error cost function.
@@ -48,18 +49,25 @@ class CostMeanSquaredError(_CostFunction):
             torch.Tensor: the mean squared error cost of moving from x to x_prime
         """
         assert x.size() == x_prime.size()
-        return torch.mean((x - x_prime) ** 2)
+        if self.dim is None:
+            return torch.mean((x - x_prime) ** 2)
+
+        return torch.mean((x - x_prime) ** 2, dim=self.dim)
 
 
 class CostWeightedLoss(_CostFunction):
-    def __init__(self, weights: torch.Tensor) -> None:
+    def __init__(
+        self,
+        weights: torch.Tensor,
+        dim: Optional[Union[int, List[int], Tuple[int]]] = None,
+    ) -> None:
         """Constructor for the weighted loss cost function.
         Based on the mean squared error cost function.
 
         Args:
             weights (torch.Tensor): the weights to apply to the loss
         """
-        super(_CostFunction, self).__init__()
+        super(CostWeightedLoss, self).__init__(dim=dim)
         self.weights: torch.Tensor = weights
 
     def set_weights(self, weights: torch.Tensor) -> None:
@@ -90,15 +98,19 @@ class CostWeightedLoss(_CostFunction):
             torch.Tensor: the weighted loss of moving from x to x_prime
         """
         assert x.size() == x_prime.size()
-        return torch.sum(self.weights * (x - x_prime) ** 2)
+        distance = x - x_prime
+        if self.dim is 1:
+            return torch.sqrt(torch.einsum("ij,ij->", distance, self.weights))
+
+        return torch.sqrt(distance @ self.weights @ distance.T)
 
 
 class CostNormL1(_CostFunction):
-    def __init__(self) -> None:
+    def __init__(self, dim: Optional[Union[int, List[int], Tuple[int]]] = None) -> None:
         """
         Constructor for the L1 norm cost function.
         """
-        super(_CostFunction, self).__init__()
+        super(CostNormL1, self).__init__(dim=dim)
 
     def forward(self, x: torch.Tensor, x_prime: torch.Tensor) -> torch.Tensor:
         """Calculates the L1 norm cost function.
@@ -111,15 +123,15 @@ class CostNormL1(_CostFunction):
             torch.Tensor: _description_
         """
         assert x.size() == x_prime.size()
-        return torch.linalg.norm(x - x_prime, ord=1)
+        return torch.linalg.norm(x - x_prime, ord=1, dim=self.dim)
 
 
 class CostNormLInf(_CostFunction):
-    def __init__(self) -> None:
+    def __init__(self, dim: Optional[Union[int, List[int], Tuple[int]]] = None) -> None:
         """
         Constructor for the LInf norm cost function.
         """
-        super(_CostFunction, self).__init__()
+        super(CostNormLInf, self).__init__(dim=dim)
 
     def forward(self, x: torch.Tensor, x_prime: torch.Tensor) -> torch.Tensor:
         """Calculates the LInf norm cost function.
@@ -132,4 +144,4 @@ class CostNormLInf(_CostFunction):
             torch.Tensor: the LInf cost of moving from x to x_prime
         """
         assert x.size() == x_prime.size()
-        return torch.linalg.norm(x - x_prime, ord=float("inf"))
+        return torch.linalg.norm(x - x_prime, ord=float("inf"), dim=self.dim)
