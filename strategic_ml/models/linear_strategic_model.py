@@ -10,7 +10,7 @@ we can calculate the strategic delta in a closed form.
 # External imports
 import torch
 from torch import nn
-from typing import Tuple, Optional
+from typing import Any, Tuple, Optional
 
 # Internal imports
 
@@ -30,13 +30,8 @@ class LinearStrategicModel(nn.Module):
         self.model: torch.nn.Linear = torch.nn.Linear(
             in_features=in_features, out_features=1, bias=True
         )
-        with torch.no_grad():
-            if weight is not None and bias is not None:
-                assert weight.shape[1] == in_features
-                assert weight.shape[0] == 1
-                assert bias.shape[0] == 1
-                self.model.weight.copy_(weight)
-                self.model.bias.copy_(bias)
+        if weight is not None and bias is not None:
+            self.set_weights_and_bias(weight, bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
@@ -55,6 +50,35 @@ class LinearStrategicModel(nn.Module):
             Tuple[torch.Tensor, torch.Tensor]: the weights and bias of the model
         """
         return self.model.weight.detach(), self.model.bias.detach()
+
+    def set_weights_and_bias(self, weighs: torch.Tensor, bias: torch.Tensor) -> None:
+        """
+        The set_weights_and_bias method sets the weights and bias of the model
+
+        Args:
+            weighs (torch.Tensor): the new weighs
+            bias (torch.Tensor): the new bias
+        """
+        # Check the input
+        assert (
+            weighs.shape[1] == self.model.weight.shape[1]
+        ), "The number of features should be the same, the input was {}".format(
+            weighs.shape[1]
+        )
+        assert (
+            weighs.shape[0] == 1
+        ), "This is a binary classification model, the number of outputs should be 1 instead of {}".format(
+            weighs.shape[0]
+        )
+        assert (
+            bias.shape[0] == 1
+        ), "This is a binary classification model, the number of outputs should be 1 instead of {}".format(
+            bias.shape[0]
+        )
+        # Set the weights and bias
+        with torch.no_grad():
+            self.model.weight.copy_(weighs)
+            self.model.bias.copy_(bias)
 
     def get_weights_and_bias_ref(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """

@@ -30,3 +30,6 @@ class _StrategicRegularization(nn.Module):
             torch.Tensor: a 1x1 tensor
         """
         raise NotImplementedError()
+
+    def __call__(self, *args, **kwargs) -> torch.Tensor:
+        return self.forward(*args, **kwargs)
