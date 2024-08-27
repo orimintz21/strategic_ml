@@ -115,14 +115,7 @@ class _LinearGP(_GSC):
         Returns:
             torch.Tensor: x' the GP.
         """
-
-        # Check the input
-        self._assert_cost()
-        self._assert_model()
-        batch_size: int = x.size(0)
-        assert z.size() == torch.Size(
-            [batch_size, 1]
-        ), "z should be of size [batch_size, 1], but got {}".format(z.size())
+        self._validate_input(x, z)
 
         # Get the weights and bias of the model
         assert isinstance(
@@ -163,10 +156,61 @@ class _LinearGP(_GSC):
     def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError("This is an abstract method")
 
+    def _get_minimal_distance(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        self._validate_input(x, z)
+        # Get the weights and bias of the model
+        assert isinstance(
+            self.strategic_model, LinearStrategicModel
+        ), "The model should be a LinearStrategicModel, but got {}".format(
+            type(self.strategic_model)
+        )
+        weights, bias = self.strategic_model.get_weights_and_bias()
+        costs: Optional[torch.Tensor] = None
+
+        for x_sample, z_sample in zip(x, z):
+            x_sample: torch.Tensor = x_sample.view(1, -1)
+            if torch.sign(self.strategic_model(x_sample)) == z_sample:
+                costs_of_moment = torch.tensor([0])
+            else:
+                projection: torch.Tensor = self._calculate_projection(
+                    x_sample, weights, bias, z_sample
+                )
+
+                assert (
+                    torch.sign(self.strategic_model(projection)) == z_sample
+                ), "The projection is wrong, {}".format(
+                    self.strategic_model(projection)
+                )
+
+                costs_of_moment: torch.Tensor = self.cost(x_sample, projection)
+            if costs is None:
+                costs = costs_of_moment
+            else:
+                costs = torch.cat((costs, costs_of_moment))
+
+        assert costs is not None, "The costs is None after the loop"
+        return costs
+
     def _assert_cost(self) -> None:
         assert isinstance(self.cost, CostNormL2) or isinstance(
             self.cost, CostWeightedLoss
         ), "The cost should be a  CostNormL2 or CostWeightedLoss"
+
+    def _validate_input(self, x: torch.Tensor, z: torch.Tensor) -> None:
+        # Check the input
+        self._assert_cost()
+        self._assert_model()
+        batch_size: int = x.size(0)
+        assert z.size() == torch.Size(
+            [batch_size, 1]
+        ), "z should be of size [batch_size, 1], but got {}".format(z.size())
+
+        # Get the weights and bias of the model
+        assert isinstance(
+            self.strategic_model, LinearStrategicModel
+        ), "The model should be a LinearStrategicModel, but got {}".format(
+            type(self.strategic_model)
+        )
 
     def _assert_model(self) -> None:
         assert isinstance(

@@ -2,9 +2,10 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+from typing import Optional
 
 # internal imports
-from strategic_ml import _CostFunction
+from strategic_ml.gsc.linear_gp import LinearStrategicDelta
 from strategic_ml.strategic_regularization.strategic_regularization import (
     _StrategicRegularization,
 )
@@ -13,48 +14,36 @@ from strategic_ml.strategic_regularization.strategic_regularization import (
 class SocialBurden(_StrategicRegularization):
     def __init__(
         self,
-        cost_fn: _CostFunction,
-        poss_pred_temp: float = 1.0e3,
-        poss_pred_mask: float = 1.0e2,
+        linear_delta: Optional[LinearStrategicDelta] = None,
     ) -> None:
         """
         Constructor for the SocialBurden class.
         """
         super(SocialBurden, self).__init__()
 
-        self.cost_fn = cost_fn
-        self.poss_pred_temp = poss_pred_temp
-        self.poss_pred_mask = poss_pred_mask
+        self.linear_delta = linear_delta
 
     def forward(
         self,
         x: torch.Tensor,
-        x_prime: torch.Tensor,
         y: torch.Tensor,
-        predictions: torch.Tensor,
+        linear_delta: Optional[LinearStrategicDelta] = None,
     ) -> torch.Tensor:
+        assert (
+            x.shape[0] == y.shape[0]
+        ), "x, x_prime, and y must have the same batch size"
+        assert y.shape[1] == 1, "y must be a 1D tensor"
 
         positive_label = y == 1
         positive_label = positive_label.squeeze()
-
         x_positive = x[positive_label]
-        x_prime_pos = x_prime[positive_label]
-        positive_label_predictions = predictions[positive_label]
 
-        pred_positive_mask = torch.sigmoid(
-            positive_label_predictions * self.poss_pred_temp
-        ).T
+        if linear_delta is not None:
+            distance = linear_delta.get_minimal_distance(x_positive)
+        else:
+            assert self.linear_delta is not None, "linear_delta must be provided"
+            distance = self.linear_delta.get_minimal_distance(x_positive)
 
-        # Calculate the cost of the positive examples
-        costs = self.cost_fn(x_positive, x_prime_pos)
-
-        # Select the cost of the positive examples
-        mask_costs = costs + (1 - pred_positive_mask) * self.poss_pred_mask
-
-        softmin_costs = F.softmin(mask_costs, dim=1)
-
-        min_costs = (softmin_costs * mask_costs).sum(dim=1)
-
-        total_reg = min_costs.sum()
+        total_reg = torch.sum(distance)
 
         return total_reg
