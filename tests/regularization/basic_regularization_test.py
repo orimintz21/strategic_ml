@@ -54,9 +54,21 @@ class TestRegularization(unittest.TestCase):
         self,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         x_p = torch.Tensor([[1, -1], [1, 1]])
-        y_p = torch.Tensor([[1], [1], [1]])
+        y_p = torch.Tensor([[1], [1]])
         x_n = torch.Tensor([[-1, -1], [-1, 1], [2, 2]])
         y_n = torch.Tensor([[-1], [-1], [-1]])
+
+        x = torch.cat((x_p, x_n), dim=0)
+        y = torch.cat((y_p, y_n), dim=0)
+        return x, y
+
+    def create_data_positive_that_does_not_move(
+        self,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        x_p = torch.Tensor([[1, -1], [1, 1], [2, 2]])
+        y_p = torch.Tensor([[1], [1], [1]])
+        x_n = torch.Tensor([[-1, -1], [-1, 1]])
+        y_n = torch.Tensor([[-1], [-1]])
 
         x = torch.cat((x_p, x_n), dim=0)
         y = torch.cat((y_p, y_n), dim=0)
@@ -81,7 +93,7 @@ class TestRegularization(unittest.TestCase):
             2, weight=torch.Tensor([[2, 0]]), bias=torch.Tensor([-2.5])
         )
         self.delta = LinearStrategicDelta(cost=self.cost, strategic_model=self.model)
-        self.social_burden = SocialBurden(cost_fn=self.cost)
+        self.social_burden = SocialBurden(linear_delta=self.delta)
         self.recourse = Recourse(model=self.model, sigmoid_temp=1e5)
 
     def tearDown(self) -> None:
@@ -95,9 +107,9 @@ class TestRegularization(unittest.TestCase):
         x_prime = self.delta(x)
         predictions = self.model(x_prime)
         # We expect that we will get the max cost of the true samples, which is 0.255 (due to epsilon)
-        social_burden_value = self.social_burden(x, x_prime, y, predictions)
+        social_burden_value = self.social_burden(x, y)
 
-        self.assertAlmostEqual(social_burden_value.item(), 0.255, delta=0.05)
+        self.assertAlmostEqual(social_burden_value.item(), 0.510, delta=0.05)
 
     def test_social_burden_false_label(self):
         # Create the data
@@ -105,9 +117,9 @@ class TestRegularization(unittest.TestCase):
         x_prime = self.delta(x)
         predictions = self.model(x_prime)
         # We expect that the false samples will not effect the social burden
-        social_burden_value = self.social_burden(x, x_prime, y, predictions)
+        social_burden_value = self.social_burden(x, y)
 
-        self.assertAlmostEqual(social_burden_value.item(), 0.255, delta=0.05)
+        self.assertAlmostEqual(social_burden_value.item(), 0.510, delta=0.05)
 
     def test_social_burden_false_prediction(self):
         # Create the data
@@ -115,10 +127,31 @@ class TestRegularization(unittest.TestCase):
 
         x_prime = self.delta(x)
         predictions = self.model(x_prime)
-        # We expect that the example with the false label will not effect the social burden
-        social_burden_value = self.social_burden(x, x_prime, y, predictions)
+        """
+        We have 5 examples in the data,
+        2 are true and are classified as false (without movement) and as true (with movement), that are 0.255 far from the decision boundary,
+        1 is true and is classified as false (without movement) and as false (with movement), that is 2.255 far from the decision boundary,
+        2 are false and are classified as false (without movement) and as false (with movement),
+        """
+        social_burden_value = self.social_burden(x, y)
 
-        self.assertAlmostEqual(social_burden_value.item(), 0.255, delta=0.05)
+        self.assertAlmostEqual(social_burden_value.item(), 2.765, delta=0.05)
+
+    def test_social_burden_data_positive_that_does_not_move(self):
+        # Create the data
+        x, y = self.create_data_positive_that_does_not_move()
+
+        x_prime = self.delta(x)
+        predictions = self.model(x_prime)
+        """
+        We have 5 examples in the data,
+        2 are true and are classified as false (without movement) and as true (with movement), that are 0.255 far from the decision boundary,
+        1 is true and is classified as true (without movement) and as true (with movement), so it does not effect the social burden,
+        2 are false and are classified as false (without movement) and as false (with movement),
+        """
+        social_burden_value = self.social_burden(x, y)
+
+        self.assertAlmostEqual(social_burden_value.item(), 0.510, delta=0.05)
 
     def test_social_burden_training(self) -> None:
 
@@ -132,7 +165,7 @@ class TestRegularization(unittest.TestCase):
             optimizer.zero_grad()
             x_prime = self.delta(x)
             predictions = self.model(x_prime)
-            regularization = self.social_burden(x, x_prime, y, predictions)
+            regularization = self.social_burden(x, y)
             loss = loss_fn(predictions, y)
             loss_with_reg = loss + 0.1 * regularization
             loss_with_reg.backward()
@@ -147,9 +180,7 @@ class TestRegularization(unittest.TestCase):
         print_if_verbose(f"Prediction sign: {torch.sign(predictions_final)}")
         print_if_verbose(f"Delta: {x_prime_final}")
         print_if_verbose(f"Cost: {self.cost(x, x_prime_final)}")
-        print_if_verbose(
-            f"Social Burden: {self.social_burden(x, x_prime_final, y, predictions_final)}"
-        )
+        print_if_verbose(f"Social Burden: {self.social_burden(x ,y)}")
 
     def test_recourse_all_true(self):
         # Create the data
