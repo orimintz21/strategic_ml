@@ -11,6 +11,14 @@ from strategic_ml.strategic_regularization.strategic_regularization import (
 
 
 class SocialBurden(_StrategicRegularization):
+    """
+    SocialBurden class.
+    This is the implementation of the Social Burden regularization method that
+    is described in the paper "Strategic Classification Made Practical".
+    Social Burden 
+
+    Parent Class: _StrategicRegularization
+    """
     def __init__(
         self,
         cost_fn: _CostFunction,

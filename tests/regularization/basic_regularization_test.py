@@ -134,7 +134,7 @@ class TestRegularization(unittest.TestCase):
             predictions = self.model(x_prime)
             regularization = self.social_burden(x, x_prime, y, predictions)
             loss = loss_fn(predictions, y)
-            loss_with_reg = loss_fn(predictions, y) + 0.1 * regularization
+            loss_with_reg = loss + 0.1 * regularization
             loss_with_reg.backward()
             optimizer.step()
 
@@ -181,7 +181,7 @@ class TestRegularization(unittest.TestCase):
         2 are false and are classified as false (without movement) and as false (with movement), 
         So we have 2 examples that are classified as false and stays false.
         """
-        self.assertAlmostEqual(recourse_value.item(), 2, delta=0.05)
+        self.assertAlmostEqual(recourse_value.item(), 2.0, delta=0.05)
 
     def test_recourse_false_prediction(self):
         # Create the data
@@ -199,7 +199,7 @@ class TestRegularization(unittest.TestCase):
         2 are false and are classified as false (without movement) and as false (with movement), 
         So we have 2 examples that are classified as false and stays false.
         """
-        self.assertAlmostEqual(recourse_value.item(), 3, delta=0.05)
+        self.assertAlmostEqual(recourse_value.item(), 3.0, delta=0.05)
 
     def test_recourse_false_label_false_prediction(self):
         # Create the data
@@ -213,7 +213,7 @@ class TestRegularization(unittest.TestCase):
         """
         There are 5 examples in the data, 
         2 are true and are classified as false (without movement) and as true (with movement),
-        1 is false and is classified as true (without movement) and as false (with movement),
+        1 is false and is classified as true (without movement) and as true (with movement),
         2 are false and are classified as false (without movement) and as false (with movement), 
         So we have 2 examples that are classified as false and stays false.
         """
@@ -251,7 +251,7 @@ class TestRegularization(unittest.TestCase):
             predictions = self.model(x_prime)
             regularization = self.recourse(x, predictions)
             loss = loss_fn(predictions, y)
-            loss_with_reg = loss_fn(predictions, y) + 0.1 * regularization
+            loss_with_reg = loss * regularization
             loss_with_reg.backward()
             optimizer.step()
 
