@@ -49,3 +49,7 @@ class LinearStrategicDelta(_LinearGP):
     def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         batch_size = x.shape[0]
         return torch.ones((batch_size, 1))
+
+    def get_minimal_distance(self, x: torch.Tensor) -> torch.Tensor:
+        ones = torch.ones((x.shape[0], 1))
+        return super()._get_minimal_distance(x, ones)
