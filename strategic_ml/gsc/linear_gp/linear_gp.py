@@ -1,56 +1,3 @@
-""":file: gp.py
-
-The GP is a strategic delta that is calculated by the following formula:
-delta_h(x,z) = argmax_{x' in X}(1{model(x') = z} - 1/2*(cost(x,x')))
-
-We can see that if model(x) == z then x is the best x' that we can choose.
-If for every x' in X, such that model(x') != z, we get cost(x,x') > 1, then
-the GP will be x (it is not worth to change x).
-
-If we assume that the model is linear and the cost is norm2, or weighted
-norm, we see that if model(x) != z and the margin from the model is smaller than 
-the wait of the cost using the norm to calculate the margin, then the GP will be 
-the projection of x on the model.
-
-Then the GP is calculated by the following formula:
-x_prime = x - ((w.T @ x + b) / (w.T @ w)) * w
-if we use the norm2 cost function.
-and
-x_prime = x - ((w.T @ x + b) / (w.T @ inverse(Lambda) @ w)) * inverse(Lambda) @ w
-if we use the weighted norm cost function with Lambda as the weight matrix.
-
-The problem is that the condition that the margin should be smaller than weight 
-of the cost is not differentiable and that model(x) != z is not differentiable as well.
-Therefore we need to use the sigmoid function to approximate the condition and
-the margin.
-
-Notions:
-z == label of the GP (see "Generalized Strategic Classification and the Case of Aligned Incentives")
-x == input
-x_prime == the GP
-m == the weight of the cost
-w == the weights of the model
-b == the bias of the model
-h_{w,b} == model
-cost == the cost function
-
-The GP is calculated by the following formula:
-The first condition is that the model should be different from the label:
-1{z != sign(h(x))}
-We use cond1 = 1 - sigmoid(t2 * (tanh(h(x) * t1) * z))
-t1 and t2 are the temperature of the soft sign functions.
-
-The second condition is that the cost of the movement should be smaller than
-the profit from the movement. Because the maximum profit is 2 and the distance
-is the margin, the condition is the following:
-We use a sigmoid function with the temperature of t3.
-if margin(w,b,x)*m>2 then cond2 = 0
-cond2 = sigmoid(t3 * (2 - (m * margin(w,b,x)))
-
-Then the GP is calculated by the following formula:
-x_prime = conditions * projection + (1 - conditions) * x
-"""
-
 # External imports
 import torch
 from torch import nn
@@ -67,6 +14,28 @@ from strategic_ml.cost_functions import (
 
 
 class _LinearGP(_GSC):
+    """
+    The GP is a strategic delta that is calculated by the following formula:
+    delta_h(x,z) = argmax_{x' in X}(1{model(x') = z} - r/2 * (cost(x,x')))
+
+    We can see that if model(x) == z then x is the best x' that we can choose.
+    If for every x' in X, such that model(x') != z, we get cost(x,x') > 2/r, then
+    the GP will be x (it is not worth to change x).
+
+    If we assume that the model is linear and the cost is norm2, or weighted
+    norm, we see that if model(x) != z and the margin from the model is smaller than
+    the wait of the cost using the norm to calculate the margin, then the GP will be
+    the projection of x on the model.
+
+    Then the GP is calculated by the following formula:
+    x_prime = x - ((w.T @ x + b) / (w.T @ w)) * w
+    if we use the norm2 cost function.
+    and
+    x_prime = x - ((w.T @ x + b) / (w.T @ inverse(Lambda) @ w)) * inverse(Lambda) @ w
+    if we use the weighted norm cost function with Lambda as the weight matrix.
+
+    """
+
     def __init__(
         self,
         cost: _CostFunction,
@@ -79,18 +48,13 @@ class _LinearGP(_GSC):
         for linear models.
         Therefore we do not need to train a delta model.
 
-        The GP is calculated by the following formula:
-        delta_h(x,z) := argmax_{x' in X}(sigmoid{model(x') == z} - 1/2*weight*(cost(x,x')))
-
         Args:
-            strategic_model (nn.Module): the strategic
-            that the delta is calculated on.
-            cost (_CostFunction): The cost function of the
-            delta. Defaults to None.
+            cost (_CostFunction): The cost function of the delta.
+            strategic_model (nn.Module): the strategic that the delta is calculated on.
             cost_weight (int): The weight of the cost function.
-            epsilon (float): move to the negative/positive
-            direction of the model to make sure that the model will predict the
-            label correctly. Defaults to 0.01.
+            epsilon (float): move to the negative/positive direction of the model
+            to make sure that the model will predict the label correctly. The
+            delta does it by adding the (epsilon * w/||w||). Defaults to 0.01.
         """
         super(_LinearGP, self).__init__(
             strategic_model=strategic_model, cost=cost, cost_weight=cost_weight
@@ -101,8 +65,6 @@ class _LinearGP(_GSC):
 
     def find_x_prime(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
         """This function calculates x' based on the GP formula.
-        For more information see the file prolog.
-
 
         Args:
             x (torch.Tensor): The input of the model.
@@ -154,9 +116,32 @@ class _LinearGP(_GSC):
         return x_prime
 
     def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """This function returns the meta data for the GP.
+        It should be implemented by the child class.
+
+        Args:
+            x (torch.Tensor): The input of the model.
+            y (torch.Tensor): The true labels of the model.
+
+        Raises:
+            NotImplementedError: Should be implemented by the child class.
+
+        Returns:
+            torch.Tensor: The meta data for the GP.
+        """
         raise NotImplementedError("This is an abstract method")
 
     def _get_minimal_distance(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        """This function calculates the minimal cost that the strategic agent needs to do
+        to get a positive outcome from the model.
+
+        Args:
+            x (torch.Tensor): The data.
+            z (torch.Tensor): The meta data for the GP.
+
+        Returns:
+            torch.Tensor: The minimal cost for each data sample.
+        """
         self._validate_input(x, z)
         # Get the weights and bias of the model
         assert isinstance(
@@ -192,11 +177,20 @@ class _LinearGP(_GSC):
         return costs
 
     def _assert_cost(self) -> None:
+        """
+        This function asserts that the cost is a CostNormL2 or CostWeightedLoss
+        """
         assert isinstance(self.cost, CostNormL2) or isinstance(
             self.cost, CostWeightedLoss
         ), "The cost should be a  CostNormL2 or CostWeightedLoss"
 
     def _validate_input(self, x: torch.Tensor, z: torch.Tensor) -> None:
+        """This function validates the input of the linear gp.
+
+        Args:
+            x (torch.Tensor): The data
+            z (torch.Tensor): The meta data for the GP.
+        """
         # Check the input
         self._assert_cost()
         self._assert_model()
@@ -205,14 +199,8 @@ class _LinearGP(_GSC):
             [batch_size, 1]
         ), "z should be of size [batch_size, 1], but got {}".format(z.size())
 
-        # Get the weights and bias of the model
-        assert isinstance(
-            self.strategic_model, LinearStrategicModel
-        ), "The model should be a LinearStrategicModel, but got {}".format(
-            type(self.strategic_model)
-        )
-
     def _assert_model(self) -> None:
+        """This function asserts that the strategic model is a LinearStrategicModel"""
         assert isinstance(
             self.strategic_model, LinearStrategicModel
         ), "The strategic model should be a StrategicModel"
@@ -257,5 +245,16 @@ class _LinearGP(_GSC):
         return projection_with_safety
 
     def _worth_to_move(self, x: torch.Tensor, projection: torch.Tensor) -> bool:
+        """This function checks if it is worth to move the data point to the projection.
+        It is worth to move the data point if the cost of the moment  times its
+        weight is smaller than 2.
+
+        Args:
+            x (torch.Tensor): The data
+            projection (torch.Tensor): The projection of the data on the model.
+
+        Returns:
+            bool: If it is worth to move the data point to the projection.
+        """
         cost_of_moment = self.cost_weight * self.cost(x, projection)
         return bool(cost_of_moment < 2)
