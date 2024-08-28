@@ -59,6 +59,7 @@ class StrategicHingeLoss(_Loss):
         ), f"z should have the same number of samples as x, but z has {z.shape[0]} samples and x has {x.shape[0]} samples"
         w, b = self.model.get_weights_and_bias_ref()
         cost_weight = self.delta.get_cost_weight()
+
         linear_output = torch.matmul(x, w.T) + b
 
         norm = torch.linalg.norm(w, ord=2) + torch.linalg.norm(b, ord=2)
