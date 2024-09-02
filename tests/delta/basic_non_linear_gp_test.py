@@ -177,6 +177,35 @@ class TestLinearStrategicDelta(unittest.TestCase):
                 self.assertEqual(torch.sign(self.perf_adv_linear(x_prime)), y)
                 # We assume that the non-linear delta is close to the linear delta
                 self.assertTrue(torch.allclose(adv_delta_linear(x, y), x_prime, atol=0.1))
+    
+    def test_non_linear_with_non_linear_model(self) -> None:
+        save_dir = os.path.join(self.save_dir, "test_non_linear_with_non_linear_model")
+        strategic_delta = NonLinearStrategicDelta(
+            self.cost,
+            self.non_linear_model,
+            cost_weight=self.cost_weight,
+            save_dir=save_dir,
+            training_params=TRAINING_PARAMS,
+        )
+        NUM_OF_EPOCHS = 400
+        TRAIN_DELTA_EVERY = 20
+        optimizer = torch.optim.Adam(self.non_linear_model.parameters(), lr=0.01)
+        loss_fn = torch.nn.BCEWithLogitsLoss()
+
+
+        for epoch in range(NUM_OF_EPOCHS):
+            if epoch % TRAIN_DELTA_EVERY == 0:
+                strategic_delta.train(self.strategic_loader)
+
+            for batch_idx, data in enumerate(self.strategic_loader):
+                x_batch, y_batch = data
+                x_prime_batch = strategic_delta.load_x_prime(batch_idx)
+                optimizer.zero_grad()
+                prediction = self.non_linear_model(x_prime_batch)
+                loss = loss_fn(prediction, y_batch)
+                loss.backward()
+                optimizer.step()
+                print_if_verbose(f"Epoch {epoch}, batch {batch_idx}, loss {loss}")
 
 
 if __name__ == "__main__":
