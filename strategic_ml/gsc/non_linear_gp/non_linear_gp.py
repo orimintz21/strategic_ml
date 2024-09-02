@@ -1,6 +1,3 @@
-"""_summary
-"""
-
 # External imports
 import os
 import torch
@@ -16,6 +13,17 @@ from strategic_ml.gsc.generalized_strategic_delta import _GSC
 
 
 class _NonLinearGP(_GSC):
+    """The NonLinearGP is a strategic delta that is calculated by the following formula:
+    delta_h(x,z) = argmax_{x' in X}(1{model(x') = z} - r/2 * (cost(x,x')))
+    By using the gradient of the model, we can find the x' that will be close to
+    the optimal x'.
+    We don't want to run the optimization for epoch of the model, so we optimize
+    the delta and the model alternately. Note that the number of samples
+    could be large, so we need to write x' to the disk and load it when needed.
+
+    Parent Class: _GSC
+    """
+
     def __init__(
         self,
         cost: _CostFunction,
@@ -24,6 +32,23 @@ class _NonLinearGP(_GSC):
         *args,
         training_params: Dict[str, Any],
     ) -> None:
+        """Initializer for the NonLinearGP class.
+
+        Args:
+            cost (_CostFunction): The cost function of the delta.
+            strategic_model (nn.Module): The strategic model that the delta is calculated on.
+            cost_weight (float, optional): The weight of the cost function. Defaults to 1.
+            training_params (Dict[str, Any]): A dictionary that contains the training parameters.
+
+            expected keys:
+                - optimizer_class: The optimizer class that will be used for the optimization. (default: SGD)
+                - optimizer_params: The parameters for the optimizer. (default: {"lr": 0.01})
+                - scheduler_class: The scheduler class that will be used for the optimization. (optional)
+                - scheduler_params: The parameters for the scheduler. (default: {})
+                - early_stopping: The number of epochs to wait before stopping the optimization. (default: -1, i.e. no early stopping)
+                - num_epochs: The number of epochs for the optimization. (default: 100)
+                - temp: The temperature for the tanh function for the model. (default: 1.0)
+        """
         super().__init__(strategic_model, cost, cost_weight)
         self.training_params: Dict[str, Any] = training_params
 
@@ -79,6 +104,8 @@ class _NonLinearGP(_GSC):
     ) -> torch.Tensor:
         """
         Modified find_x_prime to load precomputed x_prime if available.
+        If precomputed x_prime is not available, compute x_prime using the GP formula
+        and a GD method that was specified in the training dictionary.
 
         :param x: Input tensor
         :param z: Metadata tensor
@@ -150,12 +177,14 @@ class _NonLinearGP(_GSC):
         return x_prime
 
     def _set_optimizer_params(self) -> None:
+        """Set the optimizer class and parameters for the optimization."""
         self.optimizer_class = self.training_params.get("optimizer_class", optim.SGD)
         self.optimizer_params = self.training_params.get(
             "optimizer_params", {"lr": 0.01}
         )
 
     def _set_scheduler_params(self) -> None:
+        """Set the scheduler class and parameters for the optimization."""
         assert self.optimizer_class is not None, "call _set_optimizer_params first"
 
         self.has_scheduler = False
@@ -165,9 +194,11 @@ class _NonLinearGP(_GSC):
             self.scheduler_params = self.training_params.get("scheduler_params", {})
 
     def _set_early_stopping(self) -> None:
+        """Set the early stopping for the optimization."""
         self.early_stopping: int = self.training_params.get("early_stopping", -1)
 
     def set_training_params(self) -> None:
+        """Set the training parameters for the optimization."""
         assert self.training_params is not None, "training_params should not be None"
         self.temp: float = self.training_params.get("temp", 1.0)
 
@@ -180,5 +211,17 @@ class _NonLinearGP(_GSC):
         self._set_early_stopping()
 
     def update_training_params(self, training_params: Dict[str, Any]) -> None:
+        """Update the training parameters for the optimization.
+
+        Args:
+            training_params (Dict[str, Any]):
+            - optimizer_class: The optimizer class that will be used for the optimization. (default: SGD)
+            - optimizer_params: The parameters for the optimizer. (default: {"lr": 0.01})
+            - scheduler_class: The scheduler class that will be used for the optimization. (optional)
+            - scheduler_params: The parameters for the scheduler. (default: {})
+            - early_stopping: The number of epochs to wait before stopping the optimization. (default: -1, i.e. no early stopping)
+            - num_epochs: The number of epochs for the optimization. (default: 100)
+            - temp: The temperature for the tanh function for the model. (default: 1.0)
+        """
         self.training_params.update(training_params)
         self.set_training_params()
