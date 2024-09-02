@@ -11,31 +11,8 @@ from strategic_ml.gsc.linear_gp import _LinearGP
 
 class LinearTrainer:
     """
-        A class that represents a basic trainer for a strategic machine learning model.
-
-        Args:
-            model (LinearStrategicModel): The strategic machine learning model to be trained.
-            strategic_regularization (_StrategicRegularization): The strategic regularization method to be used.
-            loss (_Loss): The loss function to be used during training.
-            cost (_CostFunction): The cost function to be used during training.
-            gsc (_LinearGP): The gradient similarity constraint to be applied during training.
-            device (str): The device to be used for training. Defaults to "cpu".
-            training_params (dict): Additional parameters for training. Defaults to None.
-                The `training_params` dictionary should have the following structure:
-                {
-                    'optimizer': None,  # The optimizer to be used for training
-                    'learning_rate': 0.001,  # The learning rate for the optimizer
-                    'scheduler': None,  # The learning rate scheduler
-                    'optimizer_params': {},  # Additional parameters for the optimizer
-                    'scheduler_params': {},  # Additional parameters for the scheduler
-                    'early_stopping': {
-                        'patience': 10,  # The number of epochs with no improvement after which training will be stopped
-                        'min_delta': 0.001,  # The minimum change in the monitored quantity to qualify as an improvement
-                        'monitor': 'val_loss',  # The quantity to be monitored for early stopping
-                        'restore_best_weights': True  # Whether to restore the weights of the best model found during training
-                    }
-                }
-        """
+    A class that represents a basic trainer for a strategic machine learning model.
+    """
 
     def __init__(self,
         model: LinearStrategicModel,
@@ -44,8 +21,8 @@ class LinearTrainer:
         cost: _CostFunction,
         gsc: _LinearGP,
         device: str = "cpu",
+        training_params: Dict[str, Any] = None,
         *args: Any,
-        training_params: Dict[str, Any],
     ) -> None:
         self.model: LinearStrategicModel = model
         self.strategic_regularization: _StrategicRegularization = strategic_regularization
@@ -75,13 +52,33 @@ class LinearTrainer:
 
         # Early stopping parameters
         self.early_stopping_params = self.training_params.get('early_stopping', {})
+        self.early_stopping_counter = 0
+        self.best_metric = None
+        self.best_weights = None
+        
 
-    def fit(self, train_loader: DataLoader, val_loader: Optional[DataLoader] = None, epochs: int = 10) -> None:
+    def fit(self, train_loader: DataLoader, val_loader: Optional[DataLoader] = None, epochs: int = 10, checkpoints: Optional[str] = None) -> None:
         for epoch in range(epochs):
+            # Training step
             self.train(train_loader)
+            
+            # Validation step
             if val_loader:
                 val_metrics = self.evaluate(val_loader)
-                self._check_early_stopping(val_metrics)
+                print(f"Epoch {epoch+1}/{epochs} - Validation {self.early_stopping_params.get('monitor', 'val_loss')}: {val_metrics[self.early_stopping_params.get('monitor', 'val_loss')]:.4f}")
+
+                # Early stopping check
+                if self._check_early_stopping(val_metrics):
+                    print(f"Early stopping at epoch {epoch + 1}")
+                    if self.early_stopping_params.get('restore_best_weights', True) and self.best_weights is not None:
+                        self.model.load_state_dict(self.best_weights)
+                    break
+
+            if checkpoints is not None and self.best_weights is not None:
+                torch.save(self.model.state_dict(), f"{checkpoints}.pt")
+                print(f"*** Saved checkpoint {checkpoints} at epoch {epoch+1}")
+
+        print("Training completed.")
     
     def train(self, train_loader: DataLoader) -> None:
         self.model.train()
@@ -94,19 +91,27 @@ class LinearTrainer:
         inputs, targets = batch
         inputs, targets = inputs.to(self.device), targets.to(self.device)
         
-
         # Compute the strategic delta
         x_prime = self.gsc(inputs, targets)
 
         self.optimizer.zero_grad()
         outputs = self.model(x_prime)
+
+        # Compute the primary loss
         loss = self.loss(outputs, targets)
+        
+        # Apply strategic regularization if defined
+        if self.strategic_regularization:
+            reg_loss = self.strategic_regularization(inputs, x_prime, targets, outputs)
+            loss += reg_loss
+        
         loss.backward()
         self.optimizer.step()
 
+
     def evaluate(self, val_loader: DataLoader) -> Dict[str, Any]:
         self.model.eval()
-        all_outputs = []
+        all_outputs = []    
         all_targets = []
         with torch.no_grad():
             for batch in val_loader:
@@ -135,6 +140,60 @@ class LinearTrainer:
             "accuracy": accuracy
         }   
 
-    def _check_early_stopping(self, metrics: Dict[str, Any]) -> None:
-        # Implement early stopping logic based on validation metrics
-        pass
+    def _check_early_stopping(self, metrics: Dict[str, Any]) -> bool:
+        """
+        Checks if early stopping should be triggered based on the specified monitoring metric.
+
+        This method compares the current value of the monitored metric to the best value observed so far. 
+        If the metric has not improved by at least `min_delta` for a number of epochs specified by `patience`, 
+        early stopping is triggered.
+
+        Args:
+            metrics (Dict[str, Any]): A dictionary containing the evaluation metrics for the current epoch. 
+                                    The key should correspond to the metric being monitored (e.g., 'val_loss').
+
+        Returns:
+            bool: True if early stopping should be triggered, False otherwise.
+
+        Early Stopping Parameters:
+            - patience (int): Number of epochs with no improvement after which training will be stopped. 
+                            Default is 10 if not specified.
+            - min_delta (float): Minimum change in the monitored metric to qualify as an improvement. 
+                                Default is 0.001 if not specified.
+            - monitor (str): The metric name to monitor (e.g., 'val_loss', 'val_accuracy'). 
+                            This metric should be a key in the `metrics` dictionary. Default is 'val_loss' if not specified.
+            - restore_best_weights (bool): Whether to restore the model weights from the epoch with the best 
+                                        monitored metric when early stopping is triggered. Default is True.
+
+        Example:
+            early_stopping_params = {
+                'patience': 5,
+                'min_delta': 0.001,
+                'monitor': 'val_loss',
+                'restore_best_weights': True
+            }
+
+        This method will monitor 'val_loss' and trigger early stopping if it does not improve 
+        by at least 0.001 for 5 consecutive epochs.
+        """
+
+        current_metric = metrics[self.early_stopping_params.get('monitor', 'val_loss')]
+
+        if self.best_metric is None:
+            self.best_metric = current_metric
+            self.best_weights = self.model.state_dict()
+            return False
+
+        # Check if there is improvement greater than min_delta
+        if (current_metric - self.best_metric) < -self.early_stopping_params.get('min_delta', 0.001):
+            self.best_metric = current_metric
+            self.best_weights = self.model.state_dict()
+            self.early_stopping_counter = 0
+        else:
+            self.early_stopping_counter += 1
+
+        # Check if early stopping should be triggered
+        if self.early_stopping_counter >= self.early_stopping_params.get('patience', 10):
+            return True
+        
+        return False
