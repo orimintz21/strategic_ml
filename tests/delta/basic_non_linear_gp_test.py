@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict, Tuple
 import torch
 import torch.nn as nn
@@ -17,28 +18,19 @@ from strategic_ml import (
 VERBOSE: bool = True
 
 
-TRAINING_PARAMS_SIMPLE: Dict[str, Any] = {
+TRAINING_PARAMS: Dict[str, Any] = {
     "num_epochs": 500,
     "optimizer_class": optim.SGD,
     "optimizer_params": {
-        "lr": 0.1,
-    },
-    "early_stopping": 30,
-    "temp": 0.3,
-}
-TRAINING_PARAMS: Dict[str, Any] = {
-    "num_epochs": 1500,
-    "optimizer_class": optim.SGD,
-    "optimizer_params": {
-        "lr": 1.0,
+        "lr": 1,
     },
     "scheduler_class": optim.lr_scheduler.StepLR,
     "scheduler_params": {
         "step_size": 100,
         "gamma": 0.5,
     },
-    "early_stopping": 300,
-    "temp": 5,
+    "early_stopping": 60,
+    "temp": 20,
 }
 
 
@@ -69,7 +61,7 @@ def create_strategic() -> DataLoader:
     """This function creates a dataset where the strategic model needs to move
     to correctly classify the points if we have a strategic user
 
-    The best decision boundary is weight = [1, 0] and bias ~= -1.1
+    The best decision boundary is weight = [1, 0] and bias ~= -1.3
     """
     x_p = torch.Tensor([[1, -1], [1, 1]])
     y_p = torch.Tensor([[1], [1]])
@@ -102,24 +94,23 @@ class TestLinearStrategicDelta(unittest.TestCase):
         self.save_dir = "tests/non_linear_data/delta"
         self.adv_loader = create_adv()
         self.strategic_loader = create_strategic()
-        self.perf_strategic_linear = LinearStrategicModel(in_features=2, weight=torch.Tensor([1, 0]), bias=torch.Tensor(-1.1))
-        self.perf_adv_linear = LinearStrategicModel(in_features=2, weight=torch.Tensor([3.5, -3]), bias=torch.Tensor(9))
+        self.perf_strategic_linear = LinearStrategicModel(in_features=2, weight=torch.Tensor([[1, 0]]), bias=torch.Tensor([-1.03]))
         self.non_linear_model = NonLinearModel(in_features=2)
         self.cost = CostNormL2(dim=1)
         self.cost_weight = 1.0
     
     def tearDown(self) -> None:
         super().tearDown()
-        self.perf_strategic_linear.set_weight_and_bias(torch.Tensor([1, 0]), torch.Tensor(-1.1))
-        self.perf_adv_linear.set_weight_and_bias(torch.Tensor([3.5, -3]), torch.Tensor(9))
+        self.perf_strategic_linear.set_weight_and_bias(torch.Tensor([[1, 0]]), torch.Tensor([-1.3]))
         self.non_linear_model = NonLinearModel(in_features=2)
     
     def test_non_linear_strategic_delta(self) -> None:
+        save_dir = os.path.join(self.save_dir, "test_non_linear_strategic_delta")
         strategic_delta = NonLinearStrategicDelta(
             self.cost,
-            self.non_linear_model,
+            self.perf_strategic_linear,
             cost_weight=self.cost_weight,
-            save_dir=self.save_dir,
+            save_dir=save_dir,
             training_params=TRAINING_PARAMS,
         )
         strategic_delta_linear = LinearStrategicDelta(
@@ -135,9 +126,10 @@ class TestLinearStrategicDelta(unittest.TestCase):
             for x, y, x_prime in zip(x_batch, y_batch, x_prime_batch):
                 x = x.unsqueeze(0)
                 y = y.unsqueeze(0)
-                print_if_verbose(f"x: {x}, y: {y}, x_prime: {x_prime}, cost: {self.cost(x, x_prime)}, prediction: {self.non_linear_model(x_prime)}")
+                x_prime = x_prime.unsqueeze(0)
+                print_if_verbose(f"x: {x}, y: {y}, x_prime: {x_prime}, cost: {self.cost(x, x_prime)}, prediction: {self.perf_strategic_linear(x_prime)}")
                 # We assume that the non-linear model is able to find good points
-                self.assertEqual(torch.sign(self.non_linear_model(x_prime)), y)
+                self.assertEqual(torch.sign(self.perf_strategic_linear(x_prime)), y)
                 # We assume that the non-linear delta is close to the linear delta
                 self.assertTrue(torch.allclose(strategic_delta_linear(x), x_prime, atol=0.1))
             
