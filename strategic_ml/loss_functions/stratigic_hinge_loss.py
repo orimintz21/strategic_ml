@@ -1,15 +1,3 @@
-""" file: strategic_hinge_loss.py
-This module implements the Strategic Hinge Loss (s-hinge), a modified version 
-of the standard hinge loss function designed to account for strategic behavior 
-in classification settings. The s-hinge loss anticipates and incorporates the 
-strategic modifications that agents might apply to their features to achieve 
-better classification outcomes.
-
-It maintains a differentiable form, allowing for optimization.
-
-See more: "Generalized Strategic Classification and the Case of Aligned Incentives" Article
-"""
-
 # External imports
 import torch
 from torch import nn
@@ -21,6 +9,23 @@ from strategic_ml.models import LinearStrategicModel
 
 
 class StrategicHingeLoss(_Loss):
+    """ 
+    This module implements the Strategic Hinge Loss (s-hinge), a modified version 
+    of the standard hinge loss function designed to account for strategic behavior 
+    in classification settings. The s-hinge loss anticipates and incorporates the 
+    strategic modifications that agents might apply to their features to achieve 
+    better classification outcomes.
+
+    It maintains a differentiable form, allowing for optimization.
+    THe s-hinge loss assumes that the model is a linear model, the delta 
+    is Linear Delta ,and the cost function is L2 norm.
+
+    The s-hinge loss is defined as:
+    L(x, z, y; w, b) = max(x, 1-y(w^T x + b) - 2 * cost_weight * z * y * (||w||_2 + ||b||_2))
+
+
+    See more: "Generalized Strategic Classification and the Case of Aligned Incentives" Article
+    """
     def __init__(
         self,
         model: LinearStrategicModel,
