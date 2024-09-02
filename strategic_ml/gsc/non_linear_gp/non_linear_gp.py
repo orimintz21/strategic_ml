@@ -18,7 +18,7 @@ class _NonLinearGP(_GSC):
     By using the gradient of the model, we can find the x' that will be close to
     the optimal x'.
     We don't want to run the optimization for epoch of the model, so we optimize
-    the delta and the model interchangingly. Note that the number of samples
+    the delta and the model alternately. Note that the number of samples
     could be large, so we need to write x' to the disk and load it when needed.
 
     Parent Class: _GSC

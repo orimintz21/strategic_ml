@@ -50,6 +50,9 @@ class LinearStrategicDelta(_LinearGP):
         The forward method of the LinearStrategicDelta model. This method calculates the delta
         for the strategic users.
         Note that the delta is calculated by a closed form and not by an optimization algorithm.
+        It uses the find_x_prime method from the parent class with the label 1.
+        Args:
+            x (torch.Tensor): The data.
         """
         # array of ones with the number of rows of x
         ones = torch.ones((x.shape[0], 1))
