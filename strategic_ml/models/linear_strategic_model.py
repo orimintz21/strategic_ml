@@ -31,7 +31,7 @@ class LinearStrategicModel(nn.Module):
             in_features=in_features, out_features=1, bias=True
         )
         if weight is not None and bias is not None:
-            self.set_weights_and_bias(weight, bias)
+            self.set_weight_and_bias(weight, bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
@@ -42,18 +42,18 @@ class LinearStrategicModel(nn.Module):
     def train(self, mode: bool = True) -> "LinearStrategicModel":
         return super().train(mode)
 
-    def get_weights_and_bias(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_weight_and_bias(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        The get_weights_and_bias method returns the weights and bias of the model
+        The get_weight_and_bias method returns the weights and bias of the model
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: the weights and bias of the model
         """
         return self.model.weight.detach(), self.model.bias.detach()
 
-    def set_weights_and_bias(self, weighs: torch.Tensor, bias: torch.Tensor) -> None:
+    def set_weight_and_bias(self, weight: torch.Tensor, bias: torch.Tensor) -> None:
         """
-        The set_weights_and_bias method sets the weights and bias of the model
+        The set_weight_and_bias method sets the weight and bias of the model
 
         Args:
             weighs (torch.Tensor): the new weighs
@@ -61,14 +61,14 @@ class LinearStrategicModel(nn.Module):
         """
         # Check the input
         assert (
-            weighs.shape[1] == self.model.weight.shape[1]
+            weight.shape[1] == self.model.weight.shape[1]
         ), "The number of features should be the same, the input was {}".format(
-            weighs.shape[1]
+            weight.shape[1]
         )
         assert (
-            weighs.shape[0] == 1
+            weight.shape[0] == 1
         ), "This is a binary classification model, the number of outputs should be 1 instead of {}".format(
-            weighs.shape[0]
+            weight.shape[0]
         )
         assert (
             bias.shape[0] == 1
@@ -77,12 +77,12 @@ class LinearStrategicModel(nn.Module):
         )
         # Set the weights and bias
         with torch.no_grad():
-            self.model.weight.copy_(weighs)
+            self.model.weight.copy_(weight)
             self.model.bias.copy_(bias)
 
-    def get_weights_and_bias_ref(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_weight_and_bias_ref(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        The get_weights_and_bias method returns the weights and bias of the model
+        The get_weight_and_bias method returns the weights and bias of the model
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: the weights and bias of the model

@@ -6,6 +6,7 @@ from torch import nn
 from strategic_ml.cost_functions.cost_function import _CostFunction
 from strategic_ml.gsc.linear_gp.linear_gp import _LinearGP
 
+
 class LinearAdvDelta(_LinearGP):
     """
     This is the LinearAdvDelta model. This model assumes that the model
@@ -13,14 +14,15 @@ class LinearAdvDelta(_LinearGP):
     The reason for this assumption is that we can calculate the delta in a
     closed form for linear models and not via GD or any other optimization
     algorithm. Therefore we do not need to train a delta model.
-    In this case, the strategic users tries to get the wrong prediction 
+    In this case, the strategic users tries to get the wrong prediction
     with the minimal cost. The delta is calculated by the following formula:
     x_prime = argmax_{x' in X}(1{model(x') = -y} - r/2 * (cost(x,x')))
-    For more information, see _LinearGP class, the paper  
+    For more information, see _LinearGP class, the paper
     "Generalized Strategic Classification and the Case of Aligned Incentives".
 
     Parent Class: _LinearGP
     """
+
     def __init__(
         self,
         cost: _CostFunction,

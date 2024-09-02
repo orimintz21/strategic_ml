@@ -29,6 +29,7 @@ class _NonLinearGP(_GSC):
         cost: _CostFunction,
         strategic_model: nn.Module,
         cost_weight: float = 1,
+        save_dir: str = ".",
         *args,
         training_params: Dict[str, Any],
     ) -> None:
@@ -38,6 +39,7 @@ class _NonLinearGP(_GSC):
             cost (_CostFunction): The cost function of the delta.
             strategic_model (nn.Module): The strategic model that the delta is calculated on.
             cost_weight (float, optional): The weight of the cost function. Defaults to 1.
+            save_dir (str): Directory to save the computed x_prime values
             training_params (Dict[str, Any]): A dictionary that contains the training parameters.
 
             expected keys:
@@ -52,45 +54,46 @@ class _NonLinearGP(_GSC):
         super().__init__(strategic_model, cost, cost_weight)
         self.training_params: Dict[str, Any] = training_params
 
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.DEBUG)
+        self.save_dir: str = save_dir
 
         self.set_training_params()
         self.current_x_prime: Optional[torch.Tensor] = None
 
     def train(
         self,
-        x_loader: DataLoader,
-        z_loader: DataLoader,
-        save_dir: str,
+        data: DataLoader,
     ) -> None:
         """
         Train the model by finding x_prime for all data in x_loader and z_loader,
         and save the results to disk.
 
-        :param x_loader: DataLoader for x
-        :param z_loader: DataLoader for z
-        :param save_dir: Directory to save the computed x_prime values
+        :param data: DataLoader for x and y
         """
-        os.makedirs(save_dir, exist_ok=True)
+        os.makedirs(self.save_dir, exist_ok=True)
 
-        for batch_idx, (x_batch, z_batch) in enumerate(zip(x_loader, z_loader)):
+        for batch_idx, data_batch in enumerate(data):
+            z_batch: torch.Tensor = self._gen_z_fn(data_batch)
+            x_batch, _ = data_batch
             x_prime: torch.Tensor = self.find_x_prime(x_batch, z_batch)
-            save_path: str = os.path.join(save_dir, f"x_prime_batch_{batch_idx}.pt")
+            save_path: str = os.path.join(
+                self.save_dir, f"x_prime_batch_{batch_idx}.pt"
+            )
             torch.save(x_prime, save_path)
-            logging.info(f"Saved x_prime for batch {batch_idx} to {save_path}")
+            logging.debug(f"Saved x_prime for batch {batch_idx} to {save_path}")
 
-    def load_x_prime(self, batch_idx: int, save_dir: str) -> torch.Tensor:
+    def load_x_prime(self, batch_idx: int) -> torch.Tensor:
         """
         Load precomputed x_prime values from disk for a specific batch.
 
         :param batch_idx: Index of the batch to load
-        :param save_dir: Directory where the x_prime values are saved
         :return: Loaded x_prime tensor
         """
-        save_path: str = os.path.join(save_dir, f"x_prime_batch_{batch_idx}.pt")
+
+        save_path: str = os.path.join(self.save_dir, f"x_prime_batch_{batch_idx}.pt")
         if os.path.exists(save_path):
             x_prime: torch.Tensor = torch.load(save_path)
-            logging.info(f"Loaded x_prime for batch {batch_idx} from {save_path}")
+            logging.debug(f"Loaded x_prime for batch {batch_idx} from {save_path}")
             return x_prime
         else:
             raise FileNotFoundError(f"No saved x_prime found at {save_path}")
@@ -99,8 +102,6 @@ class _NonLinearGP(_GSC):
         self,
         x: torch.Tensor,
         z: torch.Tensor,
-        batch_idx: Optional[int] = None,
-        save_dir: Optional[str] = None,
     ) -> torch.Tensor:
         """
         Modified find_x_prime to load precomputed x_prime if available.
@@ -113,13 +114,6 @@ class _NonLinearGP(_GSC):
         :param save_dir: Directory to load precomputed x_prime (if provided)
         :return: x_prime tensor
         """
-        if batch_idx is not None and save_dir is not None:
-            try:
-                x_prime = self.load_x_prime(batch_idx, save_dir)
-                self.current_x_prime = x_prime
-                return x_prime
-            except FileNotFoundError:
-                logging.info("No precomputed x_prime found. Computing x_prime...")
 
         batch_size: int = x.size(0)
         assert (
@@ -147,7 +141,10 @@ class _NonLinearGP(_GSC):
 
             logits: torch.Tensor = self.strategic_model.forward(x_prime) * z.view(-1, 1)
             output: torch.Tensor = torch.tanh(logits * self.temp).squeeze()
-            movement_cost: torch.Tensor = self.cost(x, x_prime).squeeze()
+            movement_cost: torch.Tensor = self.cost(x, x_prime)
+            if batch_size != 1:
+                movement_cost = movement_cost.squeeze()
+
             loss: torch.Tensor = output - self.cost_weight * movement_cost
             loss = -loss  # Since we're maximizing, we minimize the negative loss
 
@@ -225,3 +222,9 @@ class _NonLinearGP(_GSC):
         """
         self.training_params.update(training_params)
         self.set_training_params()
+
+    def _gen_z_fn(self, data: torch.Tensor) -> torch.Tensor:
+        """Abstract method to generate the z values for the optimization"""
+        raise NotImplementedError(
+            "This method should be implemented in the child class"
+        )
