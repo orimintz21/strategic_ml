@@ -282,7 +282,7 @@ class TestRegularization(unittest.TestCase):
             predictions = self.model(x_prime)
             regularization = self.recourse(x, predictions)
             loss = loss_fn(predictions, y)
-            loss_with_reg = loss * regularization
+            loss_with_reg = loss * 0.1 * regularization
             loss_with_reg.backward()
             optimizer.step()
 
