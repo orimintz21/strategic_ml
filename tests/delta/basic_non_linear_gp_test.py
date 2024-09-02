@@ -1,7 +1,8 @@
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
 import unittest
 
 from strategic_ml import (
@@ -47,27 +48,12 @@ def print_if_verbose(message: str) -> None:
         print(message)
 
 
-def create_strategic_separable_data():
-    # Set the random seed for reproducibility
-    torch.manual_seed(0)
+def create_adv() -> DataLoader:
+    """This function creates a dataset where the a perfect score can be achieved
+    with this decision boundary (for adv user):
+    weight = [3.5, -3] and bias ~= 9
+    """
 
-    # Generate the first half of the points with the first index less than -5
-    x1 = torch.cat((torch.randn(5, 1) - 10, torch.randn(5, 1)), dim=1)
-
-    # Generate the second half of the points with the first index greater than 5
-    x2 = torch.cat((torch.randn(5, 1) + 10, torch.randn(5, 1)), dim=1)
-
-    # Concatenate both parts to create the dataset
-    x = torch.cat((x1, x2), dim=0)
-
-    # Create labels: 1 for the first half, -1 for the second half
-    y1 = torch.ones(5, 1)
-    y2 = -torch.ones(5, 1)
-    y = torch.cat((y1, y2), dim=0)
-    return x, y
-
-
-def create_adv_need_movement():
     x_p = torch.Tensor([[1, -1], [1, 1]])
     y_p = torch.Tensor([[1], [1]])
     x_n = torch.Tensor([[-1, 10]])
@@ -75,15 +61,15 @@ def create_adv_need_movement():
 
     x = torch.cat((x_p, x_n), dim=0)
     y = torch.cat((y_p, y_n), dim=0)
-    return x, y
+    dataset = TensorDataset(x, y)
+    return DataLoader(dataset, batch_size=2, shuffle=False)
 
 
-def create_strategic_need_movement():
+def create_strategic() -> DataLoader:
     """This function creates a dataset where the strategic model needs to move
     to correctly classify the points if we have a strategic user
 
-    Returns:
-        _type_: _description_
+    The best decision boundary is weight = [1, 0] and bias ~= -1.1
     """
     x_p = torch.Tensor([[1, -1], [1, 1]])
     y_p = torch.Tensor([[1], [1]])
@@ -92,7 +78,8 @@ def create_strategic_need_movement():
 
     x = torch.cat((x_p, x_n), dim=0)
     y = torch.cat((y_p, y_n), dim=0)
-    return x, y
+    dataset = TensorDataset(x, y)
+    return DataLoader(dataset, batch_size=2, shuffle=False)
 
 
 class NonLinearModel(nn.Module):
@@ -111,6 +98,50 @@ class NonLinearModel(nn.Module):
 
 
 class TestLinearStrategicDelta(unittest.TestCase):
+    def setUp(self) -> None:
+        self.save_dir = "tests/non_linear_data/delta"
+        self.adv_loader = create_adv()
+        self.strategic_loader = create_strategic()
+        self.perf_strategic_linear = LinearStrategicModel(in_features=2, weight=torch.Tensor([1, 0]), bias=torch.Tensor(-1.1))
+        self.perf_adv_linear = LinearStrategicModel(in_features=2, weight=torch.Tensor([3.5, -3]), bias=torch.Tensor(9))
+        self.non_linear_model = NonLinearModel(in_features=2)
+        self.cost = CostNormL2(dim=1)
+        self.cost_weight = 1.0
+    
+    def tearDown(self) -> None:
+        super().tearDown()
+        self.perf_strategic_linear.set_weight_and_bias(torch.Tensor([1, 0]), torch.Tensor(-1.1))
+        self.perf_adv_linear.set_weight_and_bias(torch.Tensor([3.5, -3]), torch.Tensor(9))
+        self.non_linear_model = NonLinearModel(in_features=2)
+    
+    def test_non_linear_strategic_delta(self) -> None:
+        strategic_delta = NonLinearStrategicDelta(
+            self.cost,
+            self.non_linear_model,
+            cost_weight=self.cost_weight,
+            save_dir=self.save_dir,
+            training_params=TRAINING_PARAMS,
+        )
+        strategic_delta_linear = LinearStrategicDelta(
+            self.cost,
+            self.perf_strategic_linear,
+            cost_weight=self.cost_weight,
+        )
+        
+        strategic_delta.train(self.strategic_loader)
+        for batch_idx, data in enumerate(self.strategic_loader):
+            x_batch, y_batch = data
+            x_prime_batch = strategic_delta.load_x_prime(batch_idx)
+            for x, y, x_prime in zip(x_batch, y_batch, x_prime_batch):
+                x = x.unsqueeze(0)
+                y = y.unsqueeze(0)
+                print_if_verbose(f"x: {x}, y: {y}, x_prime: {x_prime}, cost: {self.cost(x, x_prime)}, prediction: {self.non_linear_model(x_prime)}")
+                # We assume that the non-linear model is able to find good points
+                self.assertEqual(torch.sign(self.non_linear_model(x_prime)), y)
+                # We assume that the non-linear delta is close to the linear delta
+                self.assertTrue(torch.allclose(strategic_delta_linear(x), x_prime, atol=0.1))
+            
+
 
 if __name__ == "__main__":
     unittest.main()
