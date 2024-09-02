@@ -94,16 +94,26 @@ class TestLinearStrategicDelta(unittest.TestCase):
         self.save_dir = "tests/non_linear_data/delta"
         self.adv_loader = create_adv()
         self.strategic_loader = create_strategic()
-        self.perf_strategic_linear = LinearStrategicModel(in_features=2, weight=torch.Tensor([[1, 0]]), bias=torch.Tensor([-1.03]))
+        self.perf_strategic_linear = LinearStrategicModel(
+            in_features=2, weight=torch.Tensor([[1, 0]]), bias=torch.Tensor([-1.03])
+        )
+        self.perf_adv_linear = LinearStrategicModel(
+            in_features=2, weight=torch.Tensor([[3.5, -3]]), bias=torch.Tensor([9])
+        )
         self.non_linear_model = NonLinearModel(in_features=2)
         self.cost = CostNormL2(dim=1)
         self.cost_weight = 1.0
-    
+
     def tearDown(self) -> None:
         super().tearDown()
-        self.perf_strategic_linear.set_weight_and_bias(torch.Tensor([[1, 0]]), torch.Tensor([-1.3]))
+        self.perf_strategic_linear.set_weight_and_bias(
+            torch.Tensor([[1, 0]]), torch.Tensor([-1.03])
+        )
+        self.perf_adv_linear.set_weight_and_bias(
+            torch.Tensor([[3.5, -3]]), torch.Tensor([9])
+        )
         self.non_linear_model = NonLinearModel(in_features=2)
-    
+
     def test_non_linear_strategic_delta(self) -> None:
         save_dir = os.path.join(self.save_dir, "test_non_linear_strategic_delta")
         strategic_delta = NonLinearStrategicDelta(
@@ -118,7 +128,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
             self.perf_strategic_linear,
             cost_weight=self.cost_weight,
         )
-        
+
         strategic_delta.train(self.strategic_loader)
         for batch_idx, data in enumerate(self.strategic_loader):
             x_batch, y_batch = data
@@ -127,12 +137,46 @@ class TestLinearStrategicDelta(unittest.TestCase):
                 x = x.unsqueeze(0)
                 y = y.unsqueeze(0)
                 x_prime = x_prime.unsqueeze(0)
-                print_if_verbose(f"x: {x}, y: {y}, x_prime: {x_prime}, cost: {self.cost(x, x_prime)}, prediction: {self.perf_strategic_linear(x_prime)}")
+                print_if_verbose(
+                    f"Strategic: x: {x}, y: {y}, x_prime: {x_prime}, cost: {self.cost(x, x_prime)}, prediction: {self.perf_strategic_linear(x_prime)}"
+                )
                 # We assume that the non-linear model is able to find good points
                 self.assertEqual(torch.sign(self.perf_strategic_linear(x_prime)), y)
                 # We assume that the non-linear delta is close to the linear delta
-                self.assertTrue(torch.allclose(strategic_delta_linear(x), x_prime, atol=0.1))
-            
+                self.assertTrue(
+                    torch.allclose(strategic_delta_linear(x), x_prime, atol=0.1)
+                )
+
+    def test_non_linear_adv_delta(self) -> None:
+        save_dir = os.path.join(self.save_dir, "test_non_linear_adv_delta")
+        adv_delta = NonLinearAdvDelta(
+            self.cost,
+            self.perf_adv_linear,
+            cost_weight=self.cost_weight,
+            save_dir=save_dir,
+            training_params=TRAINING_PARAMS,
+        )
+        adv_delta_linear = LinearAdvDelta(
+            self.cost,
+            self.perf_adv_linear,
+            cost_weight=self.cost_weight,
+        )
+
+        adv_delta.train(self.adv_loader)
+        for batch_idx, data in enumerate(self.adv_loader):
+            x_batch, y_batch = data
+            x_prime_batch = adv_delta.load_x_prime(batch_idx)
+            for x, y, x_prime in zip(x_batch, y_batch, x_prime_batch):
+                x = x.unsqueeze(0)
+                y = y.unsqueeze(0)
+                x_prime = x_prime.unsqueeze(0)
+                print_if_verbose(
+                    f"Adv: x: {x}, y: {y}, x_prime: {x_prime}, cost: {self.cost(x, x_prime)}, prediction: {self.perf_adv_linear(x_prime)}"
+                )
+                # We assume that the non-linear model is able to find good points
+                self.assertEqual(torch.sign(self.perf_adv_linear(x_prime)), y)
+                # We assume that the non-linear delta is close to the linear delta
+                self.assertTrue(torch.allclose(adv_delta_linear(x, y), x_prime, atol=0.1))
 
 
 if __name__ == "__main__":
