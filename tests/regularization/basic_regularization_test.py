@@ -98,7 +98,7 @@ class TestRegularization(unittest.TestCase):
 
     def tearDown(self) -> None:
         super().tearDown()
-        self.model.set_weights_and_bias(torch.Tensor([[2, 0]]), torch.Tensor([-2.5]))
+        self.model.set_weight_and_bias(torch.Tensor([[2, 0]]), torch.Tensor([-2.5]))
 
     def test_social_burden_all_true(self):
         # Create the data
@@ -173,7 +173,7 @@ class TestRegularization(unittest.TestCase):
 
         x_prime_final = self.delta(x)
         predictions_final = self.model(x_prime_final)
-        print_if_verbose(self.model.get_weights_and_bias())
+        print_if_verbose(self.model.get_weight_and_bias())
         print_if_verbose(f"X: {x}")
         print_if_verbose(f"Y: {y}")
         print_if_verbose(f"Prediction: {predictions_final}")
@@ -288,7 +288,7 @@ class TestRegularization(unittest.TestCase):
 
         x_prime_final = self.delta(x)
         predictions_final = self.model(x_prime_final)
-        print_if_verbose(self.model.get_weights_and_bias())
+        print_if_verbose(self.model.get_weight_and_bias())
         print_if_verbose(f"X: {x}")
         print_if_verbose(f"Y: {y}")
         print_if_verbose(f"Prediction: {predictions_final}")

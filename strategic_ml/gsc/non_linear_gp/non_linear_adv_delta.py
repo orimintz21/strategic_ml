@@ -1,6 +1,7 @@
 # External imports
 import torch
 from torch import nn
+from torch.utils.data import DataLoader, Dataset
 from typing import Dict, Any
 
 # Internal imports
@@ -10,11 +11,11 @@ from strategic_ml.gsc.non_linear_gp import _NonLinearGP
 
 class NonLinearAdvDelta(_NonLinearGP):
     """
-    This is the NonLinearAdvDelta model. This model does not have any 
+    This is the NonLinearAdvDelta model. This model does not have any
     assumptions on the model or the cost function. The model uses the non-linear
     gp model to calculate the delta for the adversarial users.
     The delta is calculated by the following formula:
-    x_prime = argmax_{x' in X}(1{model(x') = -y} - r/2 * (cost(x,x'))) 
+    x_prime = argmax_{x' in X}(1{model(x') = -y} - r/2 * (cost(x,x')))
     (i.e. z = -y)
     By using the gradient of the model, we can find the x' that will be close to
     the optimal x'.
@@ -31,6 +32,7 @@ class NonLinearAdvDelta(_NonLinearGP):
         cost: _CostFunction,
         strategic_model: nn.Module,
         cost_weight: float = 1.0,
+        save_dir: str = ".",
         *args,
         training_params: Dict[str, Any],
     ) -> None:
@@ -40,6 +42,7 @@ class NonLinearAdvDelta(_NonLinearGP):
             cost (_CostFunction): The cost function of the delta.
             strategic_model (nn.Module): The strategic model that the delta is calculated on.
             cost_weight (float, optional): The weight of the cost function. Defaults to 1.
+            save_dir (str): Directory to save the computed x_prime values
             training_params (Dict[str, Any]): A dictionary that contains the training parameters.
 
             expected keys:
@@ -52,7 +55,11 @@ class NonLinearAdvDelta(_NonLinearGP):
                 - temp: The temperature for the tanh function for the model. (default: 1.0)
         """
         super(NonLinearAdvDelta, self).__init__(
-            cost, strategic_model, cost_weight, training_params=training_params
+            cost,
+            strategic_model,
+            cost_weight,
+            save_dir=save_dir,
+            training_params=training_params,
         )
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
@@ -70,3 +77,7 @@ class NonLinearAdvDelta(_NonLinearGP):
             torch.Tensor: x_prime, the delta.
         """
         return super().find_x_prime(x, -y)
+
+    def _gen_z_fn(self, data: torch.Tensor) -> torch.Tensor:
+        _, y = data
+        return -y

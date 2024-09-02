@@ -85,7 +85,7 @@ class _LinearGP(_GSC):
         ), "The model should be a LinearStrategicModel, but got {}".format(
             type(self.strategic_model)
         )
-        weights, bias = self.strategic_model.get_weights_and_bias()
+        weights, bias = self.strategic_model.get_weight_and_bias()
         x_prime: Optional[torch.Tensor] = None
 
         for x_sample, z_sample in zip(x, z):
@@ -149,7 +149,7 @@ class _LinearGP(_GSC):
         ), "The model should be a LinearStrategicModel, but got {}".format(
             type(self.strategic_model)
         )
-        weights, bias = self.strategic_model.get_weights_and_bias()
+        weights, bias = self.strategic_model.get_weight_and_bias()
         costs: Optional[torch.Tensor] = None
 
         for x_sample, z_sample in zip(x, z):
