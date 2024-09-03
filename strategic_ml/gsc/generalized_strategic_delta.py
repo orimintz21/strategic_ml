@@ -70,7 +70,7 @@ class _GSC:
         raise NotImplementedError()
 
     def find_x_prime(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
-        """This method will find the x' 
+        """This method will find the x'
         It is an interface method that should be implemented in the subclass.
 
         Args:

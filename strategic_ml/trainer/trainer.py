@@ -5,7 +5,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import pytorch_lightning as pl
-from typing import Optional, TYPE_CHECKING, Dict, Any, Union
+from typing import Optional, TYPE_CHECKING, Dict, Any, Tuple
 import logging
 
 # Internal imports
@@ -25,7 +25,6 @@ class StrategicModelSuit(pl.LightningModule):
         train_loader: DataLoader,
         validation_loader: Optional[DataLoader] = None,
         test_loader: DataLoader,
-        test_model: Optional[nn.Module] = None,
         test_delta: Optional[_GSC] = None,
         logging_level: int = logging.INFO,
         training_params: Dict[str, Any],
@@ -39,7 +38,6 @@ class StrategicModelSuit(pl.LightningModule):
         self.train_loader = train_loader
         self.validation_loader = validation_loader
         self.test_loader = test_loader
-        self.test_model = test_model
         self.test_delta = test_delta
         self.training_params = training_params
         logging.basicConfig(level=logging_level)
@@ -62,42 +60,89 @@ class StrategicModelSuit(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        tensorboard_logs: Dict[str, Any] = {}
+        loss, _ = self._calculate_loss_and_predictions(
+            x, y, batch_idx, train_delta_if_possible=True, need_prediction=False
+        )
+
+        self.log("train_loss", loss, on_step=True, on_epoch=True)
+
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+
+        val_loss, predictions = self._calculate_loss_and_predictions(
+            x, y, batch_idx, train_delta_if_possible=True, need_prediction=True
+        )
+        assert predictions is not None
+
+        self.log("train_loss", val_loss, on_step=True, on_epoch=True)
+        zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
+        self.log("zero_one_loss", zero_one_loss, on_step=True, on_epoch=True)
+
+        return {"val_loss": val_loss, "zero_one_loss": zero_one_loss}
+
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        if self.test_delta is not None:
+            # In the dark
+            x_prime = self.test_delta.forward(x, y)
+            predictions = self.forward(x_prime)
+            test_loss = self.loss_fn(predictions, y)
+
+        else:
+            test_loss, predictions = self._calculate_loss_and_predictions(
+                x, y, batch_idx, train_delta_if_possible=False, need_prediction=True
+            )
+            assert predictions is not None
+
+        self.log("train_loss", test_loss, on_step=True, on_epoch=True)
+        zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
+        self.log("zero_one_loss", zero_one_loss, on_step=True, on_epoch=True)
+
+        return {"test_loss": test_loss, "zero_one_loss": zero_one_loss}
+
+    def _calculate_loss_and_predictions(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        batch_idx: int,
+        train_delta_if_possible: bool,
+        need_prediction: bool,
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         if isinstance(self.loss_fn, StrategicHingeLoss):
             assert (
                 self.regularization is None
             ), "Regularization is not supported for StrategicHingeLoss"
             loss: torch.Tensor = self.loss_fn.forward(x=x, y=y)
             delta_logs: Dict[str, Any] = {"delta_used": False}
+            if need_prediction:
+                # We know that the model is a linear model (this is an assumption for the StrategicHingeLoss)
+                x_prime = self.delta.forward(x, y)
+                # Used for the zero one loss
+                predictions = self.forward(x)
+            else:
+                predictions = None
 
         else:
             use_training_delta: bool = (isinstance(self.delta, _NonLinearGP)) and (
                 self.train_delta_every is not None
             )
 
-            if use_training_delta:
+            if use_training_delta and train_delta_if_possible:
                 assert isinstance(self.delta, _NonLinearGP)
                 assert self.train_delta_every is not None
                 if self.current_epoch % self.train_delta_every == 0:
-                    self.delta.train(
-                        self.train_dataloader()
-                    )
-                else:
-                    training_logs = "Delta not trained"
+                    self.delta.train(self.train_dataloader())
                 x_prime: torch.Tensor = self.delta.load_x_prime(batch_idx=batch_idx)
-                delta_logs: Dict[str, Any] = {
-                    "delta_loaded": True,
-                }
+
             else:
-                x_prime  = self.delta.forward(x)
+                x_prime = self.delta.forward(x, y)
 
             predictions = self.forward(x_prime)
             loss = self.loss_fn(predictions, y)
 
-        tensorboard_logs["train_loss"] = loss
-        self.log("train_loss", loss, on_step=True, on_epoch=True)
-
-        output_dict = {"loss": loss, "log": tensorboard_logs}
+        return loss, predictions
 
     def configure_optimizers(self):
         optimizer_class = self.training_params.get("optimizer_class", optim.SGD)
@@ -112,17 +157,14 @@ class StrategicModelSuit(pl.LightningModule):
 
         return optimizer
 
-    def train_dataloader(self) -> Any:
-        return self.train_loader
 
-    def val_dataloader(self) -> Any:
-        return self.validation_loader
+def train_dataloader(self) -> DataLoader:
+    return self.train_loader
 
-    def test_dataloader(self) -> Any:
-        return self.test_loader
 
-    def on_train_start(self):
-        logging.info("Training is starting.")
+def val_dataloader(self) -> Optional[DataLoader]:
+    return self.validation_loader
 
-    def on_epoch_start(self):
-        logging.info("Starting a new epoch.")
+
+def test_dataloader(self) -> DataLoader:
+    return self.test_loader
