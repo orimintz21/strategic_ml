@@ -3,7 +3,7 @@ import os
 import torch
 from torch import nn
 import torch.optim as optim
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any
 import logging
 from torch.utils.data import DataLoader
 
@@ -63,30 +63,24 @@ class _NonLinearGP(_GSC):
     def train(
         self,
         data: DataLoader,
-    ) -> Dict[str, Any]:
+    ) -> None:
         """
         Train the model by finding x_prime for all data in x_loader and z_loader,
         and save the results to disk.
 
         :param data: DataLoader for x and y
-
-        :return: Logs from the training
         """
         os.makedirs(self.save_dir, exist_ok=True)
-        logs: Dict[str, Any] = {}
 
         for batch_idx, data_batch in enumerate(data):
             z_batch: torch.Tensor = self._gen_z_fn(data_batch)
             x_batch, _ = data_batch
-            x_prime, logs_batch = self.find_x_prime(x_batch, z_batch)
+            x_prime: torch.Tensor = self.find_x_prime(x_batch, z_batch)
             save_path: str = os.path.join(
                 self.save_dir, f"x_prime_batch_{batch_idx}.pt"
             )
             torch.save(x_prime, save_path)
-            logs[f"batch_{batch_idx}"] = logs_batch
             logging.debug(f"Saved x_prime for batch {batch_idx} to {save_path}")
-
-        return logs
 
     def load_x_prime(self, batch_idx: int) -> torch.Tensor:
         """
@@ -108,7 +102,7 @@ class _NonLinearGP(_GSC):
         self,
         x: torch.Tensor,
         z: torch.Tensor,
-    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
+    ) -> torch.Tensor:
         """
         Modified find_x_prime to load precomputed x_prime if available.
         If precomputed x_prime is not available, compute x_prime using the GP formula
@@ -118,11 +112,10 @@ class _NonLinearGP(_GSC):
         :param z: Metadata tensor
         :param batch_idx: Index of the batch to load precomputed x_prime (if provided)
         :param save_dir: Directory to load precomputed x_prime (if provided)
-        :return: x_prime tensor, logs
+        :return: x_prime tensor
         """
 
         batch_size: int = x.size(0)
-        logs: Dict[str, Any] = {}
         assert (
             z.size(0) == batch_size
         ), f"z should have the same size as x, but it is {z.size(0)} and {batch_size}"
@@ -154,7 +147,7 @@ class _NonLinearGP(_GSC):
 
             loss: torch.Tensor = output - self.cost_weight * movement_cost
             loss = -loss  # Since we're maximizing, we minimize the negative loss
-            logs[f"epoch_{epoch}_loss"] = loss.mean().item()
+
             with torch.no_grad():
                 improved: torch.Tensor = loss < best_loss
                 best_loss[improved] = loss[improved]
@@ -173,15 +166,12 @@ class _NonLinearGP(_GSC):
                 self.early_stopping != -1
                 and patience_counter.max().item() >= self.early_stopping
             ):
-                logs["early_stopping"] = epoch
                 break
 
         x_prime = best_x_prime
         self.current_x_prime = x_prime
 
-        logs["best_loss"] = best_loss.mean().item()
-        logs["batch_cost"] = self.cost(x, x_prime).mean().item()
-        return x_prime, logs
+        return x_prime
 
     def _set_optimizer_params(self) -> None:
         """Set the optimizer class and parameters for the optimization."""

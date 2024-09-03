@@ -5,7 +5,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import pytorch_lightning as pl
-from typing import Optional, TYPE_CHECKING, Dict, Any
+from typing import Optional, TYPE_CHECKING, Dict, Any, Union
 import logging
 
 # Internal imports
@@ -14,7 +14,7 @@ from strategic_ml.regularization import _StrategicRegularization
 from strategic_ml.loss_functions import StrategicHingeLoss
 
 
-class StrategicModelSuit(pl.LightningDataModule):
+class StrategicModelSuit(pl.LightningModule):
     def __init__(
         self,
         *args,
@@ -28,6 +28,7 @@ class StrategicModelSuit(pl.LightningDataModule):
         test_model: Optional[nn.Module] = None,
         test_delta: Optional[_GSC] = None,
         logging_level: int = logging.INFO,
+        training_params: Dict[str, Any],
         **kwargs,
     ) -> None:
         super(StrategicModelSuit, self).__init__()
@@ -40,6 +41,7 @@ class StrategicModelSuit(pl.LightningDataModule):
         self.test_loader = test_loader
         self.test_model = test_model
         self.test_delta = test_delta
+        self.training_params = training_params
         logging.basicConfig(level=logging_level)
 
         if isinstance(self.model, _NonLinearGP):
@@ -66,18 +68,27 @@ class StrategicModelSuit(pl.LightningDataModule):
                 self.regularization is None
             ), "Regularization is not supported for StrategicHingeLoss"
             loss: torch.Tensor = self.loss_fn.forward(x=x, y=y)
+            delta_logs: Dict[str, Any] = {"delta_used": False}
+
         else:
             use_training_delta: bool = (isinstance(self.delta, _NonLinearGP)) and (
                 self.train_delta_every is not None
             )
 
-            if use_training_delta and (batch_idx % self.train_delta_every == 0):
-                assert isinstance(self.delta, _NonLinearGP)
-                self.delta.train(self.train_loader)
-
             if use_training_delta:
                 assert isinstance(self.delta, _NonLinearGP)
+                assert self.train_delta_every is not None
+                if self.current_epoch % self.train_delta_every == 0:
+                    training_logs: Union[Dict[str, Any], str] = self.delta.train(
+                        self.train_dataloader()
+                    )
+                else:
+                    training_logs = "Delta not trained"
                 x_prime: torch.Tensor = self.delta.load_x_prime(batch_idx=batch_idx)
+                delta_logs: Dict[str, Any] = {
+                    "delta_loaded": True,
+                    "training_logs": training_logs,
+                }
             else:
                 x_prime, delta_logs = self.delta.forward(x)
 
@@ -85,5 +96,35 @@ class StrategicModelSuit(pl.LightningDataModule):
             loss = self.loss_fn(predictions, y)
 
         tensorboard_logs["train_loss"] = loss
+        tensorboard_logs.update(delta_logs)
+        self.log("train_loss", loss, on_step=True, on_epoch=True)
 
         output_dict = {"loss": loss, "log": tensorboard_logs}
+
+    def configure_optimizers(self):
+        optimizer_class = self.training_params.get("optimizer_class", optim.SGD)
+        optimizer_params = self.training_params.get("optimizer_params", {"lr": 0.01})
+        optimizer = optimizer_class(self.model.parameters(), **optimizer_params)
+
+        if "scheduler_class" in self.training_params:
+            scheduler_class = self.training_params["scheduler_class"]
+            scheduler_params = self.training_params.get("scheduler_params", {})
+            scheduler = scheduler_class(optimizer, **scheduler_params)
+            return [optimizer], [scheduler]
+
+        return optimizer
+
+    def train_dataloader(self) -> Any:
+        return self.train_loader
+
+    def val_dataloader(self) -> Any:
+        return self.validation_loader
+
+    def test_dataloader(self) -> Any:
+        return self.test_loader
+
+    def on_train_start(self):
+        logging.info("Training is starting.")
+
+    def on_epoch_start(self):
+        logging.info("Starting a new epoch.")
