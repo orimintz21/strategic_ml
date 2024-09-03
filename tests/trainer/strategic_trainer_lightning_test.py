@@ -2,11 +2,11 @@ import torch
 import lightning.pytorch as pl
 from torch.utils.data import DataLoader, TensorDataset
 import unittest
-from strategic_ml.trainer.strategic_trainer import create_trainer
-from strategic_ml.trainer.strategic_classification_module import (
+from strategic_ml.model_suit.strategic_trainer import create_trainer
+from strategic_ml.model_suit.strategic_classification_module import (
     StrategicClassificationModule,
 )
-from strategic_ml.trainer.strategic_callbacks import StrategicAdjustmentCallback
+from strategic_ml.model_suit.strategic_callbacks import StrategicAdjustmentCallback
 from strategic_ml.models.linear_strategic_model import LinearStrategicModel
 
 

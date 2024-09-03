@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from strategic_ml.cost_functions.norms import CostNormL2
 from strategic_ml.gsc.linear_strategic_delta import LinearStrategicDelta
-from strategic_ml.trainer.linear_trainer import LinearTrainer
+from strategic_ml.model_suit.linear_trainer import LinearTrainer
 from strategic_ml.models.linear_strategic_model import LinearStrategicModel
 
 
