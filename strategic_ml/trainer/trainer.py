@@ -79,7 +79,7 @@ class StrategicModelSuit(pl.LightningModule):
                 assert isinstance(self.delta, _NonLinearGP)
                 assert self.train_delta_every is not None
                 if self.current_epoch % self.train_delta_every == 0:
-                    training_logs: Union[Dict[str, Any], str] = self.delta.train(
+                    self.delta.train(
                         self.train_dataloader()
                     )
                 else:
@@ -87,16 +87,14 @@ class StrategicModelSuit(pl.LightningModule):
                 x_prime: torch.Tensor = self.delta.load_x_prime(batch_idx=batch_idx)
                 delta_logs: Dict[str, Any] = {
                     "delta_loaded": True,
-                    "training_logs": training_logs,
                 }
             else:
-                x_prime, delta_logs = self.delta.forward(x)
+                x_prime  = self.delta.forward(x)
 
             predictions = self.forward(x_prime)
             loss = self.loss_fn(predictions, y)
 
         tensorboard_logs["train_loss"] = loss
-        tensorboard_logs.update(delta_logs)
         self.log("train_loss", loss, on_step=True, on_epoch=True)
 
         output_dict = {"loss": loss, "log": tensorboard_logs}

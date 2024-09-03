@@ -1,7 +1,7 @@
 # External imports
 import torch
 from torch import nn
-from typing import Tuple, Dict, Any
+from typing import Optional
 
 # Internal imports
 from strategic_ml.cost_functions.cost_function import _CostFunction
@@ -45,9 +45,7 @@ class LinearStrategicDelta(_LinearGP):
             cost, strategic_model, cost_weight, epsilon
         )
 
-    def forward(
-        self, x: torch.Tensor, *args, **kwargs
-    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
+    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """
         The forward method of the LinearStrategicDelta model. This method calculates the delta
         for the strategic users.
@@ -55,8 +53,6 @@ class LinearStrategicDelta(_LinearGP):
         It uses the find_x_prime method from the parent class with the label 1.
         Args:
             x (torch.Tensor): The data.
-        Returns:
-            Tuple[torch.Tensor, Dict[str, Any]]: The delta and the logs.
         """
         # array of ones with the number of rows of x
         ones = torch.ones((x.shape[0], 1))

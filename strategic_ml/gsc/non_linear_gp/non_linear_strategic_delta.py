@@ -1,7 +1,8 @@
 # External imports
 import torch
 from torch import nn
-from typing import Dict, Any, Tuple
+from torch.utils.data import DataLoader, Dataset
+from typing import Dict, Any
 
 # Internal imports
 from strategic_ml.cost_functions.cost_function import _CostFunction
@@ -63,9 +64,7 @@ class NonLinearStrategicDelta(_NonLinearGP):
             training_params=training_params,
         )
 
-    def forward(
-        self, x: torch.Tensor, *args, **kwargs
-    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
+    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """This function calculates the delta for the strategic users.
         It uses the find_x_prime method from the parent class with the label 1.
         If precomputed x_prime is not available, it will calculate it.

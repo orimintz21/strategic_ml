@@ -1,7 +1,7 @@
 # External imports
 import torch
 from torch import nn
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional
 
 # Internal imports
 from strategic_ml.gsc.generalized_strategic_delta import _GSC
@@ -63,11 +63,7 @@ class _LinearGP(_GSC):
         self._assert_cost()
         self.epsilon: float = epsilon
 
-    def find_x_prime(
-        self,
-        x: torch.Tensor,
-        z: torch.Tensor,
-    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
+    def find_x_prime(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
         """This function calculates x' based on the GP formula.
 
         Args:
@@ -82,7 +78,6 @@ class _LinearGP(_GSC):
             torch.Tensor: x' the GP.
         """
         self._validate_input(x, z)
-        logs: Dict[str, Any] = {}
 
         # Get the weights and bias of the model
         assert isinstance(
@@ -118,8 +113,7 @@ class _LinearGP(_GSC):
                 x_prime = torch.cat((x_prime, what_to_add))
 
         assert x_prime is not None, "The x_prime is None after the loop"
-        logs["batch_cost"] = self.cost(x, x_prime)
-        return x_prime, logs
+        return x_prime
 
     def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """This function returns the meta data for the GP.
