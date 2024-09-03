@@ -22,23 +22,27 @@ class TestLinearTrainer(unittest.TestCase):
 
         # Instantiate the real model and other components for the trainer
         model = LinearStrategicModel(in_features=2)
-        loss = torch.nn.BCEWithLogitsLoss() # Binary Cross-Entropy Loss for binary classification
+        loss = (
+            torch.nn.BCEWithLogitsLoss()
+        )  # Binary Cross-Entropy Loss for binary classification
         cost = CostNormL2()  # Use a real cost function
-        gsc = LinearStrategicDelta(cost=cost, strategic_model=model)  # Use the LinearStrategicDelta instance
+        gsc = LinearStrategicDelta(
+            cost=cost, strategic_model=model
+        )  # Use the LinearStrategicDelta instance
 
         # Training parameters
         training_params = {
-            'optimizer': torch.optim.SGD,
-            'learning_rate': 0.01,
-            'optimizer_params': {},
-            'scheduler': None,
-            'scheduler_params': {},
-            'early_stopping': {
-                'patience': 5,
-                'min_delta': 0.001,
-                'monitor': 'val_loss',
-                'restore_best_weights': True
-            }
+            "optimizer": torch.optim.SGD,
+            "learning_rate": 0.01,
+            "optimizer_params": {},
+            "scheduler": None,
+            "scheduler_params": {},
+            "early_stopping": {
+                "patience": 5,
+                "min_delta": 0.001,
+                "monitor": "val_loss",
+                "restore_best_weights": True,
+            },
         }
 
         # Instantiate the trainer with the real model and strategic delta
@@ -48,8 +52,8 @@ class TestLinearTrainer(unittest.TestCase):
             loss=loss,
             cost=cost,
             gsc=gsc,
-            device='cpu',
-            training_params=training_params
+            device="cpu",
+            training_params=training_params,
         )
 
     def test_train_batch(self):
@@ -68,5 +72,6 @@ class TestLinearTrainer(unittest.TestCase):
         metrics = self.trainer.evaluate(self.val_loader)
         self.assertIsInstance(metrics, dict)  # The result should be a dictionary
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

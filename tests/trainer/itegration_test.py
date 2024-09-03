@@ -30,13 +30,15 @@ def create_strategic_need_movement():
 
 
 class TestStrategicClassificationModuleIntegration(unittest.TestCase):
-    
+
     def setUp(self):
         self.x, self.y = create_strategic_need_movement()
 
         # Wrap the dataset in a DataLoader
         self.dataset = TensorDataset(self.x, self.y)
-        self.dataloader = DataLoader(self.dataset, batch_size=len(self.dataset), shuffle=False)
+        self.dataloader = DataLoader(
+            self.dataset, batch_size=len(self.dataset), shuffle=False
+        )
 
         # Instantiate the strategic model, cost function, delta, and loss function
         self.strategic_model = LinearStrategicModel(in_features=2)
@@ -50,24 +52,24 @@ class TestStrategicClassificationModuleIntegration(unittest.TestCase):
             model=self.strategic_model,
             delta=self.strategic_delta,
         )
-        
+
         # Define the training parameters
         self.training_params = {
-            'lr': 4.0,
-            'max_epochs': 1501,
-            'devices': 1,
-            'precision': 32,
-            'accelerator': 'cpu',
-            'logger': False,  # Disable logging for testing
+            "lr": 4.0,
+            "max_epochs": 1501,
+            "devices": 1,
+            "precision": 32,
+            "accelerator": "cpu",
+            "logger": False,  # Disable logging for testing
         }
-        
+
         # Create the trainer using the StrategicClassificationModule
         self.trainer, self.model = create_trainer(
             model=self.strategic_model,
             strategic_regularization=None,
             loss_fn=self.loss_fn,
             gsc=self.strategic_delta,
-            training_params=self.training_params
+            training_params=self.training_params,
         )
 
     def test_strategic_separable_needs_movement_hinge_loss(self) -> None:

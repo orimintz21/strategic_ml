@@ -3,9 +3,12 @@ import lightning.pytorch as pl
 from torch.utils.data import DataLoader, TensorDataset
 import unittest
 from strategic_ml.trainer.strategic_trainer import create_trainer
-from strategic_ml.trainer.strategic_classification_module import StrategicClassificationModule
+from strategic_ml.trainer.strategic_classification_module import (
+    StrategicClassificationModule,
+)
 from strategic_ml.trainer.strategic_callbacks import StrategicAdjustmentCallback
 from strategic_ml.models.linear_strategic_model import LinearStrategicModel
+
 
 # Define a simple linear model
 class SimpleModel(torch.nn.Module):
@@ -16,31 +19,36 @@ class SimpleModel(torch.nn.Module):
     def forward(self, x):
         return self.linear(x)
 
+
 # Dummy strategic regularization (for testing)
 class DummyStrategicRegularization(torch.nn.Module):
     def forward(self, inputs, x_prime, targets, outputs):
         return torch.tensor(0.0)  # No regularization
+
 
 # Dummy GSC (Generalized Strategic Delta)
 class DummyGSC(torch.nn.Module):
     def forward(self, inputs, targets):
         return inputs  # No modification
 
+
 class TestStrategicTrainer(unittest.TestCase):
     def setUp(self):
         # Create a small dataset with 4 points
-        data_points = torch.tensor([[1, 1], [1, -1], [-1, -1], [-1, 1]], dtype=torch.float32)
+        data_points = torch.tensor(
+            [[1, 1], [1, -1], [-1, -1], [-1, 1]], dtype=torch.float32
+        )
         labels = torch.tensor([1, -1, 1, -1], dtype=torch.float32).unsqueeze(1)
         self.dataset = TensorDataset(data_points, labels)
         self.dataloader = DataLoader(self.dataset, batch_size=2, shuffle=True)
 
         # Define the training parameters for CPU
         self.training_params = {
-            'lr': 0.01,
-            'max_epochs': 10,
-            'devices': 1,  # Set to 1 to ensure CPU usage
-            'precision': 32,
-            'accelerator': 'cpu',
+            "lr": 0.01,
+            "max_epochs": 10,
+            "devices": 1,  # Set to 1 to ensure CPU usage
+            "precision": 32,
+            "accelerator": "cpu",
         }
 
         # Instantiate the model, strategic regularization, loss function, and GSC
@@ -57,7 +65,7 @@ class TestStrategicTrainer(unittest.TestCase):
             loss_fn=self.loss_fn,
             gsc=self.gsc,
             training_params=self.training_params,
-            callbacks=[StrategicAdjustmentCallback()]  # Example callback
+            callbacks=[StrategicAdjustmentCallback()],  # Example callback
         )
 
     def test_trainer_initialization(self):
@@ -71,6 +79,7 @@ class TestStrategicTrainer(unittest.TestCase):
             print("Trainer created and ran successfully on the small dataset.")
         except Exception as e:
             self.fail(f"Trainer encountered an error: {e}")
+
 
 if __name__ == "__main__":
     unittest.main()

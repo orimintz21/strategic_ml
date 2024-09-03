@@ -12,7 +12,7 @@ x to x' based on the GSC's type.
 # External imports
 import torch
 from torch import nn
-from typing import Any, Optional
+from typing import Any, Optional, Dict, Tuple
 
 # Internal imports
 from strategic_ml.cost_functions import _CostFunction
@@ -53,7 +53,9 @@ class _GSC:
         if delta_model is not None:
             self.delta_model: nn.Module = delta_model
 
-    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, *args, **kwargs
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
         """The forward method of the GSC class.
 
         Args:
@@ -66,10 +68,33 @@ class _GSC:
 
         Returns:
             torch.Tensor: x' - the modified data
+            dict: additional information
         """
         raise NotImplementedError()
 
-    def __call__(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def find_x_prime(
+        self,
+        x: torch.Tensor,
+        z: torch.Tensor,
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
+        """The find_x_prime method of the GSC class.
+
+        Args:
+            x (torch.Tensor): The data
+            z (torch.Tensor): Metadata
+
+        Raises:
+            NotImplementedError: This is an interface, you should implement this method in your subclass
+
+        Returns:
+            torch.Tensor: x_prime
+            Dict[str, Any]: additional information
+        """
+        raise NotImplementedError()
+
+    def __call__(
+        self, x: torch.Tensor, *args, **kwargs
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
         """The call method of the GSC class.
 
         Args:
@@ -79,19 +104,9 @@ class _GSC:
 
         Returns:
             torch.Tensor: x' - the modified data
+            Dict[str, Any]: additional information
         """
         return self.forward(x, *args, **kwargs)
-
-    def train_delta_model(self, x: torch.Tensor, *args, **kwargs) -> None:
-        """This is the method that will train the delta model. It is
-        part of the training of the strategic model. Some models will
-
-        Args:
-            x (torch.Tensor): The data
-            *args: additional arguments
-            **kwargs: additional keyword arguments
-        """
-        raise NotImplementedError()
 
     def get_strategic_model(self) -> nn.Module:
         """Getter for the strategic model.

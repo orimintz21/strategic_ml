@@ -104,7 +104,7 @@ class TestRegularization(unittest.TestCase):
         # Create the data
         x, y = self.create_data_all_true()
 
-        x_prime = self.delta(x)
+        x_prime, _ = self.delta(x)
         predictions = self.model(x_prime)
         # We expect that we will get the max cost of the true samples, which is 0.255 (due to epsilon)
         social_burden_value = self.social_burden(x, y)
@@ -114,7 +114,7 @@ class TestRegularization(unittest.TestCase):
     def test_social_burden_false_label(self):
         # Create the data
         x, y = self.create_data_false_label()
-        x_prime = self.delta(x)
+        x_prime, _ = self.delta(x)
         predictions = self.model(x_prime)
         # We expect that the false samples will not effect the social burden
         social_burden_value = self.social_burden(x, y)
@@ -125,7 +125,7 @@ class TestRegularization(unittest.TestCase):
         # Create the data
         x, y = self.create_data_false_prediction()
 
-        x_prime = self.delta(x)
+        x_prime, _ = self.delta(x)
         predictions = self.model(x_prime)
         """
         We have 5 examples in the data,
@@ -163,7 +163,7 @@ class TestRegularization(unittest.TestCase):
         optimizer = torch.optim.SGD(self.model.parameters(), lr=0.1)
         for _ in range(100):
             optimizer.zero_grad()
-            x_prime = self.delta(x)
+            x_prime, _ = self.delta(x)
             predictions = self.model(x_prime)
             regularization = self.social_burden(x, y)
             loss = loss_fn(predictions, y)
@@ -171,7 +171,7 @@ class TestRegularization(unittest.TestCase):
             loss_with_reg.backward()
             optimizer.step()
 
-        x_prime_final = self.delta(x)
+        x_prime_final, _ = self.delta(x)
         predictions_final = self.model(x_prime_final)
         print_if_verbose(self.model.get_weight_and_bias())
         print_if_verbose(f"X: {x}")
@@ -201,7 +201,7 @@ class TestRegularization(unittest.TestCase):
     def test_recourse_false_label(self):
         # Create the data
         x, y = self.create_data_false_label()
-        x_prime = self.delta(x)
+        x_prime, _ = self.delta(x)
         predictions = self.model(x_prime)
         recourse_value = self.recourse(x, predictions)
 
@@ -218,7 +218,7 @@ class TestRegularization(unittest.TestCase):
         # Create the data
         x, y = self.create_data_false_prediction()
 
-        x_prime = self.delta(x)
+        x_prime, _ = self.delta(x)
         predictions = self.model(x_prime)
         # We expect that the example with the false label will not effect the social burden
         recourse_value = self.recourse(x, predictions)
@@ -236,7 +236,7 @@ class TestRegularization(unittest.TestCase):
         # Create the data
         x, y = self.create_data_false_label_false_prediction()
 
-        x_prime = self.delta(x)
+        x_prime, _ = self.delta(x)
         predictions = self.model(x_prime)
         # We expect that the example with the false label will not effect the social burden
         recourse_value = self.recourse(x, predictions)
@@ -254,7 +254,7 @@ class TestRegularization(unittest.TestCase):
         # Create the data
         x, y = self.create_data_false_label_moves_to_true()
 
-        x_prime = self.delta(x)
+        x_prime, _ = self.delta(x)
         predictions = self.model(x_prime)
         # We expect that the example with the false label will not effect the social burden
         recourse_value = self.recourse(x, predictions)
@@ -278,7 +278,7 @@ class TestRegularization(unittest.TestCase):
         optimizer = torch.optim.SGD(self.model.parameters(), lr=0.1)
         for _ in range(100):
             optimizer.zero_grad()
-            x_prime = self.delta(x)
+            x_prime, _ = self.delta(x)
             predictions = self.model(x_prime)
             regularization = self.recourse(x, predictions)
             loss = loss_fn(predictions, y)
@@ -286,7 +286,7 @@ class TestRegularization(unittest.TestCase):
             loss_with_reg.backward()
             optimizer.step()
 
-        x_prime_final = self.delta(x)
+        x_prime_final, _ = self.delta(x)
         predictions_final = self.model(x_prime_final)
         print_if_verbose(self.model.get_weight_and_bias())
         print_if_verbose(f"X: {x}")

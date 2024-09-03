@@ -6,7 +6,6 @@ from strategic_ml import (
     LinearStrategicModel,
     LinearStrategicDelta,
     LinearAdvDelta,
-    LinearNoisyLabelDelta,
     StrategicHingeLoss,
 )
 
@@ -86,7 +85,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
         loss = torch.nn.BCEWithLogitsLoss()
         strategic_model.train()
         for _ in range(200):
-            delta_move: torch.Tensor = strategic_delta(self.x)
+            delta_move, _ = strategic_delta(self.x)
             x_prime = delta_move
             optimizer.zero_grad()
             prediction = strategic_model(x_prime)
@@ -98,7 +97,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
         # validate the the distance between the two points is less than 1
         for x, y in zip(self.x, self.y):
             x = x.unsqueeze(0)
-            x_prime_test = strategic_delta.forward(x)
+            x_prime_test, _ = strategic_delta.forward(x)
             self.assertEqual(torch.sign(strategic_model(x_prime_test)), y)
             print_if_verbose(
                 f"""
@@ -133,7 +132,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
         for _ in range(1401):
             optimizer.zero_grad()
             with torch.no_grad():
-                delta_move: torch.Tensor = strategic_delta(self.x)
+                delta_move, _ = strategic_delta(self.x)
             output = strategic_model(delta_move)
             loss = loss_fn(output, self.y)
             loss.backward()
@@ -145,7 +144,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
         strategic_model.eval()
         for x, y in zip(self.x, self.y):
             x = x.unsqueeze(0)
-            x_prime_test = strategic_delta.forward(x)
+            x_prime_test, _ = strategic_delta.forward(x)
             print_if_verbose(
                 f"""
                 x = {x},
@@ -195,7 +194,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
         successful = 0
         for x, y in zip(self.x, self.y):
             x = x.unsqueeze(0)
-            x_prime_test = strategic_delta.forward(x)
+            x_prime_test, _ = strategic_delta.forward(x)
             print_if_verbose(
                 f"""
                 x = {x},
@@ -238,7 +237,7 @@ class TestLinearAdvDelta(unittest.TestCase):
         for _ in range(1401):
             optimizer.zero_grad()
             with torch.no_grad():
-                delta_move: torch.Tensor = strategic_delta(self.x, self.y)
+                delta_move, _ = strategic_delta(self.x, self.y)
             output = strategic_model(delta_move)
             loss = loss_fn(output, self.y)
             loss.backward()
@@ -251,7 +250,7 @@ class TestLinearAdvDelta(unittest.TestCase):
         for x, y in zip(self.x, self.y):
             x = x.unsqueeze(0)
             y = y.unsqueeze(0)
-            x_prime_test = strategic_delta.forward(x, y)
+            x_prime_test, _ = strategic_delta.forward(x, y)
             print_if_verbose(
                 f"""
                 x = {x},

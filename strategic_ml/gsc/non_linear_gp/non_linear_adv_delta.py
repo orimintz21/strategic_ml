@@ -2,7 +2,7 @@
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 
 # Internal imports
 from strategic_ml.cost_functions.cost_function import _CostFunction
@@ -62,7 +62,9 @@ class NonLinearAdvDelta(_NonLinearGP):
             training_params=training_params,
         )
 
-    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, y: torch.Tensor
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
         """This function calculates the delta for the adversarial users.
         It uses the find_x_prime method from the parent class with the label -y.
         If precomputed x_prime is not available, it will calculate it.
@@ -74,7 +76,8 @@ class NonLinearAdvDelta(_NonLinearGP):
             y (torch.Tensor): The label.
 
         Returns:
-            torch.Tensor: x_prime, the delta.
+            torch.Tensor: x_prime, the delta
+            Dict logs
         """
         return super().find_x_prime(x, -y)
 
