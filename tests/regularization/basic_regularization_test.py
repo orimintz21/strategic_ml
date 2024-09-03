@@ -186,7 +186,7 @@ class TestRegularization(unittest.TestCase):
         # Create the data
         x, y = self.create_data_all_true()
 
-        x_prime ,_= self.delta(x)
+        x_prime, _ = self.delta(x)
         predictions = self.model(x_prime)
         recourse_value = self.recourse(x, predictions)
 
