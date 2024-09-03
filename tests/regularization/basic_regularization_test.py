@@ -141,7 +141,7 @@ class TestRegularization(unittest.TestCase):
         # Create the data
         x, y = self.create_data_positive_that_does_not_move()
 
-        x_prime = self.delta(x)
+        x_prime, _ = self.delta(x)
         predictions = self.model(x_prime)
         """
         We have 5 examples in the data,
@@ -186,7 +186,7 @@ class TestRegularization(unittest.TestCase):
         # Create the data
         x, y = self.create_data_all_true()
 
-        x_prime = self.delta(x)
+        x_prime ,_= self.delta(x)
         predictions = self.model(x_prime)
         recourse_value = self.recourse(x, predictions)
 
