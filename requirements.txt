@@ -1,0 +1,4 @@
+numpy
+torch>=2.1.0
+matplotlib
+pytorch-lightning

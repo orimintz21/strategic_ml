@@ -69,6 +69,19 @@ class _GSC:
         """
         raise NotImplementedError()
 
+    def find_x_prime(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        """This method will find the x'
+        It is an interface method that should be implemented in the subclass.
+
+        Args:
+            x (torch.Tensor): the data
+            z (torch.Tensor): the label
+
+        Returns:
+            torch.Tensor: x' - the modified data
+        """
+        raise NotImplementedError()
+
     def __call__(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """The call method of the GSC class.
 

@@ -176,8 +176,10 @@ class TestLinearStrategicDelta(unittest.TestCase):
                 # We assume that the non-linear model is able to find good points
                 self.assertEqual(torch.sign(self.perf_adv_linear(x_prime)), y)
                 # We assume that the non-linear delta is close to the linear delta
-                self.assertTrue(torch.allclose(adv_delta_linear(x, y), x_prime, atol=0.1))
-    
+                self.assertTrue(
+                    torch.allclose(adv_delta_linear(x, y), x_prime, atol=0.1)
+                )
+
     def test_non_linear_with_non_linear_model(self) -> None:
         save_dir = os.path.join(self.save_dir, "test_non_linear_with_non_linear_model")
         strategic_delta = NonLinearStrategicDelta(
@@ -191,7 +193,6 @@ class TestLinearStrategicDelta(unittest.TestCase):
         TRAIN_DELTA_EVERY = 20
         optimizer = torch.optim.Adam(self.non_linear_model.parameters(), lr=0.01)
         loss_fn = torch.nn.BCEWithLogitsLoss()
-
 
         for epoch in range(NUM_OF_EPOCHS):
             if epoch % TRAIN_DELTA_EVERY == 0:

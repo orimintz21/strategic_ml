@@ -6,7 +6,7 @@ from typing import Optional
 
 # internal imports
 from strategic_ml.gsc.linear_gp import LinearStrategicDelta
-from strategic_ml.strategic_regularization.strategic_regularization import (
+from strategic_ml.regularization.strategic_regularization import (
     _StrategicRegularization,
 )
 

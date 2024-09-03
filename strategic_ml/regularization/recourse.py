@@ -4,7 +4,7 @@ from torch import nn
 from typing import Optional
 
 # Internal Imports
-from strategic_ml.strategic_regularization.strategic_regularization import (
+from strategic_ml.regularization.strategic_regularization import (
     _StrategicRegularization,
 )
 
