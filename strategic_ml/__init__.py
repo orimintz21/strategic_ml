@@ -35,6 +35,8 @@ from .gsc import (
 
 from .models import LinearStrategicModel
 
+from .model_suit import ModelSuit
+
 
 # Functionality of the package
 __all__: list = [
@@ -64,4 +66,6 @@ __all__: list = [
     "NonLinearAdvDelta",
     # Models
     "LinearStrategicModel",
+    # Model Suit
+    "ModelSuit",
 ]  # List of modules and functions to be imported when using 'from strategic_ml import *'

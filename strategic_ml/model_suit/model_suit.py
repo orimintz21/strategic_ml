@@ -14,7 +14,7 @@ from strategic_ml.regularization import _StrategicRegularization
 from strategic_ml.loss_functions import StrategicHingeLoss
 
 
-class StrategicModelSuit(pl.LightningModule):
+class ModelSuit(pl.LightningModule):
     def __init__(
         self,
         *args,

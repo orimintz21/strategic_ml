@@ -7,7 +7,7 @@ from strategic_ml.cost_functions.norms import CostNormL2
 from strategic_ml.models.linear_strategic_model import LinearStrategicModel
 from strategic_ml.gsc.linear_gp.linear_strategic_delta import LinearStrategicDelta
 from strategic_ml.loss_functions.stratigic_hinge_loss import StrategicHingeLoss
-from strategic_ml.trainer.strategic_trainer import create_trainer
+from strategic_ml.model_suit.strategic_trainer import create_trainer
 
 VERBOSE: bool = True
 
