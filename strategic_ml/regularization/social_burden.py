@@ -43,6 +43,8 @@ class SocialBurden(_StrategicRegularization):
         x: torch.Tensor,
         y: torch.Tensor,
         linear_delta: Optional[LinearStrategicDelta] = None,
+        *args,
+        **kwargs,
     ) -> torch.Tensor:
         """This is the forward method of the SocialBurden class.
         This function calculates the Social Burden regularization term.

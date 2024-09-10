@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pytorch_lightning as pl
 from typing import Optional, TYPE_CHECKING, Dict, Any, Tuple
 import logging
+from enum import Enum
 
 # Internal imports
 from strategic_ml.gsc import _LinearGP, _NonLinearGP, _GSC
@@ -30,7 +31,7 @@ class ModelSuit(pl.LightningModule):
         training_params: Dict[str, Any],
         **kwargs,
     ) -> None:
-        super(StrategicModelSuit, self).__init__()
+        super(ModelSuit, self).__init__()
         self.model = model
         self.delta = delta
         self.loss_fn = loss_fn
@@ -58,10 +59,18 @@ class ModelSuit(pl.LightningModule):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
+    class _Mode(Enum):
+        TRAIN = "train"
+        VALIDATION = "validation"
+        TEST = "test"
+
     def training_step(self, batch, batch_idx):
         x, y = batch
         loss, _ = self._calculate_loss_and_predictions(
-            x, y, batch_idx, train_delta_if_possible=True, need_prediction=False
+            x,
+            y,
+            batch_idx,
+            mode=self._Mode.TRAIN,
         )
 
         self.log("train_loss", loss, on_step=True, on_epoch=True)
@@ -72,7 +81,10 @@ class ModelSuit(pl.LightningModule):
         x, y = batch
 
         val_loss, predictions = self._calculate_loss_and_predictions(
-            x, y, batch_idx, train_delta_if_possible=True, need_prediction=True
+            x,
+            y,
+            batch_idx,
+            mode=self._Mode.VALIDATION,
         )
         assert predictions is not None
 
@@ -92,7 +104,10 @@ class ModelSuit(pl.LightningModule):
 
         else:
             test_loss, predictions = self._calculate_loss_and_predictions(
-                x, y, batch_idx, train_delta_if_possible=False, need_prediction=True
+                x,
+                y,
+                batch_idx,
+                mode=self._Mode.TEST,
             )
             assert predictions is not None
 
@@ -107,8 +122,7 @@ class ModelSuit(pl.LightningModule):
         x: torch.Tensor,
         y: torch.Tensor,
         batch_idx: int,
-        train_delta_if_possible: bool,
-        need_prediction: bool,
+        mode: _Mode,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         if isinstance(self.loss_fn, StrategicHingeLoss):
             assert (
@@ -116,7 +130,7 @@ class ModelSuit(pl.LightningModule):
             ), "Regularization is not supported for StrategicHingeLoss"
             loss: torch.Tensor = self.loss_fn.forward(x=x, y=y)
             delta_logs: Dict[str, Any] = {"delta_used": False}
-            if need_prediction:
+            if mode != self._Mode.TRAIN:
                 # We know that the model is a linear model (this is an assumption for the StrategicHingeLoss)
                 x_prime = self.delta.forward(x, y)
                 # Used for the zero one loss
@@ -129,18 +143,38 @@ class ModelSuit(pl.LightningModule):
                 self.train_delta_every is not None
             )
 
-            if use_training_delta and train_delta_if_possible:
+            if use_training_delta and (not mode == self._Mode.TEST):
                 assert isinstance(self.delta, _NonLinearGP)
                 assert self.train_delta_every is not None
                 if self.current_epoch % self.train_delta_every == 0:
-                    self.delta.train(self.train_dataloader())
+                    if mode == self._Mode.TRAIN:
+                        self.delta.train(self.train_dataloader())
+                    elif mode == self._Mode.VALIDATION:
+                        self.delta.train(self.val_dataloader())
+                    else:
+                        raise ValueError("Do not train the delta in test mode")
+
                 x_prime: torch.Tensor = self.delta.load_x_prime(batch_idx=batch_idx)
 
             else:
-                x_prime = self.delta.forward(x, y)
+                if mode == self._Mode.TEST and self.test_delta is not None:
+                    x_prime = self.test_delta.forward(x, y)
+                else:
+                    x_prime = self.delta.forward(x, y)
 
             predictions = self.forward(x_prime)
             loss = self.loss_fn(predictions, y)
+            if self.regularization is not None and mode == self._Mode.TRAIN:
+                assert not isinstance(self.delta, _NonLinearGP)
+                assert not isinstance(self.loss_fn, StrategicHingeLoss)
+                regularization_term = self.regularization(
+                    x=x,
+                    delta_predictions=predictions,
+                    model=self.model,
+                    y=y,
+                    linear_delta=self.delta,
+                )
+                loss += regularization_term
 
         return loss, predictions
 
