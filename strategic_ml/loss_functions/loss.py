@@ -1,4 +1,6 @@
-""" This module contains the abstract class _Loss, which is the base class for all loss functions in the strategic_ml package.
+"""
+This module contains the abstract class _Loss, which serves as the base class for all loss functions in the strategic_ml package.
+
 When creating a new loss function, you should inherit from this class and implement the forward method.
 """
 
@@ -8,16 +10,27 @@ import torch.nn as nn
 
 
 class _Loss(nn.Module):
+    """
+    The _Loss class is an abstract base class for all loss functions in the strategic_ml package.
+
+    All loss functions should inherit from this class and implement the forward method.
+    The class handles a regularization parameter, which can be adjusted, and stores a reference 
+    to the strategic model used in the loss calculation.
+
+    Parent Class:
+        nn.Module
+    """
     def __init__(
         self,
         model: nn.Module,
         regularization_lambda: float = 0.01,
     ) -> None:
         """
-        Initialize the base loss class.
+        Initializes the base loss class.
 
-        :param model: The strategic model.
-        :param regularization_lambda: Regularization parameter.
+        Args:
+            model (nn.Module): The strategic model to be used for loss computation.
+            regularization_lambda (float, optional): Regularization parameter to control model complexity. Defaults to 0.01.
         """
         super(_Loss, self).__init__()
         self.model: nn.Module = model
@@ -25,24 +38,54 @@ class _Loss(nn.Module):
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
-        Compute the forward pass and calculate the loss.
+        Abstract method to compute the forward pass and calculate the loss. Must be implemented by subclasses.
 
-        :param X: Input features.
-        :param y: True labels.
-        :return: Loss value.
+        Args:
+            x (torch.Tensor): Input features.
+            y (torch.Tensor): True labels.
+
+        Returns:
+            torch.Tensor: Loss value.
+
+        Raises:
+            NotImplementedError: If the method is not implemented in a subclass.
         """
         raise NotImplementedError()
 
     @property
     def get_regularization_lambda(self) -> float:
+        """
+        Getter for the regularization lambda.
+
+        Returns:
+            float: The regularization lambda value.
+        """
         return self.regularization_lambda
 
     def set_regularization_lambda(self, value: float) -> None:
+        """
+        Setter for the regularization lambda.
+
+        Args:
+            value (float): The regularization lambda to set.
+        """
         self.regularization_lambda = value
 
     @property
     def get_model(self) -> nn.Module:
+        """
+        Getter for the strategic model.
+
+        Returns:
+            nn.Module: The strategic model used for loss computation.
+        """
         return self.model
 
     def set_model(self, value: nn.Module) -> None:
+        """
+        Setter for the strategic model.
+
+        Args:
+            value (nn.Module): The strategic model to set.
+        """
         self.model = value

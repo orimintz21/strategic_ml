@@ -1,3 +1,20 @@
+"""
+This module implements the Recourse class for strategic regularization.
+
+The Recourse class calculates a soft version of the recourse term for strategic agents. 
+Recourse refers to the capacity of a user who is denied a service to restore approval through 
+low-cost feature modification. The recourse term is calculated using a sigmoid approximation.
+
+The formula for the recourse term is:
+    Recourse = sum_{x in X}(sigmoid(-f(x)*temp)*sigmoid(-f(delta(x))*temp))
+
+For more details, see the paper:
+- "Strategic Classification Made Practical"
+
+Parent Class:
+    _StrategicRegularization
+"""
+
 # External Imports
 import torch
 from torch import nn
@@ -10,27 +27,28 @@ from strategic_ml.regularization.strategic_regularization import (
 
 
 class Recourse(_StrategicRegularization):
-    """This is the Recourse class.
-    This class calculates the recourse term of the strategic agents.
-    The recourse term is a soft version of sum_{x in X}(1{f(x)!=1 and f(delta(x))!=1})
-    Recourse refers to the capacity of a user who is denied a service to restore
-    approval through reasonable action (in our case, low-cost feature modification)
-    The formula for the recourse term is:
-    Recourse = sum_{x in X}(sigmoid(-f(x)*temp)*sigmoid(-f(delta(x))*temp))
-    For more information see paper "Strategic Classification Made Practical".
+    """
+    The Recourse class calculates the recourse term for strategic agents.
 
-    Parent Class: _StrategicRegularization
+    The recourse term refers to the ability of users who are denied a service to restore approval 
+    through low-cost feature modification. It uses a sigmoid approximation to compute a soft 
+    version of the term:
+    Recourse = sum_{x in X}(sigmoid(-f(x)*temp)*sigmoid(-f(delta(x))*temp))
+
+    Parent Class:
+        _StrategicRegularization
     """
 
     def __init__(
         self, sigmoid_temp: float = 1.0, model: Optional[nn.Module] = None
     ) -> None:
-        """Initializer for the Recourse class.
+        """
+        Initializes the Recourse class.
 
         Args:
-            sigmoid_temp (float, optional): The temperature for the sigmoids. Defaults to 1.0.
-            model: The model that we use, if not provided it should be provided
-            in the forward method.
+            sigmoid_temp (float, optional): The temperature for the sigmoid functions. Defaults to 1.0.
+            model (Optional[nn.Module], optional): The model used for recourse calculation. If not provided during initialization, 
+                                                   it must be passed in the forward method.
         """
         super(Recourse, self).__init__()
 
@@ -46,21 +64,20 @@ class Recourse(_StrategicRegularization):
         *args,
         **kwargs,
     ) -> torch.Tensor:
-        """This is the forward method of the Recourse class.
-        This function calculates the recourse term of the strategic agents.
-        The recourse term is a soft version of sum_{x in X}(1{f(x)!=1 and f(delta(x))!=1})
-        The formula for the recourse term is:
+        """
+        Calculates the recourse term for strategic agents.
+
+        The recourse term is calculated as:
         Recourse = sum_{x in X}(sigmoid(-f(x)*temp)*sigmoid(-f(delta(x))*temp))
 
         Args:
-            x (torch.Tensor): The input of the model.
-            delta_predictions (torch.Tensor): The predictions of the model on the delta of x.
-            model (Optional[nn.Module], optional): The model that we use, if None
-            is provided, the Recourse class will use the one that was provided
-            at initialization. Defaults to None.
+            x (torch.Tensor): The input tensor (features).
+            delta_predictions (torch.Tensor): The predictions of the model on the modified (delta) inputs.
+            model (Optional[nn.Module], optional): The model used for recourse calculation. If not provided, 
+                                                   the model passed during initialization is used.
 
         Returns:
-            torch.Tensor: _description_
+            torch.Tensor: The computed recourse term for the batch.
         """
         assert (
             x.shape[0] == delta_predictions.shape[0]

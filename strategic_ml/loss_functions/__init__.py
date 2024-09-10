@@ -1,6 +1,8 @@
 """
-:file: __init__.py
-This is the init file for the strategic cost.
+This module initializes the strategic loss functions package.
+
+It provides loss functions designed for strategic classification, all of which inherit from the _Loss class.
+Currently, the package includes the StrategicHingeLoss function, which is tailored for hinge loss in strategic scenarios.
 """
 
 from .loss import _Loss

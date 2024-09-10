@@ -1,3 +1,9 @@
+"""
+This module implements the _LinearGP class for Generalized Strategic Classification.
+The GP is a strategic delta that can be calculated in closed form for linear models.
+It handles both L2 and weighted L2 cost functions, projecting inputs to minimize costs.
+"""
+
 # External imports
 import torch
 from torch import nn
@@ -15,25 +21,16 @@ from strategic_ml.cost_functions import (
 
 class _LinearGP(_GSC):
     """
-    The GP is a strategic delta that is calculated by the following formula:
-    delta_h(x,z) = argmax_{x' in X}(1{model(x') = z} - r/2 * (cost(x,x')))
+    The _LinearGP class calculates the strategic delta using a closed-form formula.
+    The delta is calculated based on the projection of the input on the linear model, 
+    minimizing the cost to achieve a desired prediction.
 
-    We can see that if model(x) == z then x is the best x' that we can choose.
-    If for every x' in X, such that model(x') != z, we get cost(x,x') > 2/r, then
-    the GP will be x (it is not worth to change x).
+    The GP is computed as:
+        x_prime = x - ((w.T @ x + b) / (w.T @ w)) * w  (for L2 cost)
+        x_prime = x - ((w.T @ x + b) / (w.T @ inverse(Lambda) @ w)) * inverse(Lambda) @ w  (for weighted L2 cost)
 
-    If we assume that the model is linear and the cost is norm2, or weighted
-    norm, we see that if model(x) != z and the margin from the model is smaller than
-    the wait of the cost using the norm to calculate the margin, then the GP will be
-    the projection of x on the model.
-
-    Then the GP is calculated by the following formula:
-    x_prime = x - ((w.T @ x + b) / (w.T @ w)) * w
-    if we use the norm2 cost function.
-    and
-    x_prime = x - ((w.T @ x + b) / (w.T @ inverse(Lambda) @ w)) * inverse(Lambda) @ w
-    if we use the weighted norm cost function with Lambda as the weight matrix.
-
+    Parent Class:
+        _GSC
     """
 
     def __init__(
@@ -43,18 +40,16 @@ class _LinearGP(_GSC):
         cost_weight: float = 1.0,
         epsilon: float = 0.01,
     ) -> None:
-        """This is the LinearGP model. This model assumes that the model is linear.
-        The reason for this assumption is that we can calculate the GP in a closed form
-        for linear models.
-        Therefore we do not need to train a delta model.
+        """
+        Initializes the _LinearGP model, assuming the model is linear. 
+        The GP can be calculated in closed form without training a delta model.
 
         Args:
             cost (_CostFunction): The cost function of the delta.
-            strategic_model (nn.Module): the strategic that the delta is calculated on.
-            cost_weight (int): The weight of the cost function.
-            epsilon (float): move to the negative/positive direction of the model
-            to make sure that the model will predict the label correctly. The
-            delta does it by adding the (epsilon * w/||w||). Defaults to 0.01.
+            strategic_model (nn.Module): The linear model on which the delta is calculated.
+            cost_weight (float, optional): The weight of the cost function. Defaults to 1.0.
+            epsilon (float, optional): A small value to ensure correct prediction by 
+                                       adjusting the projection direction. Defaults to 0.01.
         """
         super(_LinearGP, self).__init__(
             strategic_model=strategic_model, cost=cost, cost_weight=cost_weight
@@ -64,18 +59,15 @@ class _LinearGP(_GSC):
         self.epsilon: float = epsilon
 
     def find_x_prime(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
-        """This function calculates x' based on the GP formula.
+        """
+        Calculates x' (the projected input) using the GP formula.
 
         Args:
-            x (torch.Tensor): The input of the model.
-            z (torch.Tensor): Meta data for the GP.
-
-        Raises:
-            AssertionError: If the cost or the model is None.
-            NotImplementedError: If the model is not a Linear model (This should not happen)
+            x (torch.Tensor): The input data.
+            z (torch.Tensor): Meta data used in GP (often the label).
 
         Returns:
-            torch.Tensor: x' the GP.
+            torch.Tensor: The calculated x'.
         """
         self._validate_input(x, z)
 
@@ -116,15 +108,16 @@ class _LinearGP(_GSC):
         return x_prime
 
     def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """This function returns the meta data for the GP.
-        It should be implemented by the child class.
+        """
+        Abstract method that returns the meta data for the GP.
+        Should be implemented by the child class.
 
         Args:
-            x (torch.Tensor): The input of the model.
-            y (torch.Tensor): The true labels of the model.
+            x (torch.Tensor): The input data.
+            y (torch.Tensor): The true labels.
 
         Raises:
-            NotImplementedError: Should be implemented by the child class.
+            NotImplementedError: This method should be implemented by the child class.
 
         Returns:
             torch.Tensor: The meta data for the GP.
@@ -132,11 +125,11 @@ class _LinearGP(_GSC):
         raise NotImplementedError("This is an abstract method")
 
     def _get_minimal_distance(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
-        """This function calculates the minimal cost that the strategic agent needs to do
-        to get a positive outcome from the model.
+        """
+        Calculates the minimal cost for the strategic agent to obtain a positive outcome.
 
         Args:
-            x (torch.Tensor): The data.
+            x (torch.Tensor): The input data.
             z (torch.Tensor): The meta data for the GP.
 
         Returns:
@@ -178,18 +171,22 @@ class _LinearGP(_GSC):
 
     def _assert_cost(self) -> None:
         """
-        This function asserts that the cost is a CostNormL2 or CostWeightedLoss
+        Asserts that the cost function is either CostNormL2 or CostWeightedLoss.
         """
         assert isinstance(self.cost, CostNormL2) or isinstance(
             self.cost, CostWeightedLoss
         ), "The cost should be a  CostNormL2 or CostWeightedLoss"
 
     def _validate_input(self, x: torch.Tensor, z: torch.Tensor) -> None:
-        """This function validates the input of the linear gp.
+        """
+        Validates the input of the linear GP.
 
         Args:
-            x (torch.Tensor): The data
+            x (torch.Tensor): The input data.
             z (torch.Tensor): The meta data for the GP.
+
+        Raises:
+            AssertionError: If the input or the dimensions are invalid.
         """
         # Check the input
         self._assert_cost()
@@ -200,7 +197,9 @@ class _LinearGP(_GSC):
         ), "z should be of size [batch_size, 1], but got {}".format(z.size())
 
     def _assert_model(self) -> None:
-        """This function asserts that the strategic model is a LinearStrategicModel"""
+        """
+        Asserts that the strategic model is a LinearStrategicModel.
+        """
         assert isinstance(
             self.strategic_model, LinearStrategicModel
         ), "The strategic model should be a StrategicModel"
@@ -213,16 +212,18 @@ class _LinearGP(_GSC):
         z: torch.Tensor = torch.tensor([1]),
         norm_waits: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        """This method calculates the projection on the model.
+        """
+        Calculates the projection of the data onto the model.
 
         Args:
-            x (torch.Tensor): The data
-            w (torch.Tensor): The weights of the model
-            b (torch.Tensor): The bias of the model
-            norm_waits (torch.Tensor): The weights of the cost function
+            x (torch.Tensor): The input data.
+            w (torch.Tensor): The model weights.
+            b (torch.Tensor): The model bias.
+            z (torch.Tensor, optional): The target value for projection. Defaults to 1.
+            norm_waits (Optional[torch.Tensor]): The weight matrix for weighted norms. Defaults to None.
 
         Returns:
-            torch.Tensor: The projection on the model
+            torch.Tensor: The projection onto the model.
         """
 
         assert z.size() == torch.Size(
@@ -245,16 +246,15 @@ class _LinearGP(_GSC):
         return projection_with_safety
 
     def _worth_to_move(self, x: torch.Tensor, projection: torch.Tensor) -> bool:
-        """This function checks if it is worth to move the data point to the projection.
-        It is worth to move the data point if the cost of the moment  times its
-        weight is smaller than 2.
+        """
+        Determines whether it is worth moving the data point to the projection.
 
         Args:
-            x (torch.Tensor): The data
-            projection (torch.Tensor): The projection of the data on the model.
+            x (torch.Tensor): The input data.
+            projection (torch.Tensor): The projected data.
 
         Returns:
-            bool: If it is worth to move the data point to the projection.
+            bool: True if it is worth moving the data point, False otherwise.
         """
         cost_of_moment = self.cost_weight * self.cost(x, projection)
         return bool(cost_of_moment < 2)

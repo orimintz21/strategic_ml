@@ -1,12 +1,12 @@
-"""linear_noisy_label_delta.py
-This is the LinearNoisyLabelDelta model.
-The LinearNoisyLabelDelta model calculates the delta based on the GP formula.
-The z in this case is the noisy label, there are two types of noise:
-1. The label is flipped with a probability p_bernoulli.
-2. Pure noise, {-1, 1} with a probability p_bernoulli.
+"""
+This module implements the LinearNoisyLabelDelta model.
 
-The delta calculates the movement of a strategic user, which tries to get
-the noisy label from the model.
+The LinearNoisyLabelDelta model calculates the delta based on the GP formula.
+In this model, z represents the noisy label, and there are two types of noise:
+1. The label is flipped with a probability `p_bernoulli`.
+2. Pure noise {-1, 1} is generated with a probability `p_bernoulli`.
+
+The delta represents the movement of a strategic user trying to receive the noisy label from the model.
 """
 
 # External imports
@@ -20,6 +20,21 @@ from strategic_ml.gsc.linear_gp.linear_gp import _LinearGP
 
 
 class LinearNoisyLabelDelta(_LinearGP):
+    """
+    The LinearNoisyLabelDelta model calculates the delta based on the GP formula.
+    In this model, z represents the noisy label, and there are two types of noise:
+    1. The label is flipped with a probability `p_bernoulli`.
+    2. Pure noise {-1, 1} is generated with a probability `p_bernoulli`.
+
+    Args:
+        cost (_CostFunction): The cost function to calculate the delta.
+        strategic_model (nn.Module): The strategic model, assumed to be linear.
+        cost_weight (float, optional): The weight of the cost function. Defaults to 1.0.
+        p_bernoulli (float, optional): The probability of Bernoulli distribution for noise generation. Defaults to 0.5.
+        use_label (bool, optional): If True, flip the label with `p_bernoulli`; otherwise, use pure noise. Defaults to True.
+        epsilon (float, optional): A small value to ensure that the model predicts correctly by adjusting the projection. Defaults to 0.01.
+    """
+
     def __init__(
         self,
         cost: _CostFunction,
@@ -29,6 +44,17 @@ class LinearNoisyLabelDelta(_LinearGP):
         use_label: bool = True,
         epsilon: float = 0.01,
     ) -> None:
+        """
+        Initializes the LinearNoisyLabelDelta model.
+
+        Args:
+            cost (_CostFunction): The cost function used for calculating the delta.
+            strategic_model (nn.Module): The strategic model (assumed linear) on which the delta is calculated.
+            cost_weight (float, optional): The weight of the cost function. Defaults to 1.0.
+            p_bernoulli (float, optional): The probability of Bernoulli distribution for flipping labels or generating pure noise. Defaults to 0.5.
+            use_label (bool, optional): Determines whether to flip labels with Bernoulli probability or generate pure noise. Defaults to True.
+            epsilon (float, optional): A small adjustment added to the projection direction to ensure correct predictions. Defaults to 0.01.
+        """
         super(LinearNoisyLabelDelta, self).__init__(
             cost, strategic_model, cost_weight, epsilon
         )
@@ -39,15 +65,17 @@ class LinearNoisyLabelDelta(_LinearGP):
         self, x: torch.Tensor, y: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
+        Calculates the delta for the noisy label model.
+
+        If `use_label` is True, the label `y` is flipped with a probability `p_bernoulli`.
+        If `use_label` is False, pure noise is generated with the Bernoulli distribution.
 
         Args:
-            x (torch.Tensor): The data
-            y (torch.Tensor): y or None. If it is y, then the we use change each
-            label with a probability p_bernoulli. If it is None, then we use
-            a vector of Bernoulli samples with probability p_bernoulli. Defaults to None.
+            x (torch.Tensor): The input data.
+            y (Optional[torch.Tensor]): If provided, represents the label. If None, Bernoulli noise is applied. Defaults to None.
 
         Returns:
-            torch.Tensor: the modified data
+            torch.Tensor: The modified data with delta applied.
         """
         bernoulli_tensor = self._create_bernoulli_tensor(x.shape[0], self.p_bernoulli)
         if self.use_label:
@@ -60,14 +88,15 @@ class LinearNoisyLabelDelta(_LinearGP):
 
     @staticmethod
     def _create_bernoulli_tensor(batch_size: int, p_bernoulli: float) -> torch.Tensor:
-        """Create a tensor of Bernoulli samples.
+        """
+        Creates a tensor of Bernoulli samples to simulate noise.
 
         Args:
-            batch_size (int): the number of samples
-            p_bernoulli (float): the probability of the Bernoulli distribution
+            batch_size (int): The number of samples in the batch.
+            p_bernoulli (float): The probability of Bernoulli distribution for noise generation.
 
         Returns:
-            torch.Tensor: the tensor of Bernoulli samples
+            torch.Tensor: A tensor of Bernoulli samples, where 0 is mapped to -1 and 1 stays as 1.
         """
 
         # Create a tensor of probabilities with the same value p_bernoulli

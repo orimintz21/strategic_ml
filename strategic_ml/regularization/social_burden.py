@@ -1,3 +1,15 @@
+"""
+This module implements the SocialBurden class for strategic regularization.
+
+The Social Burden regularization method aims to minimize the effort that strategic agents labeled as positive 
+must exert to achieve a positive outcome from the model. The method operates in settings where linear strategic 
+deltas are used with convex cost functions. This regularization method was introduced in the paper 
+"Strategic Classification Made Practical".
+
+Parent Class:
+    _StrategicRegularization
+"""
+
 # external imports
 import torch
 from torch import nn
@@ -13,16 +25,14 @@ from strategic_ml.regularization.strategic_regularization import (
 
 class SocialBurden(_StrategicRegularization):
     """
-    SocialBurden class.
-    This is the implementation of the Social Burden regularization method that
-    is described in the paper "Strategic Classification Made Practical".
-    Social Burden is a strategic regularization method that tries to minimize
-    the amount of effort that the strategic agents that are labeled as positive
-    need to do in order to get a positive outcome from the model.
-    Note that the Social Burden regularization method only works with linear
-    strategic deltas and a convex cost function.
+    The SocialBurden class implements the Social Burden regularization method.
 
-    Parent Class: _StrategicRegularization
+    Social Burden is a strategic regularization method that aims to minimize the amount of 
+    effort required by strategic agents labeled as positive to achieve a positive outcome from the model. 
+    The method works with linear strategic deltas and convex cost functions.
+
+    Parent Class:
+        _StrategicRegularization
     """
 
     def __init__(
@@ -30,9 +40,12 @@ class SocialBurden(_StrategicRegularization):
         linear_delta: Optional[LinearStrategicDelta] = None,
     ) -> None:
         """
-        Constructor for the SocialBurden class.
-        :param linear_delta: The linear strategic delta that the Social Burden, if not provided
-        it should be provided in the forward method.
+        Initializes the SocialBurden class.
+
+        Args:
+            linear_delta (Optional[LinearStrategicDelta], optional): The linear strategic delta used for regularization. 
+                                                                     If not provided during initialization, it must be passed 
+                                                                     in the forward method. Defaults to None.
         """
         super(SocialBurden, self).__init__()
 
@@ -46,21 +59,25 @@ class SocialBurden(_StrategicRegularization):
         *args,
         **kwargs,
     ) -> torch.Tensor:
-        """This is the forward method of the SocialBurden class.
-        This function calculates the Social Burden regularization term.
-        The Social Burden regularization term is calculated by the following formula:
-        Social Burden = sum_{xi in X if yi == 1}(distance(x)) where distance(x) is the minimal cost
-        that the strategic agent needs to do in order to get a positive outcome from the model.
+        """
+        Calculates the Social Burden regularization term.
+
+        The Social Burden regularization term is computed as the sum of the distances that strategic agents labeled as positive 
+        must traverse in feature space to achieve a positive outcome from the model. The distance is calculated using the 
+        strategic delta.
+
+        Formula:
+        Social Burden = sum_{xi in X if yi == 1}(distance(x))
 
         Args:
-            x (torch.Tensor): The input of the model.
-            y (torch.Tensor): The true labels of the model.
-            linear_delta (Optional[LinearStrategicDelta], optional): The strategic delta
-            if None is provided the forward method will use the delta
-            that it got at initialization. Defaults to None.
+            x (torch.Tensor): The input data to the model.
+            y (torch.Tensor): The true labels corresponding to the input data.
+            linear_delta (Optional[LinearStrategicDelta], optional): The linear strategic delta used for the calculation. 
+                                                                     If not provided, the one passed during initialization is used. 
+                                                                     Defaults to None.
 
         Returns:
-            torch.Tensor: The Social Burden regularization term.
+            torch.Tensor: The calculated Social Burden regularization term.
         """
         assert (
             x.shape[0] == y.shape[0]

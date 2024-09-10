@@ -1,5 +1,6 @@
-""" file: __init__.py
-This is the init file for the strategic cost.
+"""
+This module initializes the strategic cost functions package.
+It provides various norm cost functions, all of which inherit from the _CostFunction class.
 """
 
 from .cost_function import _CostFunction

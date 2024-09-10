@@ -1,5 +1,9 @@
-""" file: __init__.py
-This is the init file for the strategic regularization.
+"""
+This module initializes the strategic regularization package.
+
+The package provides various regularization techniques designed for strategic classification, 
+including social burden regularization and recourse. All regularization methods inherit from 
+the _StrategicRegularization class.
 """
 
 from strategic_ml.regularization.strategic_regularization import (
