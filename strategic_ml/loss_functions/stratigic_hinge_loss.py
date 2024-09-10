@@ -1,3 +1,22 @@
+"""
+This module implements the Strategic Hinge Loss (s-hinge) function for strategic classification.
+
+The Strategic Hinge Loss is a modified version of the standard hinge loss that accounts for 
+strategic behavior in classification settings. It anticipates strategic modifications that 
+agents might apply to their features to achieve better classification outcomes. 
+
+The loss function assumes the following:
+- The model is linear.
+- The delta is a Linear Delta (from _LinearGP).
+- The cost function is the L2 norm.
+
+The loss function is defined as:
+    L(x, z, y; w, b) = max(0, 1 - y(w^T x + b) - 2 * cost_weight * z * y * (||w||_2 + ||b||_2))
+
+For more information, see the article:
+- "Generalized Strategic Classification and the Case of Aligned Incentives"
+"""
+
 # External imports
 import torch
 from torch import nn
@@ -10,21 +29,17 @@ from strategic_ml.models import LinearStrategicModel
 
 class StrategicHingeLoss(_Loss):
     """
-    This module implements the Strategic Hinge Loss (s-hinge), a modified version
-    of the standard hinge loss function designed to account for strategic behavior
-    in classification settings. The s-hinge loss anticipates and incorporates the
-    strategic modifications that agents might apply to their features to achieve
-    better classification outcomes.
-
-    It maintains a differentiable form, allowing for optimization.
-    THe s-hinge loss assumes that the model is a linear model, the delta
-    is Linear Delta ,and the cost function is L2 norm.
+    The Strategic Hinge Loss (s-hinge) is a modified hinge loss function that incorporates 
+    strategic behavior in classification. It assumes that the model is linear, the delta is 
+    calculated using the _LinearGP framework, and the cost function is L2 norm-based.
 
     The s-hinge loss is defined as:
-    L(x, z, y; w, b) = max(x, 1-y(w^T x + b) - 2 * cost_weight * z * y * (||w||_2 + ||b||_2))
+    L(x, z, y; w, b) = max(0, 1 - y(w^T x + b) - 2 * cost_weight * z * y * (||w||_2 + ||b||_2))
 
+    This loss maintains differentiability, allowing for optimization.
 
-    See more: "Generalized Strategic Classification and the Case of Aligned Incentives" Article
+    Parent Class:
+        _Loss
     """
 
     def __init__(
@@ -34,10 +49,12 @@ class StrategicHingeLoss(_Loss):
         regularization_lambda: float = 0.01,
     ) -> None:
         """
-        Initialize the Strategic Hinge Loss class.
+        Initializes the Strategic Hinge Loss class.
 
-        :param model: The strategic model.
-        :param regularization_lambda: Regularization parameter.
+        Args:
+            model (LinearStrategicModel): The linear strategic model.
+            delta (_LinearGP): The delta model used to compute the strategic modifications.
+            regularization_lambda (float, optional): The regularization parameter to control model complexity. Defaults to 0.01.
         """
         super(StrategicHingeLoss, self).__init__(model, regularization_lambda)
         assert isinstance(
@@ -50,11 +67,17 @@ class StrategicHingeLoss(_Loss):
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
-        Forward pass to compute the strategic hinge loss.
+        Performs the forward pass to compute the strategic hinge loss.
 
-        :param x: Input features as a torch.tensor.
-        :param y: True labels as a torch.tensor.
-        :return: Computed loss as a torch.tensor.
+        The delta is used to account for strategic modifications in the input features, and the 
+        loss is calculated by considering the L2 norm of the model weights and bias.
+
+        Args:
+            x (torch.Tensor): Input features.
+            y (torch.Tensor): True labels.
+
+        Returns:
+            torch.Tensor: The computed strategic hinge loss.
         """
         assert isinstance(
             self.model, LinearStrategicModel

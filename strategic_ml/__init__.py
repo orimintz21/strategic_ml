@@ -1,6 +1,15 @@
 """
-:file: __init__.py
-This is the init file for the strategic_ml package.
+This is the initialization module for the strategic_ml package.
+
+The strategic_ml package provides a set of tools and models for strategic classification, 
+including cost functions, regularization methods, loss functions, and model classes. 
+The package is designed for working with both linear and non-linear strategic models.
+
+Authors:
+    Ori Mintz & Kfir Cohen
+
+Version:
+    0.1.0
 """
 
 # Package metadata

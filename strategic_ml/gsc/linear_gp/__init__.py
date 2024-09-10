@@ -1,6 +1,6 @@
 """
-:file: __init__.py
-This is the init file for the GSC.
+This module initializes the Generalized Strategic Classification (GSC) components.
+It provides various delta strategies, all of which inherit from the _LinearGP class.
 """
 
 from strategic_ml.gsc.linear_gp.linear_gp import _LinearGP

@@ -1,3 +1,14 @@
+"""
+This module implements the NonLinearStrategicDelta model for strategic users in non-linear models.
+
+The NonLinearStrategicDelta model calculates delta based on the non-linear GP formula without any assumptions 
+on the model or cost function. The delta is optimized alternately with the model to ensure strategic users 
+achieve positive predictions at minimal cost. For large datasets, the delta values (x_prime) are written to disk 
+and loaded as needed.
+
+For more information, see the _NonLinearGP class.
+"""
+
 # External imports
 import torch
 from torch import nn
@@ -11,22 +22,21 @@ from strategic_ml.gsc.non_linear_gp import _NonLinearGP
 
 class NonLinearStrategicDelta(_NonLinearGP):
     """
-    This is the NonLinearStrategicDelta model. This model does not have any
-    assumptions on the model or the cost function. The model uses the non-linear
-    gp model to calculate the delta for the strategic users.
-    The delta is calculated by the following formula:
-    x_prime = argmax_{x' in X}(1{model(x') = 1} - r/2 * (cost(x,x')))
-    (i.e. z = 1)
-    An intuition for the formula is that the strategic user tries to get a
-    positive prediction from the model with the minimal cost.
-    By using the gradient of the model, we can find the x' that will be close to
-    the optimal x'.
-    We don't want to run the optimization for epoch of the model, so we optimize
-    the delta and the model alternately. Note that the number of samples
-    could be large, so we need to write x' to the disk and load it when needed.
-    For more information, see _NonLinearGP class.
+    The NonLinearStrategicDelta model calculates delta for strategic users based on 
+    the non-linear GP formula. This model does not assume anything about the model 
+    or the cost function.
 
-    Parent Class: _NonLinearGP
+    The delta is calculated using the formula:
+    x_prime = argmax_{x' in X}(1{model(x') = 1} - r/2 * (cost(x, x')))
+    (i.e. z = 1).
+
+    The goal of the strategic user is to achieve a positive prediction from the model 
+    while minimizing the associated cost. The optimization is performed alternately 
+    between the delta and the model, allowing for efficient computation, even for 
+    large datasets, where x_prime is saved to disk.
+
+    Parent Class:
+        _NonLinearGP
     """
 
     def __init__(
@@ -38,23 +48,24 @@ class NonLinearStrategicDelta(_NonLinearGP):
         *args,
         training_params: Dict[str, Any],
     ) -> None:
-        """Initializer for the NonLinearStrategicDelta class.
+        """
+        Initializes the NonLinearStrategicDelta model for strategic classification.
 
         Args:
-            cost (_CostFunction): The cost function of the delta.
-            strategic_model (nn.Module): The strategic model that the delta is calculated on.
-            cost_weight (float, optional): The weight of the cost function. Defaults to 1.
-            save_dir (str): Directory to save the computed x_prime values
-            training_params (Dict[str, Any]): A dictionary that contains the training parameters.
+            cost (_CostFunction): The cost function for delta calculation.
+            strategic_model (nn.Module): The non-linear strategic model for calculating the delta.
+            cost_weight (float, optional): The weight of the cost function. Defaults to 1.0.
+            save_dir (str): Directory where computed x_prime values are saved.
+            training_params (Dict[str, Any]): A dictionary containing the training parameters.
 
-            expected keys:
-                - optimizer_class: The optimizer class that will be used for the optimization. (default: SGD)
-                - optimizer_params: The parameters for the optimizer. (default: {"lr": 0.01})
-                - scheduler_class: The scheduler class that will be used for the optimization. (optional)
-                - scheduler_params: The parameters for the scheduler. (default: {})
-                - early_stopping: The number of epochs to wait before stopping the optimization. (default: -1, i.e. no early stopping)
-                - num_epochs: The number of epochs for the optimization. (default: 100)
-                - temp: The temperature for the tanh function for the model. (default: 1.0)
+        Training parameters include:
+            - optimizer_class (type): The optimizer class for optimization (default: SGD).
+            - optimizer_params (Dict[str, Any]): Parameters for the optimizer (default: {"lr": 0.01}).
+            - scheduler_class (type, optional): The scheduler class for optimization.
+            - scheduler_params (Dict[str, Any]): Parameters for the scheduler (default: {}).
+            - early_stopping (int, optional): Number of epochs for early stopping (default: -1, no early stopping).
+            - num_epochs (int, optional): Number of epochs for optimization (default: 100).
+            - temp (float, optional): Temperature for the model's tanh function (default: 1.0).
         """
         super(NonLinearStrategicDelta, self).__init__(
             cost,
@@ -65,22 +76,32 @@ class NonLinearStrategicDelta(_NonLinearGP):
         )
 
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        """This function calculates the delta for the strategic users.
-        It uses the find_x_prime method from the parent class with the label 1.
-        If precomputed x_prime is not available, it will calculate it.
-        Use the train method to calculate x_prime and save it to the disk.
+        """
+        Calculates the delta for strategic users using the find_x_prime method 
+        from the parent class. If precomputed x_prime is not available, it will 
+        calculate and return the delta.
+
+        Use the train method to calculate x_prime and save it to disk.
 
         Args:
-            x (torch.Tensor): The data.
-            y (torch.Tensor): The label.
+            x (torch.Tensor): The input data.
 
         Returns:
-            torch.Tensor: x_prime, the delta.
+            torch.Tensor: x_prime, the calculated delta.
         """
         # array of ones with the number of rows of x
         ones = torch.ones((x.shape[0], 1))
         return super().find_x_prime(x, ones)
 
     def _gen_z_fn(self, data: torch.Tensor) -> torch.Tensor:
+        """
+        Generates the z values for the GP formula. In this case, z = 1.
+
+        Args:
+            data (torch.Tensor): A tuple containing the input data and labels.
+
+        Returns:
+            torch.Tensor: A tensor of ones with the same shape as the labels.
+        """
         _, y = data
         return torch.ones_like(y)

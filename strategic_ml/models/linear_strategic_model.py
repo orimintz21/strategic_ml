@@ -1,10 +1,9 @@
-""" linear_strategic_model.py
-This is the linear strategic model.
-The linear strategic model calculates the relent delta and the strategic regularization
-and uses them to modify the input data before passing it to the model.
+"""
+This module implements the LinearStrategicModel for binary classification in strategic settings.
 
-We implement the LinearStrategicModel class because when we use a linear model
-we can calculate the strategic delta in a closed form.
+The LinearStrategicModel calculates the strategic delta and regularization to modify the input data 
+before passing it to the model. The model is linear, and the delta can be computed in closed form, 
+allowing for efficient computation without requiring gradient-based optimization techniques.
 """
 
 # External imports
@@ -16,6 +15,17 @@ from typing import Any, Tuple, Optional
 
 
 class LinearStrategicModel(nn.Module):
+    """
+    The LinearStrategicModel class defines a binary classification model used in strategic settings.
+
+    The model calculates strategic modifications to the input data using a closed-form calculation 
+    for the strategic delta and regularization. This model is specifically designed for binary classification 
+    tasks and uses a linear model structure.
+
+    Parent Class:
+        nn.Module
+    """
+
     def __init__(
         self,
         in_features: int,
@@ -23,8 +33,12 @@ class LinearStrategicModel(nn.Module):
         bias: Optional[torch.Tensor] = None,
     ) -> None:
         """
-        Constructor for the LinearStrategicModel class.
-        This is a binary classification model therefore the output features is 1.
+        Initializes the LinearStrategicModel class.
+
+        Args:
+            in_features (int): Number of input features for the model.
+            weight (Optional[torch.Tensor], optional): Predefined weight tensor. If not provided, defaults to None.
+            bias (Optional[torch.Tensor], optional): Predefined bias tensor. If not provided, defaults to None.
         """
         super(LinearStrategicModel, self).__init__()
         self.model: torch.nn.Linear = torch.nn.Linear(
@@ -34,30 +48,57 @@ class LinearStrategicModel(nn.Module):
             self.set_weight_and_bias(weight, bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the model.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+
+        Returns:
+            torch.Tensor: The output tensor of the model after applying the linear transformation.
+        """
         return self.model(x)
 
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Calls the forward method of the model.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+
+        Returns:
+            torch.Tensor: The output tensor of the model.
+        """
         return self.forward(x)
 
     def train(self, mode: bool = True) -> "LinearStrategicModel":
+        """
+        Sets the model to training mode.
+
+        Args:
+            mode (bool, optional): Whether to set the model to training mode. Defaults to True.
+
+        Returns:
+            LinearStrategicModel: The model in training mode.
+        """
         return super().train(mode)
 
     def get_weight_and_bias(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        The get_weight_and_bias method returns the weights and bias of the model
+        Returns the weights and bias of the model.
 
         Returns:
-            Tuple[torch.Tensor, torch.Tensor]: the weights and bias of the model
+            Tuple[torch.Tensor, torch.Tensor]: The weights and bias of the model.
         """
         return self.model.weight.detach(), self.model.bias.detach()
 
     def set_weight_and_bias(self, weight: torch.Tensor, bias: torch.Tensor) -> None:
         """
-        The set_weight_and_bias method sets the weight and bias of the model
+        Sets the weight and bias of the model.
 
         Args:
-            weighs (torch.Tensor): the new weighs
-            bias (torch.Tensor): the new bias
+            weight (torch.Tensor): The new weights to set.
+            bias (torch.Tensor): The new bias to set.
         """
         # Check the input
         assert (
@@ -82,9 +123,9 @@ class LinearStrategicModel(nn.Module):
 
     def get_weight_and_bias_ref(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        The get_weight_and_bias method returns the weights and bias of the model
+        Returns the weights and bias of the model by reference.
 
         Returns:
-            Tuple[torch.Tensor, torch.Tensor]: the weights and bias of the model
+            Tuple[torch.Tensor, torch.Tensor]: The weights and bias of the model by reference.
         """
         return self.model.weight, self.model.bias

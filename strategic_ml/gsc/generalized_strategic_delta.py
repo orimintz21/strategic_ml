@@ -1,12 +1,13 @@
-""":file: generalized_strategic_delta.py
-This is the interface for all of GSC models.
-When creating a new model in this framework you will need to inherit from
-it.
-A GSC - stands for generalized strategic is based on the paper:
-'Generalized Strategic Classification and the Case of Aligned Incentives'
+"""
+This module implements the _GSC (Generalized Strategic Classification) interface.
 
-The general idea of the GSC is that a GSC gets a model, and change the input
-x to x' based on the GSC's type.
+The _GSC class serves as the base class for all models that use generalized strategic classification, 
+based on the paper 'Generalized Strategic Classification and the Case of Aligned Incentives'. 
+When creating a new GSC model in this framework, you will inherit from this class and implement the 
+required methods.
+
+The general idea of GSC is to modify the input `x` into `x_prime` based on the type of GSC, in order 
+to achieve a strategic classification outcome.
 """
 
 # External imports
