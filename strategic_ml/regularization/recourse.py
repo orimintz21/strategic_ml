@@ -43,6 +43,8 @@ class Recourse(_StrategicRegularization):
         x: torch.Tensor,
         delta_predictions: torch.Tensor,
         model: Optional[nn.Module] = None,
+        *args,
+        **kwargs,
     ) -> torch.Tensor:
         """This is the forward method of the Recourse class.
         This function calculates the recourse term of the strategic agents.
