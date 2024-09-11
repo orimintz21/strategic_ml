@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
 import pytorch_lightning as pl
 from typing import Optional, TYPE_CHECKING, Dict, Any, Tuple
 import logging
@@ -24,7 +23,7 @@ class ModelSuit(pl.LightningModule):
         loss_fn: nn.Module,
         regularization: Optional[_StrategicRegularization] = None,
         train_loader: DataLoader,
-        validation_loader: Optional[DataLoader] = None,
+        validation_loader: DataLoader,
         test_loader: DataLoader,
         test_delta: Optional[_GSC] = None,
         logging_level: int = logging.INFO,
@@ -192,13 +191,13 @@ class ModelSuit(pl.LightningModule):
         return optimizer
 
 
-def train_dataloader(self) -> DataLoader:
-    return self.train_loader
+    def train_dataloader(self) -> DataLoader:
+        return self.train_loader
 
 
-def val_dataloader(self) -> Optional[DataLoader]:
-    return self.validation_loader
+    def val_dataloader(self) -> DataLoader:
+        return self.validation_loader
 
 
-def test_dataloader(self) -> DataLoader:
-    return self.test_loader
+    def test_dataloader(self) -> DataLoader:
+        return self.test_loader
