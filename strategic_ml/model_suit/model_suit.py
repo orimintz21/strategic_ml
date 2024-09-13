@@ -215,4 +215,8 @@ class ModelSuit(pl.LightningModule):
 
 
     def test_dataloader(self) -> DataLoader:
+<<<<<<< HEAD
         return self.test_loader
+=======
+        return self.test_loader
+>>>>>>> 0309b5d1a832ed46665b755ac6ddf32715e230b5

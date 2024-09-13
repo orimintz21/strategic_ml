@@ -238,7 +238,7 @@ class _LinearGP(_GSC):
 
         if norm_waits is None:
             norm_w = torch.matmul(w, w.T)
-            projection = x - ((torch.matmul(x, w.T) + b) / (torch.matmul(w, w.T))) * w
+            projection = x - ((torch.matmul(x, w.T) + b) / (norm_w)) * w
 
         else:
             inverse_norm_waits: torch.Tensor = torch.inverse(norm_waits)

@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.pt
+# Remove logs
+lightning_logs/
 
 # C extensions
 *.so
