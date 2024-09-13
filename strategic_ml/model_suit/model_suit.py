@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
 import pytorch_lightning as pl
 from typing import Optional, TYPE_CHECKING, Dict, Any, Tuple
 import logging
@@ -24,7 +23,7 @@ class ModelSuit(pl.LightningModule):
         loss_fn: nn.Module,
         regularization: Optional[_StrategicRegularization] = None,
         train_loader: DataLoader,
-        validation_loader: Optional[DataLoader] = None,
+        validation_loader: DataLoader,
         test_loader: DataLoader,
         test_delta: Optional[_GSC] = None,
         logging_level: int = logging.INFO,
@@ -73,7 +72,13 @@ class ModelSuit(pl.LightningModule):
             mode=self._Mode.TRAIN,
         )
 
-        self.log("train_loss", loss, on_step=True, on_epoch=True)
+        loss = loss.mean()
+        zero_one_loss = (torch.sign(self.forward(x)) != y).sum().item() / len(y)
+        # Log metrics
+        self.log('train_loss_epoch', loss, on_epoch=True, prog_bar=True)
+        self.log('zero_one_loss_epoch', zero_one_loss, on_epoch=True, prog_bar=True)
+
+        # print(f"Logging train loss: {loss.item()}")
 
         return loss
 
@@ -88,9 +93,15 @@ class ModelSuit(pl.LightningModule):
         )
         assert predictions is not None
 
-        self.log("train_loss", val_loss, on_step=True, on_epoch=True)
+        # Log the validation loss
+        self.log("val_loss", val_loss, on_step=True, on_epoch=True)
+        
         zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
-        self.log("zero_one_loss", zero_one_loss, on_step=True, on_epoch=True)
+        
+        # Log the zero-one loss (accuracy metric)
+        self.log("val_zero_one_loss", zero_one_loss, on_step=True, on_epoch=True)
+
+        # print(f"Logging val loss: {val_loss.item()}, zero-one loss: {zero_one_loss}")
 
         return {"val_loss": val_loss, "zero_one_loss": zero_one_loss}
 
@@ -101,7 +112,6 @@ class ModelSuit(pl.LightningModule):
             x_prime = self.test_delta.forward(x, y)
             predictions = self.forward(x_prime)
             test_loss = self.loss_fn(predictions, y)
-
         else:
             test_loss, predictions = self._calculate_loss_and_predictions(
                 x,
@@ -111,9 +121,13 @@ class ModelSuit(pl.LightningModule):
             )
             assert predictions is not None
 
-        self.log("train_loss", test_loss, on_step=True, on_epoch=True)
+        # Log the test loss
+        self.log("test_loss", test_loss, on_step=True, on_epoch=True)
+        
         zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
-        self.log("zero_one_loss", zero_one_loss, on_step=True, on_epoch=True)
+        
+        # Log the zero-one loss for the test set
+        self.log("test_zero_one_loss", zero_one_loss, on_step=True, on_epoch=True)
 
         return {"test_loss": test_loss, "zero_one_loss": zero_one_loss}
 
@@ -192,13 +206,13 @@ class ModelSuit(pl.LightningModule):
         return optimizer
 
 
-def train_dataloader(self) -> DataLoader:
-    return self.train_loader
+    def train_dataloader(self) -> DataLoader:
+        return self.train_loader
 
 
-def val_dataloader(self) -> Optional[DataLoader]:
-    return self.validation_loader
+    def val_dataloader(self) -> DataLoader:
+        return self.validation_loader
 
 
-def test_dataloader(self) -> DataLoader:
-    return self.test_loader
+    def test_dataloader(self) -> DataLoader:
+        return self.test_loader

@@ -155,7 +155,7 @@ class _LinearGP(_GSC):
         for x_sample, z_sample in zip(x, z):
             x_sample: torch.Tensor = x_sample.view(1, -1)
             if torch.sign(self.strategic_model(x_sample)) == z_sample:
-                costs_of_moment = torch.tensor([0])
+                costs_of_moment = torch.tensor([0.0])
             else:
                 projection: torch.Tensor = self._calculate_projection(
                     x_sample, weights, bias, z_sample
@@ -168,12 +168,19 @@ class _LinearGP(_GSC):
                 )
 
                 costs_of_moment: torch.Tensor = self.cost(x_sample, projection)
+            
+            costs_of_moment = costs_of_moment.view(-1)  # Ensure 1D tensor for concatenation
+
             if costs is None:
                 costs = costs_of_moment
             else:
                 costs = torch.cat((costs, costs_of_moment))
 
-        assert costs is not None, "The costs is None after the loop"
+        if costs is None:
+            # Return a zero tensor if no costs were calculated
+            return torch.zeros(x.shape[0], dtype=torch.float64)
+
+        # assert costs is not None, "The costs is None after the loop"
         return costs
 
     def _assert_cost(self) -> None:
