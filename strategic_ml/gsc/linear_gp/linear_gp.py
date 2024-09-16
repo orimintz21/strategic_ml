@@ -86,6 +86,11 @@ class _LinearGP(_GSC):
             type(self.strategic_model)
         )
         weights, bias = self.strategic_model.get_weight_and_bias()
+
+        # Ensure dtype consistency
+        x = x.to(weights.dtype)
+        z = z.to(weights.dtype)
+
         x_prime: Optional[torch.Tensor] = None
 
         for x_sample, z_sample in zip(x, z):
@@ -168,8 +173,10 @@ class _LinearGP(_GSC):
                 )
 
                 costs_of_moment: torch.Tensor = self.cost(x_sample, projection)
-            
-            costs_of_moment = costs_of_moment.view(-1)  # Ensure 1D tensor for concatenation
+
+            costs_of_moment = costs_of_moment.view(
+                -1
+            )  # Ensure 1D tensor for concatenation
 
             if costs is None:
                 costs = costs_of_moment
@@ -235,6 +242,11 @@ class _LinearGP(_GSC):
         assert z.size() == torch.Size(
             [1]
         ), "z should be of size [1], but got {}".format(z.size())
+
+        # Ensure all tensors have consistent dtype
+        w = w.to(x.dtype)
+        b = b.to(x.dtype)
+        z = z.to(x.dtype)
 
         if norm_waits is None:
             norm_w = torch.matmul(w, w.T)

@@ -9,6 +9,7 @@ from strategic_ml.loss_functions.stratigic_hinge_loss import StrategicHingeLoss
 
 VERBOSE: bool = True
 
+
 def print_if_verbose(message: str) -> None:
     global VERBOSE
     if VERBOSE:
@@ -34,7 +35,9 @@ class TestModelSuitIntegration(unittest.TestCase):
 
         # Wrap the dataset in a DataLoader
         self.dataset = TensorDataset(self.x, self.y)
-        self.dataloader = DataLoader(self.dataset, batch_size=len(self.dataset), shuffle=False)
+        self.dataloader = DataLoader(
+            self.dataset, batch_size=len(self.dataset), shuffle=False
+        )
 
         # Instantiate the strategic model, cost function, delta, and loss function
         self.strategic_model = LinearStrategicModel(in_features=2)

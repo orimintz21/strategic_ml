@@ -13,7 +13,9 @@ class TestModelSuit(unittest.TestCase):
 
     def setUp(self):
         # Create a small dataset with 4 points
-        data_points = torch.tensor([[1, 1], [1, -1], [-1, -1], [-1, 1]], dtype=torch.float32)
+        data_points = torch.tensor(
+            [[1, 1], [1, -1], [-1, -1], [-1, 1]], dtype=torch.float32
+        )
         labels = torch.tensor([1, -1, 1, -1], dtype=torch.float32).unsqueeze(1)
         self.dataset = TensorDataset(data_points, labels)
         self.dataloader = DataLoader(self.dataset, batch_size=2, shuffle=True)
@@ -55,10 +57,12 @@ class TestModelSuit(unittest.TestCase):
         # Test the forward pass with real data
         x = torch.randn(4, 2)  # 4 samples with 2 features each
         output = self.model_suit.forward(x)
-        
+
         # Assert that the output is a tensor
         self.assertIsInstance(output, torch.Tensor)
-        self.assertEqual(output.shape, (4, 1))  # The output should have 4 samples, 1 output each
+        self.assertEqual(
+            output.shape, (4, 1)
+        )  # The output should have 4 samples, 1 output each
 
     def test_training_step(self):
         # Take a batch from the dataloader
@@ -91,8 +95,6 @@ class TestModelSuit(unittest.TestCase):
         optimizer = self.model_suit.configure_optimizers()
         self.assertIsInstance(optimizer, torch.optim.SGD)
 
-
-
     def test_assert_regularization_with_strategic_hinge_loss(self):
         regularization = SocialBurden()
         # Initialize the ModelSuit instance with StrategicHingeLoss and regularization
@@ -115,8 +117,10 @@ class TestModelSuit(unittest.TestCase):
             model_suit.training_step(batch, batch_idx=0)
 
         # Check if the error message matches the expected assertion message
-        self.assertEqual(str(context.exception), "Regularization is not supported for StrategicHingeLoss")
-
+        self.assertEqual(
+            str(context.exception),
+            "Regularization is not supported for StrategicHingeLoss",
+        )
 
 
 if __name__ == "__main__":

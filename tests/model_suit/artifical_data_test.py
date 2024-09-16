@@ -1,17 +1,16 @@
 # External imports
-import os
 import numpy as np
 import torch
 from torch import nn
 import torch.optim as optim
 from typing import Optional, Dict, Any, Tuple
-import logging
 from torch.utils.data import DataLoader, TensorDataset
 import pytorch_lightning as pl
 import unittest
 from pytorch_lightning.loggers import CSVLogger
-import pandas as pd 
+import pandas as pd
 import matplotlib.pyplot as plt
+from random import sample
 
 # internal imports
 from strategic_ml import (
@@ -21,6 +20,7 @@ from strategic_ml import (
     NonLinearStrategicDelta,
     CostNormL2,
     SocialBurden,
+    visualize_classifier,
 )
 
 
@@ -65,6 +65,7 @@ test_size = 500
 x_dim = 2
 blobs_dist = 11
 blobs_std = 1.5
+blobs_x2_std = 1.5
 pos_noise_frac = 0.0
 neg_noise_frac = 0.0
 
@@ -82,11 +83,15 @@ def gen_custom_normal_data(
     reset_seed()
     pos_samples_num = num_samples // 2
     neg_samples_num = num_samples - pos_samples_num
-    posX = torch.randn((pos_samples_num, x_dim), dtype=torch.float64) * pos_std + pos_mean
-    negX = torch.randn((neg_samples_num, x_dim), dtype=torch.float64) * neg_std + neg_mean
+    posX = (
+        torch.randn((pos_samples_num, x_dim), dtype=torch.float64) * pos_std + pos_mean
+    )
+    negX = (
+        torch.randn((neg_samples_num, x_dim), dtype=torch.float64) * neg_std + neg_mean
+    )
 
     X = torch.cat((posX, negX), 0).to(torch.float64)  # Ensure X is float64
-    
+
     Y = torch.unsqueeze(
         torch.cat(
             (
@@ -94,12 +99,16 @@ def gen_custom_normal_data(
                     np.random.choice(
                         [1, -1], len(posX), p=[1 - pos_noise_frac, pos_noise_frac]
                     )
-                ).float().to(torch.float64),  # Convert to float64
+                )
+                .float()
+                .to(torch.float64),  # Convert to float64
                 torch.from_numpy(
                     np.random.choice(
                         [-1, 1], len(posX), p=[1 - neg_noise_frac, neg_noise_frac]
                     )
-                ).float().to(torch.float64),  # Convert to float64
+                )
+                .float()
+                .to(torch.float64),  # Convert to float64
             ),
             0,
         ),
@@ -107,7 +116,7 @@ def gen_custom_normal_data(
     )
 
     dataset = TensorDataset(X, Y)
-    return DataLoader(dataset, batch_size=32, shuffle=False)
+    return DataLoader(dataset, batch_size=100, shuffle=False)
 
 
 def print_if_verbose(message: str) -> None:
@@ -134,9 +143,9 @@ class TestModelSuit(unittest.TestCase):
             train_size,
             x_dim,
             np.array([blobs_dist / 2 + 10, 0]),
-            np.array([blobs_std, 0.2]),
+            np.array([blobs_std, blobs_x2_std]),
             np.array([-blobs_dist / 2 + 10, 0]),
-            np.array([blobs_std, 0.2]),
+            np.array([blobs_std, blobs_x2_std]),
             pos_noise_frac=pos_noise_frac,
             neg_noise_frac=neg_noise_frac,
         )
@@ -145,9 +154,9 @@ class TestModelSuit(unittest.TestCase):
             val_size,
             x_dim,
             np.array([blobs_dist / 2 + 10, 0]),
-            np.array([blobs_std, 0.2]),
+            np.array([blobs_std, blobs_x2_std]),
             np.array([-blobs_dist / 2 + 10, 0]),
-            np.array([blobs_std, 0.2]),
+            np.array([blobs_std, blobs_x2_std]),
             pos_noise_frac=pos_noise_frac,
             neg_noise_frac=neg_noise_frac,
         )
@@ -156,17 +165,18 @@ class TestModelSuit(unittest.TestCase):
             test_size,
             x_dim,
             np.array([blobs_dist / 2 + 10, 0]),
-            np.array([blobs_std, 0.2]),
+            np.array([blobs_std, blobs_x2_std]),
             np.array([-blobs_dist / 2 + 10, 0]),
-            np.array([blobs_std, 0.2]),
+            np.array([blobs_std, blobs_x2_std]),
             pos_noise_frac=pos_noise_frac,
             neg_noise_frac=neg_noise_frac,
         )
 
-        self.loss_fn = nn.MSELoss()
+        # self.loss_fn = nn.MSELoss()
+        self.loss_fn = nn.BCEWithLogitsLoss()
         self.linear_model = LinearStrategicModel(x_dim)
         self.non_linear_model = NonLinearModel(x_dim)
-        self.cost = CostNormL2()
+        self.cost = CostNormL2(dim=1)
         self.linear_delta = LinearStrategicDelta(
             cost=self.cost, strategic_model=self.linear_model
         )
@@ -176,7 +186,7 @@ class TestModelSuit(unittest.TestCase):
             model=self.linear_model,
             delta=self.linear_delta,
             loss_fn=self.loss_fn,
-            regularization=self.regulation,
+            # regularization=self.regulation,
             train_loader=self.train_dataset,
             validation_loader=self.val_dataset,
             test_loader=self.test_dataset,
@@ -198,7 +208,7 @@ class TestModelSuit(unittest.TestCase):
             test_loader=self.test_dataset,
             training_params=NON_LINEAR_TRAINING_PARAMS,
         )
-    
+
     def test_linear_model(self):
 
         logger = pl.loggers.CSVLogger("logs/", name="my_experiment")
@@ -207,50 +217,35 @@ class TestModelSuit(unittest.TestCase):
         trainer = pl.Trainer(
             max_epochs=100,
             logger=CSVLogger("logs/", name="my_experiment"),
-            log_every_n_steps=1  # Ensure logging at each step
-        )   
+            log_every_n_steps=1,  # Ensure logging at each step
+        )
 
-        trainer = pl.Trainer(max_epochs=10)
         trainer.fit(self.linear_test_suite)
         trainer.test(self.linear_test_suite)
         # visualize the results
-        self.visualize_results(trainer)
+        # self.visualize_results(trainer)
 
-    def visualize_results(self, trainer):
-        # Read CSV log file
-        csv_log_path = trainer.logger.experiment.metrics_file_path
-        metrics_df = pd.read_csv(csv_log_path)
-        print("Metrics dataframe content:\n", metrics_df)
+        # After training the linear model:
+        if isinstance(self.linear_model, LinearStrategicModel):
+            visualize_classifier(
+                self.linear_model,
+                self.train_dataset,
+                self.linear_delta,
+                display_percentage=0.05,
+                prefix="train",
+            )
+            visualize_classifier(
+                self.linear_model,
+                self.test_dataset,
+                self.linear_delta,
+                display_percentage=0.05,
+                prefix="test",
+            )
+        else:
+            print(
+                f"self.linear_model is not an instance of LinearStrategicModel, it's {type(self.linear_model)}"
+            )
 
-        # Extract logged metrics using the correct column names
-        # Use 'train_loss_epoch_epoch' and 'zero_one_loss_epoch_epoch'
-        train_loss = metrics_df['train_loss_epoch_epoch'].dropna().values
-        zero_one_loss = metrics_df['zero_one_loss_epoch_epoch'].dropna().values
-
-        # Plot the metrics
-        epochs = range(len(train_loss))
-
-        plt.figure(figsize=(10, 5))
-
-        # Plot training loss
-        plt.subplot(1, 2, 1)
-        plt.plot(epochs, train_loss, label="Train Loss")
-        plt.xlabel("Epochs")
-        plt.ylabel("Loss")
-        plt.title("Training Loss Across Epochs")
-        plt.legend()
-
-        # Plot zero-one loss
-        plt.subplot(1, 2, 2)
-        plt.plot(epochs, zero_one_loss, label="Zero-One Loss")
-        plt.xlabel("Epochs")
-        plt.ylabel("Zero-One Loss")
-        plt.title("Zero-One Loss Across Epochs")
-        plt.legend()
-
-        # Save the plot
-        plt.savefig('training_results.png')
-        print("Training results saved to 'training_results.png'")
 
 if __name__ == "__main__":
     unittest.main()

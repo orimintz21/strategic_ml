@@ -5,6 +5,7 @@ __pycache__/
 *.pt
 # Remove logs
 lightning_logs/
+logs/
 
 # C extensions
 *.so
