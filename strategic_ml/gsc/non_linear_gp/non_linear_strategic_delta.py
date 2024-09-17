@@ -78,7 +78,7 @@ class NonLinearStrategicDelta(_NonLinearGP):
             torch.Tensor: x_prime, the delta.
         """
         # array of ones with the number of rows of x
-        ones = torch.ones((x.shape[0], 1))
+        ones = torch.ones((x.shape[0], 1), dtype=x.dtype, device=x.device)
         return super().find_x_prime(x, ones)
 
     def _gen_z_fn(self, data: torch.Tensor) -> torch.Tensor:

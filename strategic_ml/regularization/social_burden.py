@@ -65,6 +65,7 @@ class SocialBurden(_StrategicRegularization):
         assert (
             x.shape[0] == y.shape[0]
         ), "x, x_prime, and y must have the same batch size"
+
         assert y.shape[1] == 1, "y must be a 1D tensor"
 
         positive_label = y == 1

@@ -65,20 +65,20 @@ class ModelSuit(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        loss, _ = self._calculate_loss_and_predictions(
-            x,
-            y,
-            batch_idx,
-            mode=self._Mode.TRAIN,
+        loss, predictions = self._calculate_loss_and_predictions(
+            x=x, y=y, batch_idx=batch_idx, mode=self._Mode.TRAIN
         )
-
         loss = loss.mean()
         zero_one_loss = (torch.sign(self.forward(x)) != y).sum().item() / len(y)
-        # Log metrics
-        self.log('train_loss_epoch', loss, on_epoch=True, prog_bar=True)
-        self.log('zero_one_loss_epoch', zero_one_loss, on_epoch=True, prog_bar=True)
 
-        # print(f"Logging train loss: {loss.item()}")
+        if batch_idx % 100 == 0:
+            logging.debug(
+                f"Batch {batch_idx} - Loss: {loss.item()}, Zero-One Loss: {zero_one_loss}"
+            )
+
+        # Log metrics
+        self.log("train_loss_epoch", loss, on_epoch=True, prog_bar=True)
+        self.log("zero_one_loss_epoch", zero_one_loss, on_epoch=True, prog_bar=True)
 
         return loss
 
@@ -86,26 +86,26 @@ class ModelSuit(pl.LightningModule):
         x, y = batch
 
         val_loss, predictions = self._calculate_loss_and_predictions(
-            x,
-            y,
-            batch_idx,
-            mode=self._Mode.VALIDATION,
+            x=x, y=y, batch_idx=batch_idx, mode=self._Mode.VALIDATION
         )
-        assert predictions is not None
 
-        # Log the validation loss
-        self.log("val_loss", val_loss, on_step=True, on_epoch=True)
-        
         zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
-        
-        # Log the zero-one loss (accuracy metric)
-        self.log("val_zero_one_loss", zero_one_loss, on_step=True, on_epoch=True)
 
-        # print(f"Logging val loss: {val_loss.item()}, zero-one loss: {zero_one_loss}")
+        if batch_idx % 100 == 0:
+            logging.debug(
+                f"Validation Batch {batch_idx} - Validation Loss: {val_loss.mean().item()}, Zero-One Loss: {zero_one_loss}"
+            )
 
-        return {"val_loss": val_loss, "zero_one_loss": zero_one_loss}
+        self.log("val_loss_epoch", val_loss.mean(), on_epoch=True, prog_bar=True)
+        self.log("val_zero_one_loss_epoch", zero_one_loss, on_epoch=True, prog_bar=True)
+
+        return {"val_loss": val_loss.mean(), "zero_one_loss": zero_one_loss}
 
     def test_step(self, batch, batch_idx):
+
+        # Log the structure of the batch
+        logging.debug(f"Test batch contents: {len(batch)} elements")
+
         x, y = batch
         if self.test_delta is not None:
             # In the dark
@@ -114,18 +114,16 @@ class ModelSuit(pl.LightningModule):
             test_loss = self.loss_fn(predictions, y)
         else:
             test_loss, predictions = self._calculate_loss_and_predictions(
-                x,
-                y,
-                batch_idx,
-                mode=self._Mode.TEST,
+                x=x, y=y, batch_idx=batch_idx, mode=self._Mode.TEST
             )
-            assert predictions is not None
+
+        assert predictions is not None
 
         # Log the test loss
         self.log("test_loss", test_loss, on_step=True, on_epoch=True)
-        
+
         zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
-        
+
         # Log the zero-one loss for the test set
         self.log("test_zero_one_loss", zero_one_loss, on_step=True, on_epoch=True)
 
@@ -184,6 +182,7 @@ class ModelSuit(pl.LightningModule):
 
             predictions = self.forward(x_prime)
             loss = self.loss_fn(predictions, y)
+
             if self.regularization is not None and mode == self._Mode.TRAIN:
                 assert not isinstance(self.delta, _NonLinearGP)
                 assert not isinstance(self.loss_fn, StrategicHingeLoss)
