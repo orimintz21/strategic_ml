@@ -37,7 +37,7 @@ from .models import LinearStrategicModel
 
 from .model_suit import ModelSuit
 
-from .utils import visualize_classifier
+from .utils import visualize_linear_classifier_2D
 
 # Functionality of the package
 __all__: list = [
@@ -70,5 +70,5 @@ __all__: list = [
     # Model Suit
     "ModelSuit",
     # Utils
-    "visualize_classifier",
+    "visualize_linear_classifier_2D",
 ]  # List of modules and functions to be imported when using 'from strategic_ml import *'

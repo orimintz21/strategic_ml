@@ -19,7 +19,7 @@ from strategic_ml.cost_functions import CostNormL2
 from strategic_ml.regularization import SocialBurden
 
 
-def visualize_classifier(
+def visualize_linear_classifier_2D(
     model, dataset, delta, grid_size=100, display_percentage=1.0, prefix=""
 ):
     """

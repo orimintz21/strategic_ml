@@ -66,10 +66,6 @@ class SocialBurden(_StrategicRegularization):
             x.shape[0] == y.shape[0]
         ), "x, x_prime, and y must have the same batch size"
 
-        # Ensure y is 2D by adding an extra dimension if it's 1D
-        if y.ndim == 1:
-            y = y.unsqueeze(1)
-
         assert y.shape[1] == 1, "y must be a 1D tensor"
 
         positive_label = y == 1

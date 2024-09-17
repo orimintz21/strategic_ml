@@ -213,6 +213,12 @@ class _LinearGP(_GSC):
             [batch_size, 1]
         ), "z should be of size [batch_size, 1], but got {}".format(z.size())
 
+        w, b = self.strategic_model.get_weight_and_bias()
+        # Ensure all tensors have consistent dtype
+        assert (x.dtype == b.dtype) , "All tensors should have the same dtype but we got x: {0}, b: {1}".format(x.dtype, b.dtype)
+        assert (x.dtype  == w.dtype), "All tensors should have the same dtype but we got x: {0}, w: {2}".format(x.dtype, w.dtype)
+        assert (x.dtype == z.dtype), "All tensors should have the same dtype but we got x: {0}, z: {3}".format(x.dtype, z.dtype)
+
     def _assert_model(self) -> None:
         """This function asserts that the strategic model is a LinearStrategicModel"""
         assert isinstance(
@@ -242,11 +248,6 @@ class _LinearGP(_GSC):
         assert z.size() == torch.Size(
             [1]
         ), "z should be of size [1], but got {}".format(z.size())
-
-        # Ensure all tensors have consistent dtype
-        w = w.to(x.dtype)
-        b = b.to(x.dtype)
-        z = z.to(x.dtype)
 
         if norm_waits is None:
             norm_w = torch.matmul(w, w.T)

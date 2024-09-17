@@ -20,7 +20,7 @@ from strategic_ml import (
     NonLinearStrategicDelta,
     CostNormL2,
     SocialBurden,
-    visualize_classifier,
+    visualize_linear_classifier_2D,
 )
 
 
@@ -215,7 +215,7 @@ class TestModelSuit(unittest.TestCase):
 
         # Pass the logger to the Trainer
         trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=10,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
         )
@@ -227,14 +227,14 @@ class TestModelSuit(unittest.TestCase):
 
         # After training the linear model:
         if isinstance(self.linear_model, LinearStrategicModel):
-            visualize_classifier(
+            visualize_linear_classifier_2D(
                 self.linear_model,
                 self.train_dataset,
                 self.linear_delta,
                 display_percentage=0.05,
                 prefix="train",
             )
-            visualize_classifier(
+            visualize_linear_classifier_2D(
                 self.linear_model,
                 self.test_dataset,
                 self.linear_delta,
