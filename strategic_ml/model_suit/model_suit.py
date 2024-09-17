@@ -162,9 +162,15 @@ class ModelSuit(pl.LightningModule):
                 assert self.train_delta_every is not None
                 if self.current_epoch % self.train_delta_every == 0:
                     if mode == self._Mode.TRAIN:
-                        self.delta.train(self.train_dataloader())
+                        self.delta.train(
+                            data=self.train_dataloader(),
+                            set_name=self._Mode.TRAIN.value,
+                        )
                     elif mode == self._Mode.VALIDATION:
-                        self.delta.train(self.val_dataloader())
+                        self.delta.train(
+                            data=self.val_dataloader(),
+                            set_name=self._Mode.VALIDATION.value,
+                        )
                     else:
                         raise ValueError("Do not train the delta in test mode")
 
@@ -205,18 +211,11 @@ class ModelSuit(pl.LightningModule):
 
         return optimizer
 
-
     def train_dataloader(self) -> DataLoader:
         return self.train_loader
-
 
     def val_dataloader(self) -> DataLoader:
         return self.validation_loader
 
-
     def test_dataloader(self) -> DataLoader:
-<<<<<<< HEAD
         return self.test_loader
-=======
-        return self.test_loader
->>>>>>> 0309b5d1a832ed46665b755ac6ddf32715e230b5

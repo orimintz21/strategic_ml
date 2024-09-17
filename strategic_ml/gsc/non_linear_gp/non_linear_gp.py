@@ -63,6 +63,7 @@ class _NonLinearGP(_GSC):
     def train(
         self,
         data: DataLoader,
+        set_name: str = "",
     ) -> None:
         """
         Train the model by finding x_prime for all data in x_loader and z_loader,
@@ -70,27 +71,28 @@ class _NonLinearGP(_GSC):
 
         :param data: DataLoader for x and y
         """
-        os.makedirs(self.save_dir, exist_ok=True)
+        # Add the set_name to the save_dir
+        save_dir: str = os.path.join(self.save_dir, set_name)
+        os.makedirs(save_dir, exist_ok=True)
 
         for batch_idx, data_batch in enumerate(data):
             z_batch: torch.Tensor = self._gen_z_fn(data_batch)
             x_batch, _ = data_batch
             x_prime: torch.Tensor = self.find_x_prime(x_batch, z_batch)
-            save_path: str = os.path.join(
-                self.save_dir, f"x_prime_batch_{batch_idx}.pt"
-            )
+            save_path: str = os.path.join(save_dir, f"x_prime_batch_{batch_idx}.pt")
             torch.save(x_prime, save_path)
             logging.debug(f"Saved x_prime for batch {batch_idx} to {save_path}")
 
-    def load_x_prime(self, batch_idx: int) -> torch.Tensor:
+    def load_x_prime(self, batch_idx: int, set_name: str = "") -> torch.Tensor:
         """
         Load precomputed x_prime values from disk for a specific batch.
 
         :param batch_idx: Index of the batch to load
         :return: Loaded x_prime tensor
         """
+        save_dir: str = os.path.join(self.save_dir, set_name)
 
-        save_path: str = os.path.join(self.save_dir, f"x_prime_batch_{batch_idx}.pt")
+        save_path: str = os.path.join(save_dir, f"x_prime_batch_{batch_idx}.pt")
         if os.path.exists(save_path):
             x_prime: torch.Tensor = torch.load(save_path)
             logging.debug(f"Loaded x_prime for batch {batch_idx} from {save_path}")
