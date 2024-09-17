@@ -215,9 +215,21 @@ class _LinearGP(_GSC):
 
         w, b = self.strategic_model.get_weight_and_bias()
         # Ensure all tensors have consistent dtype
-        assert (x.dtype == b.dtype) , "All tensors should have the same dtype but we got x: {0}, b: {1}".format(x.dtype, b.dtype)
-        assert (x.dtype  == w.dtype), "All tensors should have the same dtype but we got x: {0}, w: {2}".format(x.dtype, w.dtype)
-        assert (x.dtype == z.dtype), "All tensors should have the same dtype but we got x: {0}, z: {3}".format(x.dtype, z.dtype)
+        assert (
+            x.dtype == b.dtype
+        ), "All tensors should have the same dtype but we got x: {0}, b: {1}".format(
+            x.dtype, b.dtype
+        )
+        assert (
+            x.dtype == w.dtype
+        ), "All tensors should have the same dtype but we got x: {0}, w: {2}".format(
+            x.dtype, w.dtype
+        )
+        assert (
+            x.dtype == z.dtype
+        ), "All tensors should have the same dtype but we got x: {0}, z: {3}".format(
+            x.dtype, z.dtype
+        )
 
     def _assert_model(self) -> None:
         """This function asserts that the strategic model is a LinearStrategicModel"""

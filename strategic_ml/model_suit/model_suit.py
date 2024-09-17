@@ -65,28 +65,36 @@ class ModelSuit(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        loss, predictions = self._calculate_loss_and_predictions(x=x, y=y, batch_idx=batch_idx, mode=self._Mode.TRAIN)
+        loss, predictions = self._calculate_loss_and_predictions(
+            x=x, y=y, batch_idx=batch_idx, mode=self._Mode.TRAIN
+        )
         loss = loss.mean()
         zero_one_loss = (torch.sign(self.forward(x)) != y).sum().item() / len(y)
 
         if batch_idx % 100 == 0:
-            logging.debug(f"Batch {batch_idx} - Loss: {loss.item()}, Zero-One Loss: {zero_one_loss}")
-        
+            logging.debug(
+                f"Batch {batch_idx} - Loss: {loss.item()}, Zero-One Loss: {zero_one_loss}"
+            )
+
         # Log metrics
-        self.log('train_loss_epoch', loss, on_epoch=True, prog_bar=True)
-        self.log('zero_one_loss_epoch', zero_one_loss, on_epoch=True, prog_bar=True)
+        self.log("train_loss_epoch", loss, on_epoch=True, prog_bar=True)
+        self.log("zero_one_loss_epoch", zero_one_loss, on_epoch=True, prog_bar=True)
 
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
 
-        val_loss, predictions = self._calculate_loss_and_predictions(x=x, y=y, batch_idx=batch_idx, mode=self._Mode.VALIDATION)
+        val_loss, predictions = self._calculate_loss_and_predictions(
+            x=x, y=y, batch_idx=batch_idx, mode=self._Mode.VALIDATION
+        )
 
         zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
 
         if batch_idx % 100 == 0:
-            logging.debug(f"Validation Batch {batch_idx} - Validation Loss: {val_loss.mean().item()}, Zero-One Loss: {zero_one_loss}")
+            logging.debug(
+                f"Validation Batch {batch_idx} - Validation Loss: {val_loss.mean().item()}, Zero-One Loss: {zero_one_loss}"
+            )
 
         self.log("val_loss_epoch", val_loss.mean(), on_epoch=True, prog_bar=True)
         self.log("val_zero_one_loss_epoch", zero_one_loss, on_epoch=True, prog_bar=True)
@@ -120,7 +128,6 @@ class ModelSuit(pl.LightningModule):
         self.log("test_zero_one_loss", zero_one_loss, on_step=True, on_epoch=True)
 
         return {"test_loss": test_loss, "zero_one_loss": zero_one_loss}
-
 
     def _calculate_loss_and_predictions(
         self,
