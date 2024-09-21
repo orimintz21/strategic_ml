@@ -7,7 +7,7 @@ from strategic_ml.model_suit.strategic_classification_module import (
     StrategicClassificationModule,
 )
 from strategic_ml.model_suit.strategic_callbacks import StrategicAdjustmentCallback
-from strategic_ml.models.linear_strategic_model import LinearStrategicModel
+from strategic_ml.models.linear_strategic_model import LinearModel
 
 
 # Define a simple linear model
@@ -53,7 +53,7 @@ class TestStrategicTrainer(unittest.TestCase):
 
         # Instantiate the model, strategic regularization, loss function, and GSC
         # self.model = SimpleModel()
-        self.model = LinearStrategicModel(in_features=2)
+        self.model = LinearModel(in_features=2)
         self.strategic_regularization = DummyStrategicRegularization()
         self.loss_fn = torch.nn.MSELoss()  # Using MSE for simplicity
         self.gsc = DummyGSC()

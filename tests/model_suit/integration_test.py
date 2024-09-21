@@ -3,7 +3,7 @@ import unittest
 from torch.utils.data import DataLoader, TensorDataset
 from strategic_ml.model_suit import ModelSuit
 from strategic_ml.cost_functions.norms import CostNormL2
-from strategic_ml.models.linear_strategic_model import LinearStrategicModel
+from strategic_ml.models.linear_strategic_model import LinearModel
 from strategic_ml.gsc.linear_gp.linear_strategic_delta import LinearStrategicDelta
 from strategic_ml.loss_functions.stratigic_hinge_loss import StrategicHingeLoss
 
@@ -40,7 +40,7 @@ class TestModelSuitIntegration(unittest.TestCase):
         )
 
         # Instantiate the strategic model, cost function, delta, and loss function
-        self.strategic_model = LinearStrategicModel(in_features=2)
+        self.strategic_model = LinearModel(in_features=2)
         self.cost = CostNormL2(dim=1)
         self.strategic_delta = LinearStrategicDelta(
             cost=self.cost,

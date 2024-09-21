@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 # Imports for your models
 from strategic_ml import (
     ModelSuit,
-    LinearStrategicModel,
+    LinearModel,
     LinearStrategicDelta,
     CostNormL2,
 )
@@ -207,7 +207,7 @@ class TestModelSuit(unittest.TestCase):
         )
 
         # Define models, loss function, and regularization
-        self.linear_model = LinearStrategicModel(X_train.shape[1])
+        self.linear_model = LinearModel(X_train.shape[1])
         self.cost = CostNormL2(dim=1)
         self.linear_delta = LinearStrategicDelta(
             cost=self.cost, strategic_model=self.linear_model

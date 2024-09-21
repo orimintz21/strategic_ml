@@ -17,7 +17,7 @@ from strategic_ml.loss_functions import StrategicHingeLoss
 # internal imports
 from strategic_ml import (
     ModelSuit,
-    LinearStrategicModel,
+    LinearModel,
     LinearStrategicDelta,
     CostNormL2,
     SocialBurden,
@@ -152,7 +152,7 @@ class TestModelSuit(unittest.TestCase):
 
     #     # Define loss function and models
     #     self.loss_fn = nn.MSELoss()
-    #     self.linear_model = LinearStrategicModel(X_train.shape[1])  # Assuming X_train has shape (n_users, features)
+    #     self.linear_model = LinearModel(X_train.shape[1])  # Assuming X_train has shape (n_users, features)
     #     self.cost = CostNormL2()
     #     self.linear_delta = LinearStrategicDelta(cost=self.cost, strategic_model=self.linear_model)
     #     # self.regulation = SocialBurden(self.linear_delta)
@@ -193,7 +193,7 @@ class TestModelSuit(unittest.TestCase):
         self.test_dataset = DataLoader(test_dataset, batch_size=16, shuffle=False)
 
         # Model Setup
-        self.model = LinearStrategicModel(train_dataset[0].shape[1])
+        self.model = LinearModel(train_dataset[0].shape[1])
         self.cost = CostNormL2()
         self.delta = LinearStrategicDelta(cost=self.cost, strategic_model=self.model)
         self.loss_fn = StrategicHingeLoss(model=self.model, delta=self.delta)

@@ -15,12 +15,13 @@ from random import sample
 # internal imports
 from strategic_ml import (
     ModelSuit,
-    LinearStrategicModel,
+    LinearModel,
     LinearStrategicDelta,
     NonLinearStrategicDelta,
     CostNormL2,
     SocialBurden,
     visualize_linear_classifier_2D,
+    IdentityDelta,
 )
 
 
@@ -174,7 +175,7 @@ class TestModelSuit(unittest.TestCase):
 
         # self.loss_fn = nn.MSELoss()
         self.loss_fn = nn.BCEWithLogitsLoss()
-        self.linear_model = LinearStrategicModel(x_dim)
+        self.linear_model = LinearModel(x_dim)
         self.non_linear_model = NonLinearModel(x_dim)
         self.cost = CostNormL2(dim=1)
         self.linear_delta = LinearStrategicDelta(
@@ -226,7 +227,7 @@ class TestModelSuit(unittest.TestCase):
         # self.visualize_results(trainer)
 
         # After training the linear model:
-        if isinstance(self.linear_model, LinearStrategicModel):
+        if isinstance(self.linear_model, LinearModel):
             visualize_linear_classifier_2D(
                 self.linear_model,
                 self.train_dataset,
@@ -238,13 +239,50 @@ class TestModelSuit(unittest.TestCase):
                 self.linear_model,
                 self.test_dataset,
                 self.linear_delta,
-                display_percentage=0.05,
+                display_percentage=0.5,
                 prefix="test",
             )
         else:
             print(
-                f"self.linear_model is not an instance of LinearStrategicModel, it's {type(self.linear_model)}"
+                f"self.linear_model is not an instance of LinearModel, it's {type(self.linear_model)}"
             )
+
+    def test_identity_delta(self):
+        identity_model = ModelSuit(
+            model=self.linear_model,
+            delta=IdentityDelta(),
+            loss_fn=self.loss_fn,
+            # regularization=self.regulation,
+            train_loader=self.train_dataset,
+            validation_loader=self.val_dataset,
+            test_loader=self.test_dataset,
+            training_params=LINEAR_TRAINING_PARAMS,
+        )
+        logger = pl.loggers.CSVLogger("logs/", name="my_experiment")
+
+        # Pass the logger to the Trainer
+        trainer = pl.Trainer(
+            max_epochs=100,
+            logger=CSVLogger("logs/", name="my_experiment"),
+            log_every_n_steps=1,  # Ensure logging at each step
+        )
+
+        trainer.fit(identity_model)
+        trainer.test(identity_model)
+        visualize_linear_classifier_2D(
+            self.linear_model,
+            self.train_dataset,
+            IdentityDelta(),
+            display_percentage=0.05,
+            prefix="train_identity",
+        )
+        visualize_linear_classifier_2D(
+            self.linear_model,
+            self.test_dataset,
+            IdentityDelta(),
+            display_percentage=0.5,
+            prefix="test_identity",
+        )
 
 
 if __name__ == "__main__":

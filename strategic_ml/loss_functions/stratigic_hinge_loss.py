@@ -5,7 +5,7 @@ from torch import nn
 # Internal imports
 from strategic_ml.loss_functions import _Loss
 from strategic_ml.gsc import _LinearGP
-from strategic_ml.models import LinearStrategicModel
+from strategic_ml.models import LinearModel
 
 
 class StrategicHingeLoss(_Loss):
@@ -29,7 +29,7 @@ class StrategicHingeLoss(_Loss):
 
     def __init__(
         self,
-        model: LinearStrategicModel,
+        model: LinearModel,
         delta: _LinearGP,
         regularization_lambda: float = 0.01,
     ) -> None:
@@ -41,8 +41,8 @@ class StrategicHingeLoss(_Loss):
         """
         super(StrategicHingeLoss, self).__init__(model, regularization_lambda)
         assert isinstance(
-            model, LinearStrategicModel
-        ), f"model should be an instance of LinearStrategicModel, but it is {type(model)}"
+            model, LinearModel
+        ), f"model should be an instance of LinearModel, but it is {type(model)}"
         assert isinstance(
             delta, _LinearGP
         ), f"delta should be an instance of linear gp , but it is {type(delta)}"
@@ -57,8 +57,8 @@ class StrategicHingeLoss(_Loss):
         :return: Computed loss as a torch.tensor.
         """
         assert isinstance(
-            self.model, LinearStrategicModel
-        ), f"model should be an instance of LinearStrategicModel, but it is {type(self.model)}"
+            self.model, LinearModel
+        ), f"model should be an instance of LinearModel, but it is {type(self.model)}"
         z = self.delta.get_z(x, y)
         assert (
             z.shape[0] == x.shape[0]

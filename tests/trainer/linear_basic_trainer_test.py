@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from strategic_ml.cost_functions.norms import CostNormL2
 from strategic_ml.gsc.linear_strategic_delta import LinearStrategicDelta
 from strategic_ml.model_suit.linear_trainer import LinearTrainer
-from strategic_ml.models.linear_strategic_model import LinearStrategicModel
+from strategic_ml.models.linear_strategic_model import LinearModel
 
 
 class TestLinearTrainer(unittest.TestCase):
@@ -21,7 +21,7 @@ class TestLinearTrainer(unittest.TestCase):
         self.val_loader = DataLoader(dataset, batch_size=2, shuffle=False)
 
         # Instantiate the real model and other components for the trainer
-        model = LinearStrategicModel(in_features=2)
+        model = LinearModel(in_features=2)
         loss = (
             torch.nn.BCEWithLogitsLoss()
         )  # Binary Cross-Entropy Loss for binary classification

@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from strategic_ml.model_suit import ModelSuit
 from strategic_ml.loss_functions import StrategicHingeLoss
 from strategic_ml.gsc.linear_gp import LinearStrategicDelta
-from strategic_ml.models.linear_strategic_model import LinearStrategicModel
+from strategic_ml.models.linear_strategic_model import LinearModel
 from strategic_ml.cost_functions.norms import CostNormL2
 from strategic_ml.regularization.social_burden import SocialBurden
 
@@ -21,7 +21,7 @@ class TestModelSuit(unittest.TestCase):
         self.dataloader = DataLoader(self.dataset, batch_size=2, shuffle=True)
 
         # Instantiate the real model, cost function, delta, and loss function
-        self.model = LinearStrategicModel(in_features=2)
+        self.model = LinearModel(in_features=2)
         self.cost = CostNormL2(dim=1)
         self.delta = LinearStrategicDelta(cost=self.cost, strategic_model=self.model)
         self.loss_fn = StrategicHingeLoss(model=self.model, delta=self.delta)

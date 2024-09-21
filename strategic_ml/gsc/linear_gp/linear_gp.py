@@ -5,7 +5,7 @@ from typing import Optional
 
 # Internal imports
 from strategic_ml.gsc.generalized_strategic_delta import _GSC
-from strategic_ml.models import LinearStrategicModel
+from strategic_ml.models import LinearModel
 from strategic_ml.cost_functions import (
     _CostFunction,
     CostNormL2,
@@ -81,8 +81,8 @@ class _LinearGP(_GSC):
 
         # Get the weights and bias of the model
         assert isinstance(
-            self.strategic_model, LinearStrategicModel
-        ), "The model should be a LinearStrategicModel, but got {}".format(
+            self.strategic_model, LinearModel
+        ), "The model should be a LinearModel, but got {}".format(
             type(self.strategic_model)
         )
         weights, bias = self.strategic_model.get_weight_and_bias()
@@ -150,8 +150,8 @@ class _LinearGP(_GSC):
         self._validate_input(x, z)
         # Get the weights and bias of the model
         assert isinstance(
-            self.strategic_model, LinearStrategicModel
-        ), "The model should be a LinearStrategicModel, but got {}".format(
+            self.strategic_model, LinearModel
+        ), "The model should be a LinearModel, but got {}".format(
             type(self.strategic_model)
         )
         weights, bias = self.strategic_model.get_weight_and_bias()
@@ -232,9 +232,9 @@ class _LinearGP(_GSC):
         )
 
     def _assert_model(self) -> None:
-        """This function asserts that the strategic model is a LinearStrategicModel"""
+        """This function asserts that the strategic model is a LinearModel"""
         assert isinstance(
-            self.strategic_model, LinearStrategicModel
+            self.strategic_model, LinearModel
         ), "The strategic model should be a StrategicModel"
 
     def _calculate_projection(

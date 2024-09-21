@@ -7,7 +7,7 @@ from strategic_ml import (
     Recourse,
     CostNormL2,
     LinearStrategicDelta,
-    LinearStrategicModel,
+    LinearModel,
 )
 
 VERBOSE = True
@@ -89,7 +89,7 @@ class TestRegularization(unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.cost = CostNormL2(dim=1)
-        self.model = LinearStrategicModel(
+        self.model = LinearModel(
             2, weight=torch.Tensor([[2, 0]]), bias=torch.Tensor([-2.5])
         )
         self.delta = LinearStrategicDelta(cost=self.cost, strategic_model=self.model)

@@ -23,6 +23,7 @@ from .loss_functions import _Loss, StrategicHingeLoss
 
 from .gsc import (
     _GSC,
+    IdentityDelta,
     _LinearGP,
     LinearAdvDelta,
     LinearStrategicDelta,
@@ -33,7 +34,7 @@ from .gsc import (
     NonLinearAdvDelta,
 )
 
-from .models import LinearStrategicModel
+from .models import LinearModel
 
 from .model_suit import ModelSuit
 
@@ -57,6 +58,7 @@ __all__: list = [
     "StrategicHingeLoss",
     # GSC
     "_GSC",
+    "IdentityDelta",
     "_LinearGP",
     "LinearAdvDelta",
     "LinearStrategicDelta",
@@ -66,7 +68,7 @@ __all__: list = [
     "NonLinearNoisyLabelDelta",
     "NonLinearAdvDelta",
     # Models
-    "LinearStrategicModel",
+    "LinearModel",
     # Model Suit
     "ModelSuit",
     # Utils

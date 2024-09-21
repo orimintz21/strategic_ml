@@ -3,7 +3,7 @@ This is the linear strategic model.
 The linear strategic model calculates the relent delta and the strategic regularization
 and uses them to modify the input data before passing it to the model.
 
-We implement the LinearStrategicModel class because when we use a linear model
+We implement the LinearModel class because when we use a linear model
 we can calculate the strategic delta in a closed form.
 """
 
@@ -15,7 +15,7 @@ from typing import Any, Tuple, Optional
 # Internal imports
 
 
-class LinearStrategicModel(nn.Module):
+class LinearModel(nn.Module):
     def __init__(
         self,
         in_features: int,
@@ -23,10 +23,10 @@ class LinearStrategicModel(nn.Module):
         bias: Optional[torch.Tensor] = None,
     ) -> None:
         """
-        Constructor for the LinearStrategicModel class.
+        Constructor for the LinearModel class.
         This is a binary classification model therefore the output features is 1.
         """
-        super(LinearStrategicModel, self).__init__()
+        super(LinearModel, self).__init__()
         self.model: torch.nn.Linear = torch.nn.Linear(
             in_features=in_features, out_features=1, bias=True
         )
@@ -39,7 +39,7 @@ class LinearStrategicModel(nn.Module):
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
         return self.forward(x)
 
-    def train(self, mode: bool = True) -> "LinearStrategicModel":
+    def train(self, mode: bool = True) -> "LinearModel":
         return super().train(mode)
 
     def get_weight_and_bias(self) -> Tuple[torch.Tensor, torch.Tensor]:
