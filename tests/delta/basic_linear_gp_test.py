@@ -3,7 +3,7 @@ import unittest
 
 from strategic_ml import (
     CostNormL2,
-    LinearStrategicModel,
+    LinearModel,
     LinearStrategicDelta,
     LinearAdvDelta,
     LinearNoisyLabelDelta,
@@ -69,7 +69,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
         """
         self.x, self.y = create_strategic_separable_data()
         # Create a strategic model
-        strategic_model = LinearStrategicModel(in_features=2)
+        strategic_model = LinearModel(in_features=2)
 
         # Create a cost function
         cost = CostNormL2(dim=1)
@@ -113,7 +113,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
     def test_strategic_separable_needs_movement(self) -> None:
         self.x, self.y = create_strategic_need_movement()
         # Create a strategic model
-        strategic_model = LinearStrategicModel(in_features=2)
+        strategic_model = LinearModel(in_features=2)
 
         # Create a cost function
         cost = CostNormL2(dim=1)
@@ -163,7 +163,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
 
     def test_strategic_separable_needs_movement_hinge_loss(self) -> None:
         self.x, self.y = create_strategic_need_movement()
-        strategic_model = LinearStrategicModel(in_features=2)
+        strategic_model = LinearModel(in_features=2)
         cost = CostNormL2(dim=1)
         strategic_delta: LinearStrategicDelta = LinearStrategicDelta(
             cost,
@@ -218,7 +218,7 @@ class TestLinearAdvDelta(unittest.TestCase):
     def test_adv_separable_needs_movement(self) -> None:
         self.x, self.y = create_adv_need_movement()
         # Create a strategic model
-        strategic_model = LinearStrategicModel(in_features=2)
+        strategic_model = LinearModel(in_features=2)
 
         # Create a cost function
         cost = CostNormL2(dim=1)

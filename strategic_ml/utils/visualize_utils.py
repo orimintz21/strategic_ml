@@ -1,26 +1,21 @@
+# External imports
 import numpy as np
 import torch
-from torch import nn
-import torch.optim as optim
-from typing import Optional, Dict, Any, Tuple
-from torch.utils.data import DataLoader, TensorDataset
-import pytorch_lightning as pl
-import unittest
-from pytorch_lightning.loggers import CSVLogger
-import pandas as pd
 import matplotlib.pyplot as plt
 from random import sample
 
 # internal imports
-from strategic_ml.models import LinearStrategicModel
-from strategic_ml.model_suit import ModelSuit
-from strategic_ml.gsc import LinearStrategicDelta, NonLinearStrategicDelta
-from strategic_ml.cost_functions import CostNormL2
-from strategic_ml.regularization import SocialBurden
+from strategic_ml.models import LinearModel
+from strategic_ml.gsc import _GSC
 
 
 def visualize_linear_classifier_2D(
-    model, dataset, delta, grid_size=100, display_percentage=1.0, prefix=""
+    model: LinearModel,
+    data_loader,
+    delta: _GSC,
+    grid_size=100,
+    display_percentage=1.0,
+    prefix="",
 ):
     """
     Visualizes a binary classification model's decision boundary and data points.
@@ -35,13 +30,17 @@ def visualize_linear_classifier_2D(
     Returns:
         None
     """
+    assert 0 <= display_percentage <= 1, "display_percentage should be between 0 and 1"
 
-    # Extract weights and bias if the model is a LinearStrategicModel
-    if isinstance(model, LinearStrategicModel):
+    # plt.figure(figsize=(10, 6))
+    plt.clf()
+
+    # Extract weights and bias if the model is a LinearModel
+    if isinstance(model, LinearModel):
         w, b = model.get_weight_and_bias()
     else:
         raise AttributeError(
-            f"The provided model is not a LinearStrategicModel, it's {type(model)}"
+            f"The provided model is not a LinearModel, it's {type(model)}"
         )
 
     w = w.cpu().numpy().flatten()
@@ -51,8 +50,8 @@ def visualize_linear_classifier_2D(
 
     # Plot all data points
     X, Y = (
-        dataset.dataset.tensors[0].cpu().numpy(),
-        dataset.dataset.tensors[1].cpu().numpy(),
+        data_loader.dataset.tensors[0].cpu().numpy(),
+        data_loader.dataset.tensors[1].cpu().numpy(),
     )
 
     # Extract points based on labels
@@ -91,20 +90,7 @@ def visualize_linear_classifier_2D(
         y_vals = np.linspace(y_min, y_max, 100)
 
     plt.plot(xx[0], y_vals[0], label="Decision Boundary wx+b=0", color="red")
-
-    # Plot the sampled points
-    plt.scatter(
-        X[positive_indices, 0],
-        X[positive_indices, 1],
-        color="blue",
-        label="Positive class",
-    )
-    plt.scatter(
-        X[negative_indices, 0],
-        X[negative_indices, 1],
-        color="red",
-        label="Negative class",
-    )
+    deltas = None
 
     # Plot deltas (if provided)
     if delta is not None:
@@ -114,14 +100,52 @@ def visualize_linear_classifier_2D(
         )  # Compute for selected points
         deltas = (x_prime - torch.from_numpy(X_selected)).detach().cpu().numpy()
 
-        # Debugging: print delta values for each point
-        print("Delta values:")
-        for i, idx in enumerate(displayed_indices):
-            print(f"Point {X[idx]} -> Manipulated {x_prime[i]} | Delta {deltas[i]}")
+        # Determine the size of points based on whether they moved or not
+        moved_size = 60  # Size for points that moved
+        normal_size = 20  # Size for points that didn't move
 
-        # Only display deltas for the selected points
+        # Create arrays to store the sizes of positive and negative points
+        pos_sizes = []
+        neg_sizes = []
+
+        # Check each point and set size accordingly
+        for i, idx in enumerate(positive_indices):
+            if np.all(deltas[i] == 0):
+                pos_sizes.append(normal_size)
+            else:
+                pos_sizes.append(moved_size)
+
+        for i, idx in enumerate(negative_indices):
+            if np.all(deltas[len(positive_indices) + i] == 0):
+                neg_sizes.append(normal_size)
+            else:
+                neg_sizes.append(moved_size)
+
+    else:
+        # If no delta, just use normal size for all points
+        pos_sizes = [20] * len(positive_indices)
+        neg_sizes = [20] * len(negative_indices)
+
+    # Plot the sampled points with different sizes based on movement
+    plt.scatter(
+        X[positive_indices, 0],
+        X[positive_indices, 1],
+        color="blue",
+        label="Positive class",
+        s=pos_sizes,  # Size for positive class points
+    )
+    plt.scatter(
+        X[negative_indices, 0],
+        X[negative_indices, 1],
+        color="red",
+        label="Negative class",
+        s=neg_sizes,  # Size for negative class points
+    )
+
+    # Plot arrows for deltas
+    if delta is not None:
         for i, idx in enumerate(displayed_indices):
-            if deltas[i, 0] == 0 and deltas[i, 1] == 0:
+            if (deltas is None) or (deltas[i, 0] == 0 and deltas[i, 1] == 0):
                 # don't show the delta
                 continue
 
@@ -139,7 +163,6 @@ def visualize_linear_classifier_2D(
 
     plt.xlabel("Feature 1")
     plt.ylabel("Feature 2")
-    print(f"x_min: {x_min}, x_max: {x_max}, y_min: {y_min}, y_max")
     plt.ylim(-10, 10)
     plt.xlim(0, 20)
     plt.title(
@@ -147,6 +170,5 @@ def visualize_linear_classifier_2D(
     )
     plt.legend()
     plt.grid(True)
-    # plt.axis('equal')
-    plt.savefig(prefix + "_training_results.png")
-    print("Training results saved to 'training_results.png'")
+    plt.savefig(prefix + "_results.png")
+    print("Results saved to " + prefix + "'_results.png'")

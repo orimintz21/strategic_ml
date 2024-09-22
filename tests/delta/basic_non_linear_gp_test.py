@@ -8,7 +8,7 @@ import unittest
 
 from strategic_ml import (
     CostNormL2,
-    LinearStrategicModel,
+    LinearModel,
     NonLinearStrategicDelta,
     NonLinearAdvDelta,
     LinearStrategicDelta,
@@ -94,10 +94,10 @@ class TestLinearStrategicDelta(unittest.TestCase):
         self.save_dir = "tests/non_linear_data/delta"
         self.adv_loader = create_adv()
         self.strategic_loader = create_strategic()
-        self.perf_strategic_linear = LinearStrategicModel(
+        self.perf_strategic_linear = LinearModel(
             in_features=2, weight=torch.Tensor([[1, 0]]), bias=torch.Tensor([-1.03])
         )
-        self.perf_adv_linear = LinearStrategicModel(
+        self.perf_adv_linear = LinearModel(
             in_features=2, weight=torch.Tensor([[3.5, -3]]), bias=torch.Tensor([9])
         )
         self.non_linear_model = NonLinearModel(in_features=2)
@@ -190,7 +190,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
             training_params=TRAINING_PARAMS,
         )
         NUM_OF_EPOCHS = 400
-        TRAIN_DELTA_EVERY = 20
+        TRAIN_DELTA_EVERY = 1
         optimizer = torch.optim.Adam(self.non_linear_model.parameters(), lr=0.01)
         loss_fn = torch.nn.BCEWithLogitsLoss()
 
