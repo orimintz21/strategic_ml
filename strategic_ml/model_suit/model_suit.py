@@ -88,6 +88,7 @@ class ModelSuit(pl.LightningModule):
         val_loss, predictions = self._calculate_loss_and_predictions(
             x=x, y=y, batch_idx=batch_idx, mode=self._Mode.VALIDATION
         )
+        assert predictions is not None
 
         zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
 

@@ -1,26 +1,17 @@
+# External imports
 import numpy as np
 import torch
-from torch import nn
-import torch.optim as optim
-from typing import Optional, Dict, Any, Tuple
-from torch.utils.data import DataLoader, TensorDataset
-import pytorch_lightning as pl
-import unittest
-from pytorch_lightning.loggers import CSVLogger
-import pandas as pd
 import matplotlib.pyplot as plt
 from random import sample
 
 # internal imports
 from strategic_ml.models import LinearModel
-from strategic_ml.model_suit import ModelSuit
-from strategic_ml.gsc import LinearStrategicDelta, NonLinearStrategicDelta
-from strategic_ml.cost_functions import CostNormL2
-from strategic_ml.regularization import SocialBurden
+from strategic_ml.gsc import _GSC 
+
 
 
 def visualize_linear_classifier_2D(
-    model, dataset, delta, grid_size=100, display_percentage=1.0, prefix=""
+    model:LinearModel, data_loader, delta:_GSC, grid_size=100, display_percentage=1.0, prefix=""
 ):
     """
     Visualizes a binary classification model's decision boundary and data points.
@@ -35,6 +26,7 @@ def visualize_linear_classifier_2D(
     Returns:
         None
     """
+    assert 0 <= display_percentage <= 1, "display_percentage should be between 0 and 1"
 
     # plt.figure(figsize=(10, 6))
     plt.clf()
@@ -54,8 +46,8 @@ def visualize_linear_classifier_2D(
 
     # Plot all data points
     X, Y = (
-        dataset.dataset.tensors[0].cpu().numpy(),
-        dataset.dataset.tensors[1].cpu().numpy(),
+        data_loader.dataset.tensors[0].cpu().numpy(),
+        data_loader.dataset.tensors[1].cpu().numpy(),
     )
 
     # Extract points based on labels
@@ -94,6 +86,7 @@ def visualize_linear_classifier_2D(
         y_vals = np.linspace(y_min, y_max, 100)
 
     plt.plot(xx[0], y_vals[0], label="Decision Boundary wx+b=0", color="red")
+    deltas = None
 
     # Plot deltas (if provided)
     if delta is not None:
@@ -148,7 +141,7 @@ def visualize_linear_classifier_2D(
     # Plot arrows for deltas
     if delta is not None:
         for i, idx in enumerate(displayed_indices):
-            if deltas[i, 0] == 0 and deltas[i, 1] == 0:
+            if (deltas is None) or (deltas[i, 0] == 0 and deltas[i, 1] == 0):
                 # don't show the delta
                 continue
 
@@ -173,5 +166,5 @@ def visualize_linear_classifier_2D(
     )
     plt.legend()
     plt.grid(True)
-    plt.savefig(prefix + "_training_results.png")
-    print("Training results saved to " + prefix + "'_training_results.png'")
+    plt.savefig(prefix + "_results.png")
+    print("Results saved to " + prefix + "'_results.png'")

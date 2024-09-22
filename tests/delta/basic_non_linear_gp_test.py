@@ -190,7 +190,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
             training_params=TRAINING_PARAMS,
         )
         NUM_OF_EPOCHS = 400
-        TRAIN_DELTA_EVERY = 20
+        TRAIN_DELTA_EVERY = 1 
         optimizer = torch.optim.Adam(self.non_linear_model.parameters(), lr=0.01)
         loss_fn = torch.nn.BCEWithLogitsLoss()
 

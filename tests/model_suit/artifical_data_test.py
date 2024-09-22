@@ -117,7 +117,7 @@ def gen_custom_normal_data(
     )
 
     dataset = TensorDataset(X, Y)
-    return DataLoader(dataset, batch_size=100, shuffle=False)
+    return DataLoader(dataset, batch_size=100, shuffle=False, num_workers=9)
 
 
 def print_if_verbose(message: str) -> None:
@@ -139,8 +139,9 @@ class NonLinearModel(torch.nn.Module):
 
 
 class TestModelSuit(unittest.TestCase):
+
     def setUp(self):
-        self.train_dataset = gen_custom_normal_data(
+        self.train_dataLoader = gen_custom_normal_data(
             train_size,
             x_dim,
             np.array([blobs_dist / 2 + 10, 0]),
@@ -151,7 +152,7 @@ class TestModelSuit(unittest.TestCase):
             neg_noise_frac=neg_noise_frac,
         )
 
-        self.val_dataset = gen_custom_normal_data(
+        self.val_dataLoader = gen_custom_normal_data(
             val_size,
             x_dim,
             np.array([blobs_dist / 2 + 10, 0]),
@@ -162,7 +163,7 @@ class TestModelSuit(unittest.TestCase):
             neg_noise_frac=neg_noise_frac,
         )
 
-        self.test_dataset = gen_custom_normal_data(
+        self.test_dataLoader = gen_custom_normal_data(
             test_size,
             x_dim,
             np.array([blobs_dist / 2 + 10, 0]),
@@ -173,7 +174,6 @@ class TestModelSuit(unittest.TestCase):
             neg_noise_frac=neg_noise_frac,
         )
 
-        # self.loss_fn = nn.MSELoss()
         self.loss_fn = nn.BCEWithLogitsLoss()
         self.linear_model = LinearModel(x_dim)
         self.non_linear_model = NonLinearModel(x_dim)
@@ -188,9 +188,9 @@ class TestModelSuit(unittest.TestCase):
             delta=self.linear_delta,
             loss_fn=self.loss_fn,
             # regularization=self.regulation,
-            train_loader=self.train_dataset,
-            validation_loader=self.val_dataset,
-            test_loader=self.test_dataset,
+            train_loader=self.train_dataLoader,
+            validation_loader=self.val_dataLoader,
+            test_loader=self.test_dataLoader,
             training_params=LINEAR_TRAINING_PARAMS,
         )
 
@@ -204,40 +204,38 @@ class TestModelSuit(unittest.TestCase):
             model=self.non_linear_model,
             delta=self.non_linear_delta,
             loss_fn=self.loss_fn,
-            train_loader=self.train_dataset,
-            validation_loader=self.val_dataset,
-            test_loader=self.test_dataset,
+            train_loader=self.train_dataLoader,
+            validation_loader=self.val_dataLoader,
+            test_loader=self.test_dataLoader,
             training_params=NON_LINEAR_TRAINING_PARAMS,
         )
+    
 
     def test_linear_model(self):
-
         logger = pl.loggers.CSVLogger("logs/", name="my_experiment")
 
         # Pass the logger to the Trainer
         trainer = pl.Trainer(
-            max_epochs=10,
+            max_epochs=100,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
         )
 
         trainer.fit(self.linear_test_suite)
         trainer.test(self.linear_test_suite)
-        # visualize the results
-        # self.visualize_results(trainer)
 
-        # After training the linear model:
+        # visualize the results
         if isinstance(self.linear_model, LinearModel):
             visualize_linear_classifier_2D(
                 self.linear_model,
-                self.train_dataset,
+                self.train_dataLoader,
                 self.linear_delta,
                 display_percentage=0.05,
                 prefix="train",
             )
             visualize_linear_classifier_2D(
                 self.linear_model,
-                self.test_dataset,
+                self.test_dataLoader,
                 self.linear_delta,
                 display_percentage=0.5,
                 prefix="test",
@@ -248,21 +246,24 @@ class TestModelSuit(unittest.TestCase):
             )
 
     def test_identity_delta(self):
+        linear_model = LinearModel(x_dim)
+        delta = IdentityDelta(cost = None, strategic_model=linear_model)
+        
         identity_model = ModelSuit(
-            model=self.linear_model,
-            delta=IdentityDelta(),
+            model=linear_model,
+            delta=delta,
             loss_fn=self.loss_fn,
             # regularization=self.regulation,
-            train_loader=self.train_dataset,
-            validation_loader=self.val_dataset,
-            test_loader=self.test_dataset,
+            train_loader=self.train_dataLoader,
+            validation_loader=self.val_dataLoader,
+            test_loader=self.test_dataLoader,
             training_params=LINEAR_TRAINING_PARAMS,
         )
         logger = pl.loggers.CSVLogger("logs/", name="my_experiment")
 
         # Pass the logger to the Trainer
         trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=200,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
         )
@@ -270,17 +271,17 @@ class TestModelSuit(unittest.TestCase):
         trainer.fit(identity_model)
         trainer.test(identity_model)
         visualize_linear_classifier_2D(
-            self.linear_model,
-            self.train_dataset,
-            IdentityDelta(),
-            display_percentage=0.05,
+            linear_model,
+            self.train_dataLoader,
+            delta,
+            display_percentage=1,
             prefix="train_identity",
         )
         visualize_linear_classifier_2D(
-            self.linear_model,
-            self.test_dataset,
-            IdentityDelta(),
-            display_percentage=0.5,
+            linear_model,
+            self.test_dataLoader,
+            delta,
+            display_percentage=1,
             prefix="test_identity",
         )
 

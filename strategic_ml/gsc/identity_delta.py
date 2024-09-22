@@ -1,7 +1,12 @@
+# External Imports
 import torch
 from torch import nn
 from strategic_ml.gsc import _GSC
 from typing import Any, Optional
+# Internal Imports
+from strategic_ml.cost_functions import _CostFunction
+
+
 
 class IdentityDelta(_GSC):
     """
@@ -10,14 +15,16 @@ class IdentityDelta(_GSC):
     manipulations or modifications.
     """
 
-    def __init__(self, cost: Optional[nn.Module] = None, strategic_model: Optional[nn.Module] = None):
+    def __init__(self, cost: Optional[_CostFunction], strategic_model: nn.Module):
         """
         Initialize the IdentityDelta class.
 
         Args:
             cost (nn.Module): Optional cost function, not used in this implementation.
-            strategic_model (nn.Module): Optional strategic model, not used in this implementation.
+            strategic_model (nn.Module): the model, it is not used but is kept to keep similar interface.
         """
+        if cost is None:
+            cost = _CostFunction()
         super(IdentityDelta, self).__init__(cost=cost, strategic_model=strategic_model)
 
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
