@@ -10,7 +10,7 @@ from strategic_ml import (
     StrategicHingeLoss,
 )
 
-VERBOSE: bool = True
+VERBOSE: bool = False
 
 
 def print_if_verbose(message: str) -> None:
@@ -179,9 +179,12 @@ class TestLinearStrategicDelta(unittest.TestCase):
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
 
         strategic_model.train()
+        REGULARIZATION = 0.001
         for _ in range(1501):
             optimizer.zero_grad()
             loss = loss_fn(self.x, self.y)
+            w, b = strategic_model.get_weight_and_bias_ref()
+            loss += REGULARIZATION * (torch.norm(w, p=1) + torch.norm(b, p=1))
             loss.backward()
             optimizer.step()
             scheduler.step()
@@ -193,6 +196,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
             )
         print("The strategic model has been trained")
         successful = 0
+        print(strategic_model.get_weight_and_bias())
         for x, y in zip(self.x, self.y):
             x = x.unsqueeze(0)
             x_prime_test = strategic_delta.forward(x)

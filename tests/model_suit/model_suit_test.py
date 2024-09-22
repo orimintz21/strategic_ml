@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from strategic_ml.model_suit import ModelSuit
 from strategic_ml.loss_functions import StrategicHingeLoss
 from strategic_ml.gsc.linear_gp import LinearStrategicDelta
-from strategic_ml.models.linear_strategic_model import LinearModel
+from strategic_ml.models.linear_model import LinearModel
 from strategic_ml.cost_functions.norms import CostNormL2
 from strategic_ml.regularization.social_burden import SocialBurden
 

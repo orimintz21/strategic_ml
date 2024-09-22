@@ -3,12 +3,11 @@ import torch
 from torch import nn
 
 # Internal imports
-from strategic_ml.loss_functions import _Loss
 from strategic_ml.gsc import _LinearGP
 from strategic_ml.models import LinearModel
 
 
-class StrategicHingeLoss(_Loss):
+class StrategicHingeLoss(nn.Module):
     """
     This module implements the Strategic Hinge Loss (s-hinge), a modified version
     of the standard hinge loss function designed to account for strategic behavior
@@ -31,7 +30,6 @@ class StrategicHingeLoss(_Loss):
         self,
         model: LinearModel,
         delta: _LinearGP,
-        regularization_lambda: float = 0.01,
     ) -> None:
         """
         Initialize the Strategic Hinge Loss class.
@@ -39,7 +37,8 @@ class StrategicHingeLoss(_Loss):
         :param model: The strategic model.
         :param regularization_lambda: Regularization parameter.
         """
-        super(StrategicHingeLoss, self).__init__(model, regularization_lambda)
+        super(StrategicHingeLoss, self).__init__()
+        self.model = model
         assert isinstance(
             model, LinearModel
         ), f"model should be an instance of LinearModel, but it is {type(model)}"

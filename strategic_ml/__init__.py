@@ -24,7 +24,7 @@ from .regularization import (
     ExpectedUtility,
 )
 
-from .loss_functions import _Loss, StrategicHingeLoss
+from .loss_functions import StrategicHingeLoss
 
 from .gsc import (
     _GSC,
@@ -39,7 +39,14 @@ from .gsc import (
     NonLinearAdvDelta,
 )
 
-from .models import LinearModel
+from .models import (
+    LinearModel,
+    L2Regularization,
+    L1Regularization,
+    ElasticNetRegularization,
+    InfRegularization,
+    _LinearRegularization,
+)
 
 from .model_suit import ModelSuit
 
@@ -60,7 +67,6 @@ __all__: list = [
     "Recourse",
     "ExpectedUtility",
     # Loss functions
-    "_Loss",
     "StrategicHingeLoss",
     # GSC
     "_GSC",
@@ -73,8 +79,13 @@ __all__: list = [
     "NonLinearStrategicDelta",
     "NonLinearNoisyLabelDelta",
     "NonLinearAdvDelta",
-    # Models
+    # Linear Model
     "LinearModel",
+    "L2Regularization",
+    "L1Regularization",
+    "ElasticNetRegularization",
+    "InfRegularization",
+    "_LinearRegularization",
     # Model Suit
     "ModelSuit",
     # Utils

@@ -4,12 +4,13 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
-from typing import Optional, TYPE_CHECKING, Dict, Any, Tuple
+from typing import Optional, TYPE_CHECKING, Dict, Any, Tuple, List
 import logging
 from enum import Enum
 
 # Internal imports
 from strategic_ml.gsc import _LinearGP, _NonLinearGP, _GSC, IdentityDelta
+from strategic_ml.models import LinearModel, _LinearRegularization
 from strategic_ml.regularization import _StrategicRegularization
 from strategic_ml.loss_functions import StrategicHingeLoss
 
@@ -22,6 +23,7 @@ class ModelSuit(pl.LightningModule):
         delta: _GSC,
         loss_fn: nn.Module,
         regularization: Optional[_StrategicRegularization] = None,
+        linear_regularization: Optional[List[_LinearRegularization]] = None,
         train_loader: DataLoader,
         validation_loader: DataLoader,
         test_loader: DataLoader,
@@ -35,6 +37,7 @@ class ModelSuit(pl.LightningModule):
         self.delta = delta
         self.loss_fn = loss_fn
         self.regularization = regularization
+        self.linear_regularization = linear_regularization
         self.train_loader = train_loader
         self.validation_loader = validation_loader
         self.test_loader = test_loader
@@ -137,6 +140,7 @@ class ModelSuit(pl.LightningModule):
         batch_idx: int,
         mode: _Mode,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+
         if isinstance(self.loss_fn, StrategicHingeLoss):
             assert (
                 self.regularization is None
@@ -201,6 +205,15 @@ class ModelSuit(pl.LightningModule):
                     cost=cost,
                 )
                 loss += regularization_term
+
+        linear_regularization_term: torch.Tensor = torch.tensor(0.0)
+
+        if self.linear_regularization is not None:
+            assert isinstance(self.model, LinearModel)
+            for reg in self.linear_regularization:
+                linear_regularization_term += reg(self.model)
+
+        loss += linear_regularization_term
 
         return loss, predictions
 
