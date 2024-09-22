@@ -22,6 +22,8 @@ from strategic_ml import (
     SocialBurden,
     visualize_linear_classifier_2D,
     IdentityDelta,
+    L2Regularization,
+    StrategicHingeLoss,
 )
 
 
@@ -187,7 +189,6 @@ class TestModelSuit(unittest.TestCase):
             model=self.linear_model,
             delta=self.linear_delta,
             loss_fn=self.loss_fn,
-            # regularization=self.regulation,
             train_loader=self.train_dataLoader,
             validation_loader=self.val_dataLoader,
             test_loader=self.test_dataLoader,
@@ -215,7 +216,7 @@ class TestModelSuit(unittest.TestCase):
 
         # Pass the logger to the Trainer
         trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=1,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
         )
@@ -252,7 +253,6 @@ class TestModelSuit(unittest.TestCase):
             model=linear_model,
             delta=delta,
             loss_fn=self.loss_fn,
-            # regularization=self.regulation,
             train_loader=self.train_dataLoader,
             validation_loader=self.val_dataLoader,
             test_loader=self.test_dataLoader,
@@ -262,7 +262,7 @@ class TestModelSuit(unittest.TestCase):
 
         # Pass the logger to the Trainer
         trainer = pl.Trainer(
-            max_epochs=200,
+            max_epochs=2,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
         )
@@ -282,6 +282,51 @@ class TestModelSuit(unittest.TestCase):
             delta,
             display_percentage=1,
             prefix="test_identity",
+        )
+
+    def test_linear_regularization_with_s_hinge(self):
+        linear_model = LinearModel(x_dim)
+        linear_delta = LinearStrategicDelta(
+            cost=self.cost, strategic_model=linear_model
+        )
+
+        loss_fn = StrategicHingeLoss(linear_model, linear_delta)
+        linear_regularization = L2Regularization(0.01)
+
+        model_suit = ModelSuit(
+            model=self.linear_model,
+            delta=self.linear_delta,
+            loss_fn=loss_fn,
+            linear_regularization=[linear_regularization],
+            train_loader=self.train_dataLoader,
+            validation_loader=self.val_dataLoader,
+            test_loader=self.test_dataLoader,
+            training_params=LINEAR_TRAINING_PARAMS,
+        )
+        logger = pl.loggers.CSVLogger("logs/", name="my_experiment")
+
+        # Pass the logger to the Trainer
+        trainer = pl.Trainer(
+            max_epochs=100,
+            logger=CSVLogger("logs/", name="my_experiment"),
+            log_every_n_steps=1,  # Ensure logging at each step
+        )
+
+        trainer.fit(model_suit)
+        trainer.test(model_suit)
+        visualize_linear_classifier_2D(
+            self.linear_model,
+            self.train_dataLoader,
+            self.linear_delta,
+            display_percentage=1,
+            prefix="train_s_hinge",
+        )
+        visualize_linear_classifier_2D(
+            self.linear_model,
+            self.test_dataLoader,
+            self.linear_delta,
+            display_percentage=1,
+            prefix="test_s_hinge",
         )
 
 

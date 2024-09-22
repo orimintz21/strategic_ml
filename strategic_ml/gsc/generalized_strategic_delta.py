@@ -19,7 +19,7 @@ from strategic_ml.cost_functions import _CostFunction
 
 
 # Implementation
-class _GSC:
+class _GSC(nn.Module):
     def __init__(
         self,
         strategic_model: nn.Module,
