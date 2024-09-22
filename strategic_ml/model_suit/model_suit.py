@@ -9,7 +9,7 @@ import logging
 from enum import Enum
 
 # Internal imports
-from strategic_ml.gsc import _LinearGP, _NonLinearGP, _GSC
+from strategic_ml.gsc import _LinearGP, _NonLinearGP, _GSC, IdentityDelta
 from strategic_ml.regularization import _StrategicRegularization
 from strategic_ml.loss_functions import StrategicHingeLoss
 
@@ -182,17 +182,23 @@ class ModelSuit(pl.LightningModule):
                     x_prime = self.delta.forward(x, y)
 
             predictions = self.forward(x_prime)
+
             loss = self.loss_fn(predictions, y)
 
             if self.regularization is not None and mode == self._Mode.TRAIN:
-                assert not isinstance(self.delta, _NonLinearGP)
                 assert not isinstance(self.loss_fn, StrategicHingeLoss)
+                assert not isinstance(
+                    self.delta, IdentityDelta
+                ), "IdentityDelta is not supported for regularization"
+                cost = self.delta.get_cost().forward(x, x_prime)
+
                 regularization_term = self.regularization(
                     x=x,
                     delta_predictions=predictions,
                     model=self.model,
                     y=y,
                     linear_delta=self.delta,
+                    cost=cost,
                 )
                 loss += regularization_term
 

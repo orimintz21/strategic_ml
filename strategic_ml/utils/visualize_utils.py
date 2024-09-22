@@ -6,12 +6,16 @@ from random import sample
 
 # internal imports
 from strategic_ml.models import LinearModel
-from strategic_ml.gsc import _GSC 
-
+from strategic_ml.gsc import _GSC
 
 
 def visualize_linear_classifier_2D(
-    model:LinearModel, data_loader, delta:_GSC, grid_size=100, display_percentage=1.0, prefix=""
+    model: LinearModel,
+    data_loader,
+    delta: _GSC,
+    grid_size=100,
+    display_percentage=1.0,
+    prefix="",
 ):
     """
     Visualizes a binary classification model's decision boundary and data points.

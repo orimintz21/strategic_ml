@@ -3,9 +3,9 @@ import torch
 from torch import nn
 from strategic_ml.gsc import _GSC
 from typing import Any, Optional
+
 # Internal Imports
 from strategic_ml.cost_functions import _CostFunction
-
 
 
 class IdentityDelta(_GSC):

@@ -209,7 +209,6 @@ class TestModelSuit(unittest.TestCase):
             test_loader=self.test_dataLoader,
             training_params=NON_LINEAR_TRAINING_PARAMS,
         )
-    
 
     def test_linear_model(self):
         logger = pl.loggers.CSVLogger("logs/", name="my_experiment")
@@ -247,8 +246,8 @@ class TestModelSuit(unittest.TestCase):
 
     def test_identity_delta(self):
         linear_model = LinearModel(x_dim)
-        delta = IdentityDelta(cost = None, strategic_model=linear_model)
-        
+        delta = IdentityDelta(cost=None, strategic_model=linear_model)
+
         identity_model = ModelSuit(
             model=linear_model,
             delta=delta,

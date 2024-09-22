@@ -5,12 +5,13 @@ from typing import Tuple
 from strategic_ml import (
     SocialBurden,
     Recourse,
+    ExpectedUtility,
     CostNormL2,
     LinearStrategicDelta,
     LinearModel,
 )
 
-VERBOSE = True
+VERBOSE = False
 
 
 def print_if_verbose(message) -> None:
@@ -95,6 +96,7 @@ class TestRegularization(unittest.TestCase):
         self.delta = LinearStrategicDelta(cost=self.cost, strategic_model=self.model)
         self.social_burden = SocialBurden(linear_delta=self.delta)
         self.recourse = Recourse(model=self.model, sigmoid_temp=1e5)
+        self.expected_utility: ExpectedUtility = ExpectedUtility(tanh_temp=1e5)
 
     def tearDown(self) -> None:
         super().tearDown()
@@ -296,6 +298,27 @@ class TestRegularization(unittest.TestCase):
         print_if_verbose(f"Delta: {x_prime_final}")
         print_if_verbose(f"Cost: {self.cost(x, x_prime_final)}")
         print_if_verbose(f"Recourse: {self.recourse(x, predictions_final)}")
+
+    def test_expected_utility_all_true(self):
+        # Create the data
+        x, y = self.create_data_all_true()
+
+        x_prime = self.delta(x)
+        predictions = self.model(x_prime)
+        costs = self.cost(x, x_prime).unsqueeze(1)
+        expected_utility_value = self.expected_utility(
+            delta_predictions=predictions, cost=costs
+        )
+
+        """
+        There are 4 examples in the data, 
+        2 are true and are classified as false (without movement) and as true (with movement),
+        and they moved 0.255 from the decision boundary
+        2 are false and are classified as false (without movement) and as false (with movement), 
+        and they did not move
+        therefore the expected utility is -(2(1-0.255) + 2(-1))/4 = 0.1275 
+        """
+        self.assertAlmostEqual(expected_utility_value.item(), 0.1275, delta=0.05)
 
 
 if __name__ == "__main__":

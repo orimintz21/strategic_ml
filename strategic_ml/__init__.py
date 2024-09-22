@@ -17,7 +17,12 @@ from .cost_functions import (
     CostNormLInf,
 )
 
-from .regularization import _StrategicRegularization, SocialBurden, Recourse
+from .regularization import (
+    _StrategicRegularization,
+    SocialBurden,
+    Recourse,
+    ExpectedUtility,
+)
 
 from .loss_functions import _Loss, StrategicHingeLoss
 
@@ -53,6 +58,7 @@ __all__: list = [
     "_StrategicRegularization",
     "SocialBurden",
     "Recourse",
+    "ExpectedUtility",
     # Loss functions
     "_Loss",
     "StrategicHingeLoss",
