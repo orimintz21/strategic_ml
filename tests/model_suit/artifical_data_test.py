@@ -29,12 +29,12 @@ from strategic_ml import (
 
 
 DELTA_TRAINING_PARAMS: Dict[str, Any] = {
-    "num_epochs": 90,
+    "num_epochs": 100,
     "optimizer_class": optim.Adam,
     "optimizer_params": {
         "lr": 0.01,
     },
-    "early_stopping": 30,
+    "early_stopping": 60,
     "temp": 20,
 }
 
@@ -234,8 +234,10 @@ class TestModelSuit(unittest.TestCase):
 
         self.non_linear_delta = NonLinearStrategicDelta(
             cost=self.cost,
+            cost_weight=0.5,
             strategic_model=self.non_linear_model,
             training_params=DELTA_TRAINING_PARAMS,
+            save_dir="./tests/model_suit/delta_data",
         )
 
     # def test_linear_model(self):
@@ -243,7 +245,7 @@ class TestModelSuit(unittest.TestCase):
 
     #     # Pass the logger to the Trainer
     #     trainer = pl.Trainer(
-    #         max_epochs=1,
+    #         max_epochs=100,
     #         logger=CSVLogger("logs/", name="my_experiment"),
     #         log_every_n_steps=1,  # Ensure logging at each step
     #     )
@@ -289,7 +291,7 @@ class TestModelSuit(unittest.TestCase):
 
     #     # Pass the logger to the Trainer
     #     trainer = pl.Trainer(
-    #         max_epochs=2,
+    #         max_epochs=100,
     #         logger=CSVLogger("logs/", name="my_experiment"),
     #         log_every_n_steps=1,  # Ensure logging at each step
     #     )
@@ -334,7 +336,7 @@ class TestModelSuit(unittest.TestCase):
 
     #     # Pass the logger to the Trainer
     #     trainer = pl.Trainer(
-    #         max_epochs=1,
+    #         max_epochs=100,
     #         logger=CSVLogger("logs/", name="my_experiment"),
     #         log_every_n_steps=1,  # Ensure logging at each step
     #     )
@@ -397,7 +399,7 @@ class TestModelSuit(unittest.TestCase):
 
     def test_non_linear_model(self):
         logger = pl.loggers.CSVLogger("logs/", name="my_experiment")
-        identity_delta = IdentityDelta(cost=None, strategic_model=self.non_linear_model)
+        identity_delta = IdentityDelta(cost=None, strategic_model=self.non_linear_model)    
 
         non_linear_train_suite = ModelSuit(
             model=self.non_linear_model,
@@ -412,7 +414,7 @@ class TestModelSuit(unittest.TestCase):
 
         # Train the model without delta
         trainer = pl.Trainer(
-            max_epochs=50,
+            max_epochs=10,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
         )
@@ -460,6 +462,81 @@ class TestModelSuit(unittest.TestCase):
             self.non_linear_delta,
             display_percentage=0.5,
             prefix="non_linear_delta_test",
+        )
+    
+    def test_non_linear_model_one_dim(self):
+        logger = pl.loggers.CSVLogger("logs/", name="my_experiment")
+        identity_delta = IdentityDelta(cost=None, strategic_model=self.non_linear_model)    
+        non_linear_model = NonLinearModel(1)
+        delta = NonLinearStrategicDelta(
+            cost=self.cost,
+            cost_weight=0.5,
+            strategic_model=non_linear_model,
+            training_params=DELTA_TRAINING_PARAMS,
+            save_dir="./tests/model_suit/delta_data",
+        )
+
+        non_linear_train_suite = ModelSuit(
+            model=non_linear_model,
+            delta=identity_delta,
+            loss_fn=self.loss_fn,
+            train_loader=self.train_dataLoader_one_dim,
+            validation_loader=self.val_dataLoader_one_dim,
+            test_loader=self.test_dataLoader_one_dim,
+            training_params=NON_LINEAR_TRAINING_PARAMS,
+            train_delta_every=1,
+        )
+
+        # Train the model without delta
+        trainer = pl.Trainer(
+            max_epochs=10,
+            logger=CSVLogger("logs/", name="my_experiment"),
+            log_every_n_steps=1,  # Ensure logging at each step
+        )
+
+        trainer.fit(non_linear_train_suite)
+
+        visualize_data_and_delta_1D(
+            None,
+            self.train_dataLoader_one_dim,
+            identity_delta,
+            display_percentage=0.05,
+            prefix="non_linear_delta_pre_delta_train_one_dim",
+        )
+        visualize_data_and_delta_1D(
+            None,
+            self.test_dataLoader_one_dim,
+            identity_delta,
+            display_percentage=0.5,
+            prefix="non_linear_delta_pre_delta_test_one_dim",
+        )
+        non_linear_train_suite.delta = delta 
+
+        # Train the model with delta
+        trainer = pl.Trainer(
+            max_epochs=100,
+            logger=CSVLogger("logs/", name="my_experiment"),
+            log_every_n_steps=1,  # Ensure logging at each step
+        )
+        trainer.fit(non_linear_train_suite)
+        non_linear_train_suite.train_delta_for_test()
+
+        trainer.test(non_linear_train_suite)
+
+        # visualize the results
+        visualize_data_and_delta_1D(
+            None,
+            self.train_dataLoader_one_dim,
+            delta,
+            display_percentage=0.05,
+            prefix="non_linear_delta_train_one_dim",
+        )
+        visualize_data_and_delta_1D(
+            None,
+            self.test_dataLoader_one_dim,
+            delta,
+            display_percentage=0.5,
+            prefix="non_linear_delta_test_one_dim",
         )
 
 
