@@ -6,8 +6,8 @@ from strategic_ml import (
     LinearModel,
     LinearStrategicDelta,
     LinearAdvDelta,
-    LinearNoisyLabelDelta,
     StrategicHingeLoss,
+    L2Regularization,
 )
 
 VERBOSE: bool = False
@@ -58,6 +58,12 @@ def create_strategic_need_movement():
 
     x = torch.cat((x_p, x_n), dim=0)
     y = torch.cat((y_p, y_n), dim=0)
+    return x, y
+
+
+def create_one_dimensional_data():
+    x = torch.Tensor([[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]])
+    y = torch.Tensor([[1], [1], [1], [1], [1], [-1], [-1], [-1], [-1], [-1]])
     return x, y
 
 
@@ -236,7 +242,7 @@ class TestLinearAdvDelta(unittest.TestCase):
 
         # Train the strategic model
         loss_fn = torch.nn.BCEWithLogitsLoss()
-        optimizer = torch.optim.Adam(strategic_model.parameters(), lr=0.01)
+        optimizer = torch.optim.Adam(strategic_model.parameters(), lr=0.1)
 
         strategic_model.train()
         for _ in range(1401):
@@ -270,6 +276,58 @@ class TestLinearAdvDelta(unittest.TestCase):
                 successful += 1
             # self.assertEqual(torch.sign(strategic_model(x_prime_test)), y)
         print(f"Adv: successful = {successful}")
+
+    def test_strategic_one_dimensional_data(self) -> None:
+        self.x, self.y = create_one_dimensional_data()
+        # Create a strategic model
+        strategic_model = LinearModel(in_features=1)
+        cost = CostNormL2(dim=1)
+        strategic_delta: LinearStrategicDelta = LinearStrategicDelta(
+            cost,
+            strategic_model,
+            cost_weight=1.0,
+        )
+
+        # Train the strategic model
+        loss_fn = StrategicHingeLoss(model=strategic_model, delta=strategic_delta)
+        regularization = L2Regularization(lambda_=0.01)
+        optimizer = torch.optim.Adam(strategic_model.parameters(), lr=0.01)
+        strategic_model.train()
+        # train without delta
+        for _ in range(100):
+            optimizer.zero_grad()
+            output = strategic_model(self.x)
+            loss = loss_fn(output, self.y) + regularization(strategic_model)
+            loss.backward()
+            optimizer.step()
+        print(strategic_model.get_weight_and_bias())
+
+        for _ in range(100):
+            optimizer.zero_grad()
+            delta_move: torch.Tensor = strategic_delta(self.x)
+            output = strategic_model(delta_move) + regularization(strategic_model)
+            loss = loss_fn(output, self.y)
+            optimizer.step()
+        print("The strategic model has been trained")
+        successful = 0
+        strategic_model.eval()
+        for x, y in zip(self.x, self.y):
+            x = x.unsqueeze(0)
+            x_prime_test = strategic_delta.forward(x)
+            print(
+                f"""
+                x = {x},
+                delta = {x_prime_test},
+                cost = {cost(x, x_prime_test)},
+                y = {y},
+                x pred {(strategic_model(x))},
+                x_prime = {(strategic_model(x_prime_test))}
+                """
+            )
+            if torch.sign(strategic_model(x_prime_test)) == y:
+                successful += 1
+        print(f"successful = {successful}")
+        print(strategic_model.get_weight_and_bias())
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ from strategic_ml import (
     LinearAdvDelta,
 )
 
-VERBOSE: bool = True
+VERBOSE: bool = False
 
 
 TRAINING_PARAMS: Dict[str, Any] = {
@@ -74,6 +74,18 @@ def create_strategic() -> DataLoader:
     return DataLoader(dataset, batch_size=2, shuffle=False)
 
 
+def create_one_dim() -> DataLoader:
+    x_p = torch.Tensor([[1], [2], [3], [4], [5]])
+    y_p = torch.Tensor([[1], [1], [1], [1], [1]])
+    x_n = torch.Tensor([[-1], [-2], [-3], [-4], [-5]])
+    y_n = torch.Tensor([[-1], [-1], [-1], [-1], [-1]])
+
+    x = torch.cat((x_p, x_n), dim=0)
+    y = torch.cat((y_p, y_n), dim=0)
+    dataset = TensorDataset(x, y)
+    return DataLoader(dataset, batch_size=2, shuffle=False, num_workers=4)
+
+
 class NonLinearModel(nn.Module):
     def __init__(self, in_features: int) -> None:
         super(NonLinearModel, self).__init__()
@@ -113,8 +125,10 @@ class TestLinearStrategicDelta(unittest.TestCase):
             torch.Tensor([[3.5, -3]]), torch.Tensor([9])
         )
         self.non_linear_model = NonLinearModel(in_features=2)
+        VERBOSE = True
 
     def test_non_linear_strategic_delta(self) -> None:
+        print("Testing non-linear model with linear strategic delta")
         save_dir = os.path.join(self.save_dir, "test_non_linear_strategic_delta")
         strategic_delta = NonLinearStrategicDelta(
             self.cost,
@@ -129,7 +143,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
             cost_weight=self.cost_weight,
         )
 
-        strategic_delta.train(self.strategic_loader)
+        strategic_delta.set_mapping(self.strategic_loader)
         for batch_idx, data in enumerate(self.strategic_loader):
             x_batch, y_batch = data
             x_prime_batch = strategic_delta.load_x_prime(batch_idx)
@@ -148,6 +162,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
                 )
 
     def test_non_linear_adv_delta(self) -> None:
+        print("Testing non-linear model with linear strategic delta")
         save_dir = os.path.join(self.save_dir, "test_non_linear_adv_delta")
         adv_delta = NonLinearAdvDelta(
             self.cost,
@@ -162,7 +177,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
             cost_weight=self.cost_weight,
         )
 
-        adv_delta.train(self.adv_loader)
+        adv_delta.set_mapping(self.adv_loader)
         for batch_idx, data in enumerate(self.adv_loader):
             x_batch, y_batch = data
             x_prime_batch = adv_delta.load_x_prime(batch_idx)
@@ -181,6 +196,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
                 )
 
     def test_non_linear_with_non_linear_model(self) -> None:
+        print("Testing non-linear model with non-linear strategic delta")
         save_dir = os.path.join(self.save_dir, "test_non_linear_with_non_linear_model")
         strategic_delta = NonLinearStrategicDelta(
             self.cost,
@@ -196,7 +212,7 @@ class TestLinearStrategicDelta(unittest.TestCase):
 
         for epoch in range(NUM_OF_EPOCHS):
             if epoch % TRAIN_DELTA_EVERY == 0:
-                strategic_delta.train(self.strategic_loader)
+                strategic_delta.set_mapping(self.strategic_loader)
 
             for batch_idx, data in enumerate(self.strategic_loader):
                 x_batch, y_batch = data
@@ -207,6 +223,53 @@ class TestLinearStrategicDelta(unittest.TestCase):
                 loss.backward()
                 optimizer.step()
                 print_if_verbose(f"Epoch {epoch}, batch {batch_idx}, loss {loss}")
+
+    def test_non_linear_one_dim(self) -> None:
+        data_loader = create_one_dim()
+        save_dir = os.path.join(self.save_dir, "test_non_linear_one_dim")
+        non_linear_model = NonLinearModel(in_features=1)
+        strategic_delta = NonLinearStrategicDelta(
+            self.cost,
+            non_linear_model,
+            cost_weight=self.cost_weight,
+            save_dir=save_dir,
+            training_params=TRAINING_PARAMS,
+        )
+        NUM_OF_EPOCHS = 200
+        NUM_TRAIN_NO_DELTA = 100
+        TRAIN_DELTA_EVERY = 1
+        optimizer = torch.optim.Adam(non_linear_model.parameters(), lr=0.01)
+        loss_fn = torch.nn.BCEWithLogitsLoss()
+
+        for epoch in range(NUM_OF_EPOCHS):
+            if epoch % TRAIN_DELTA_EVERY == 0:
+                strategic_delta.set_mapping(data_loader)
+
+            for batch_idx, data in enumerate(data_loader):
+                x_batch, y_batch = data
+                if epoch < NUM_TRAIN_NO_DELTA:
+                    x_prime_batch = x_batch
+                else:
+                    x_prime_batch = strategic_delta.load_x_prime(batch_idx)
+                optimizer.zero_grad()
+                prediction = non_linear_model(x_prime_batch)
+                loss = loss_fn(prediction, y_batch)
+                loss.backward()
+                optimizer.step()
+                print_if_verbose(f"Epoch {epoch}, batch {batch_idx}, loss {loss}")
+
+        for batch_idx, data in enumerate(data_loader):
+            x_batch, y_batch = data
+            x_prime_batch = strategic_delta.load_x_prime(batch_idx)
+            for x, y, x_prime in zip(x_batch, y_batch, x_prime_batch):
+                x = x.unsqueeze(0)
+                y = y.unsqueeze(0)
+                x_prime = x_prime.unsqueeze(0)
+                print_if_verbose(
+                    f"x: {x}, y: {y}, x_prime: {x_prime}, cost: {self.cost(x, x_prime)}, prediction: {non_linear_model(x_prime)}"
+                )
+                # We assume that the non-linear model is able to find good points
+                # self.assertEqual(torch.sign(non_linear_model(x_prime)), y)
 
 
 if __name__ == "__main__":
