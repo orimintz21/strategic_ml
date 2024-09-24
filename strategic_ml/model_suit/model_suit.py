@@ -53,6 +53,8 @@ class ModelSuit(pl.LightningModule):
                             parameter, this means that the delta will use GD 
                             in every epoch."""
             )
+            self.train_delta_every = 1
+
         if isinstance(self.delta, _LinearGP):
             assert isinstance(self.model, LinearModel)
             if self.train_delta_every is not None:
@@ -116,7 +118,10 @@ class ModelSuit(pl.LightningModule):
             x, y = batch
             if self.test_delta is not None:
                 # We are testing an In The Dark scenario
-                x_prime = self.test_delta.forward(x, y)
+                if isinstance(self.test_delta, _NonLinearGP):
+                    x_prime = self.test_delta.load_x_prime(batch_idx=batch_idx)
+                else:
+                    x_prime = self.test_delta.forward(x, y)
                 predictions = self.model.forward(x_prime)
                 test_loss = self.loss_fn(predictions, y)
 
@@ -216,14 +221,27 @@ class ModelSuit(pl.LightningModule):
 
         return loss, predictions
 
-    def train_delta_for_test(self) -> None:
-        if not isinstance(self.delta, _NonLinearGP):
-            return
+    def train_delta_for_test(self, dataloader: Optional[DataLoader] = None) -> None:
 
-        self.delta.train()
-        self.delta.set_mapping(
-            data=self.test_dataloader(), set_name=self._Mode.TEST.value
-        )
+        if self.test_delta is None:
+            if not isinstance(self.delta, _NonLinearGP):
+                return
+
+            dataloader = (
+                dataloader if dataloader is not None else self.test_dataloader()
+            )
+            self.delta.train()
+            self.delta.set_mapping(data=dataloader, set_name=self._Mode.TEST.value)
+
+        else:
+            if not isinstance(self.test_delta, _NonLinearGP):
+                return
+
+            dataloader = (
+                dataloader if dataloader is not None else self.test_dataloader()
+            )
+            self.test_delta.train()
+            self.test_delta.set_mapping(data=dataloader, set_name=self._Mode.TEST.value)
 
     def configure_optimizers(self):
         optimizer_class = self.training_params.get("optimizer_class", optim.SGD)
