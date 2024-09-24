@@ -30,6 +30,7 @@ class _NonLinearGP(_GSC):
         strategic_model: nn.Module,
         cost_weight: float = 1,
         save_dir: str = ".",
+        logging_level: int = logging.INFO,
         *args,
         training_params: Dict[str, Any],
     ) -> None:
@@ -54,13 +55,13 @@ class _NonLinearGP(_GSC):
         super().__init__(strategic_model, cost, cost_weight)
         self.training_params: Dict[str, Any] = training_params
 
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging_level)
         self.save_dir: str = save_dir
 
         self.set_training_params()
         self.current_x_prime: Optional[torch.Tensor] = None
 
-    def train(
+    def set_mapping(
         self,
         data: DataLoader,
         set_name: str = "",
@@ -72,16 +73,31 @@ class _NonLinearGP(_GSC):
         :param data: DataLoader for x and y
         """
         # Add the set_name to the save_dir
+        for batch_idx, data_batch in enumerate(data):
+            x, y = data_batch
+            self.set_mapping_for_batch(x, y, batch_idx, set_name)
+
+    def set_mapping_for_batch(
+        self,
+        x_batch: torch.Tensor,
+        y_batch: torch.Tensor,
+        batch_idx: int,
+        set_name: str = "",
+    ) -> None:
+        """
+        Train the model by finding x_prime for a specific batch and save the results to disk.
+
+        :param data_batch: Tensor for x and y
+        :param batch_idx: Index of the batch
+        """
         save_dir: str = os.path.join(self.save_dir, set_name)
         os.makedirs(save_dir, exist_ok=True)
 
-        for batch_idx, data_batch in enumerate(data):
-            z_batch: torch.Tensor = self._gen_z_fn(data_batch)
-            x_batch, _ = data_batch
-            x_prime: torch.Tensor = self.find_x_prime(x_batch, z_batch)
-            save_path: str = os.path.join(save_dir, f"x_prime_batch_{batch_idx}.pt")
-            torch.save(x_prime, save_path)
-            logging.debug(f"Saved x_prime for batch {batch_idx} to {save_path}")
+        z_batch: torch.Tensor = self._gen_z_fn(x_batch, y_batch)
+        x_prime: torch.Tensor = self.find_x_prime(x_batch, z_batch)
+        save_path: str = os.path.join(save_dir, f"x_prime_batch_{batch_idx}.pt")
+        torch.save(x_prime, save_path)
+        logging.debug(f"Saved x_prime for batch {batch_idx} to {save_path}")
 
     def load_x_prime(self, batch_idx: int, set_name: str = "") -> torch.Tensor:
         """
@@ -94,84 +110,80 @@ class _NonLinearGP(_GSC):
 
         save_path: str = os.path.join(save_dir, f"x_prime_batch_{batch_idx}.pt")
         if os.path.exists(save_path):
-            x_prime: torch.Tensor = torch.load(save_path)
+            x_prime: torch.Tensor = torch.load(save_path, weights_only=True)
             logging.debug(f"Loaded x_prime for batch {batch_idx} from {save_path}")
             return x_prime
         else:
             raise FileNotFoundError(f"No saved x_prime found at {save_path}")
 
-    def find_x_prime(
-        self,
-        x: torch.Tensor,
-        z: torch.Tensor,
-    ) -> torch.Tensor:
-        """
-        Modified find_x_prime to load precomputed x_prime if available.
-        If precomputed x_prime is not available, compute x_prime using the GP formula
-        and a GD method that was specified in the training dictionary.
+    def find_x_prime(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        with torch.enable_grad():
+            # Save original requires_grad values
+            original_requires_grad = {}
+            for name, param in self.strategic_model.named_parameters():
+                original_requires_grad[name] = param.requires_grad
+                param.requires_grad = True  # Enable gradients for parameters
 
-        :param x: Input tensor
-        :param z: Metadata tensor
-        :param batch_idx: Index of the batch to load precomputed x_prime (if provided)
-        :param save_dir: Directory to load precomputed x_prime (if provided)
-        :return: x_prime tensor
-        """
+            try:
+                batch_size: int = x.size(0)
+                x_prime: torch.Tensor = x.clone().detach().requires_grad_(True)
+                optimizer: optim.Optimizer = self.optimizer_class(
+                    [x_prime], **self.optimizer_params
+                )
+                scheduler: Optional[Any] = None
+                if self.has_scheduler:
+                    scheduler = self.scheduler_class(optimizer, **self.scheduler_params)
 
-        batch_size: int = x.size(0)
-        assert (
-            z.size(0) == batch_size
-        ), f"z should have the same size as x, but it is {z.size(0)} and {batch_size}"
+                best_loss: torch.Tensor = torch.full(
+                    (batch_size,), float("inf"), device=x.device
+                )
+                best_x_prime: torch.Tensor = x_prime.clone().detach()
+                patience_counter: torch.Tensor = torch.zeros(
+                    batch_size, dtype=torch.int, device=x.device
+                )
 
-        x_prime: torch.Tensor = x.clone().detach().requires_grad_(True)
-        optimizer: optim.Optimizer = self.optimizer_class(
-            [x_prime], **self.optimizer_params
-        )
-        scheduler: Optional[Any] = None
-        if self.has_scheduler:
-            scheduler = self.scheduler_class(optimizer, **self.scheduler_params)
+                for epoch in range(self.num_epochs):
+                    optimizer.zero_grad()
 
-        best_loss: torch.Tensor = torch.full(
-            (batch_size,), float("inf"), device=x.device
-        )
-        best_x_prime: torch.Tensor = x_prime.clone().detach()
-        patience_counter: torch.Tensor = torch.zeros(
-            batch_size, dtype=torch.int, device=x.device
-        )
+                    logits: torch.Tensor = self.strategic_model.forward(
+                        x_prime
+                    ) * z.view(-1, 1)
+                    output: torch.Tensor = torch.tanh(logits * self.temp).squeeze()
+                    movement_cost: torch.Tensor = self.cost(x, x_prime)
+                    if batch_size != 1:
+                        movement_cost = movement_cost.squeeze()
 
-        for epoch in range(self.num_epochs):
-            optimizer.zero_grad()
+                    loss: torch.Tensor = output - self.cost_weight * movement_cost
+                    loss = (
+                        -loss
+                    )  # Since we're maximizing, we minimize the negative loss
 
-            logits: torch.Tensor = self.strategic_model.forward(x_prime) * z.view(-1, 1)
-            output: torch.Tensor = torch.tanh(logits * self.temp).squeeze()
-            movement_cost: torch.Tensor = self.cost(x, x_prime)
-            if batch_size != 1:
-                movement_cost = movement_cost.squeeze()
+                    with torch.no_grad():
+                        improved: torch.Tensor = loss < best_loss
+                        best_loss[improved] = loss[improved]
+                        best_x_prime[improved] = x_prime[improved].clone().detach()
 
-            loss: torch.Tensor = output - self.cost_weight * movement_cost
-            loss = -loss  # Since we're maximizing, we minimize the negative loss
+                        if self.early_stopping != -1:
+                            patience_counter[~improved] += 1
+                            patience_counter[improved] = 0
 
-            with torch.no_grad():
-                improved: torch.Tensor = loss < best_loss
-                best_loss[improved] = loss[improved]
-                best_x_prime[improved] = x_prime[improved].clone().detach()
+                    loss.mean().backward()
+                    optimizer.step()
+                    if scheduler:
+                        scheduler.step()
 
-                if self.early_stopping != -1:
-                    patience_counter[~improved] += 1
-                    patience_counter[improved] = 0
+                    if (
+                        self.early_stopping != -1
+                        and patience_counter.max().item() >= self.early_stopping
+                    ):
+                        break
 
-            loss.mean().backward()  # We sum the loss to avoid interaction between samples
-            optimizer.step()
-            if scheduler:
-                scheduler.step()
-
-            if (
-                self.early_stopping != -1
-                and patience_counter.max().item() >= self.early_stopping
-            ):
-                break
-
-        x_prime = best_x_prime
-        self.current_x_prime = x_prime
+                x_prime = best_x_prime
+                self.current_x_prime = x_prime
+            finally:
+                # Restore original requires_grad values
+                for name, param in self.strategic_model.named_parameters():
+                    param.requires_grad = original_requires_grad[name]
 
         return x_prime
 
@@ -225,7 +237,7 @@ class _NonLinearGP(_GSC):
         self.training_params.update(training_params)
         self.set_training_params()
 
-    def _gen_z_fn(self, data: torch.Tensor) -> torch.Tensor:
+    def _gen_z_fn(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """Abstract method to generate the z values for the optimization"""
         raise NotImplementedError(
             "This method should be implemented in the child class"

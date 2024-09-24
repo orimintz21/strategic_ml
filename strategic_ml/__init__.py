@@ -50,7 +50,7 @@ from .models import (
 
 from .model_suit import ModelSuit
 
-from .utils import visualize_linear_classifier_2D
+from .utils import visualize_data_and_delta_2D, visualize_data_and_delta_1D
 
 # Functionality of the package
 __all__: list = [
@@ -89,5 +89,6 @@ __all__: list = [
     # Model Suit
     "ModelSuit",
     # Utils
-    "visualize_linear_classifier_2D",
+    "visualize_data_and_delta_2D",
+    "visualize_data_and_delta_1D",
 ]  # List of modules and functions to be imported when using 'from strategic_ml import *'

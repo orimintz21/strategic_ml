@@ -30,6 +30,7 @@ class ModelSuit(pl.LightningModule):
         test_delta: Optional[_GSC] = None,
         logging_level: int = logging.INFO,
         training_params: Dict[str, Any],
+        train_delta_every: Optional[int] = None,
         **kwargs,
     ) -> None:
         super(ModelSuit, self).__init__()
@@ -45,18 +46,21 @@ class ModelSuit(pl.LightningModule):
         self.training_params = training_params
         logging.basicConfig(level=logging_level)
 
-        if isinstance(self.model, _NonLinearGP):
-            if "train_delta_every" not in kwargs:
-                logging.warning(
-                    """Using NonLinearGP without train_delta_every 
-                                parameter, this means that the delta will use GD 
-                                in every epoch."""
-                )
+        self.train_delta_every: Optional[int] = train_delta_every
+        if isinstance(self.delta, _NonLinearGP) and self.train_delta_every is None:
+            logging.warning(
+                """Using NonLinearGP without train_delta_every 
+                            parameter, this means that the delta will use GD 
+                            in every epoch."""
+            )
+            self.train_delta_every = 1
 
-                self.train_delta_every: Optional[int] = None
-            else:
-                # We know that the train_delta_every is in kwargs
-                self.train_delta_every: Optional[int] = kwargs["train_delta_every"]
+        if isinstance(self.delta, _LinearGP):
+            assert isinstance(self.model, LinearModel)
+            if self.train_delta_every is not None:
+                logging.warning(
+                    "Linear delta is used, there is no need for train_delta_every parameter"
+                )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
@@ -106,32 +110,37 @@ class ModelSuit(pl.LightningModule):
         return {"val_loss": val_loss.mean(), "zero_one_loss": zero_one_loss}
 
     def test_step(self, batch, batch_idx):
+        # Enable gradient computation during test_step
+        with torch.enable_grad():
+            # Log the structure of the batch
+            logging.debug(f"Test batch contents: {len(batch)} elements")
 
-        # Log the structure of the batch
-        logging.debug(f"Test batch contents: {len(batch)} elements")
+            x, y = batch
+            if self.test_delta is not None:
+                # We are testing an In The Dark scenario
+                if isinstance(self.test_delta, _NonLinearGP):
+                    x_prime = self.test_delta.load_x_prime(batch_idx=batch_idx)
+                else:
+                    x_prime = self.test_delta.forward(x, y)
+                predictions = self.model.forward(x_prime)
+                test_loss = self.loss_fn(predictions, y)
 
-        x, y = batch
-        if self.test_delta is not None:
-            # In the dark
-            x_prime = self.test_delta.forward(x, y)
-            predictions = self.forward(x_prime)
-            test_loss = self.loss_fn(predictions, y)
-        else:
-            test_loss, predictions = self._calculate_loss_and_predictions(
-                x=x, y=y, batch_idx=batch_idx, mode=self._Mode.TEST
-            )
+            else:
+                test_loss, predictions = self._calculate_loss_and_predictions(
+                    x=x, y=y, batch_idx=batch_idx, mode=self._Mode.TEST
+                )
 
-        assert predictions is not None
+            assert predictions is not None
 
-        # Log the test loss
-        self.log("test_loss", test_loss, on_step=True, on_epoch=True)
+            # Log the test loss
+            self.log("test_loss", test_loss, on_step=True, on_epoch=True)
 
-        zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
+            zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
 
-        # Log the zero-one loss for the test set
-        self.log("test_zero_one_loss", zero_one_loss, on_step=True, on_epoch=True)
+            # Log the zero-one loss for the test set
+            self.log("test_zero_one_loss", zero_one_loss, on_step=True, on_epoch=True)
 
-        return {"test_loss": test_loss, "zero_one_loss": zero_one_loss}
+            return {"test_loss": test_loss, "zero_one_loss": zero_one_loss}
 
     def _calculate_loss_and_predictions(
         self,
@@ -156,36 +165,29 @@ class ModelSuit(pl.LightningModule):
                 predictions = None
 
         else:
-            use_training_delta: bool = (isinstance(self.delta, _NonLinearGP)) and (
-                self.train_delta_every is not None
-            )
+            if isinstance(self.delta, _NonLinearGP):
+                # Now we have two option, or we use the precomputed x_prime or we calculate it
+                # and then use it.
+                if (
+                    (self.train_delta_every is not None)
+                    and (self.current_epoch % self.train_delta_every == 0)
+                    and (mode != self._Mode.TEST)
+                ):
+                    self.delta.set_mapping_for_batch(
+                        x_batch=x,
+                        y_batch=y,
+                        set_name=mode.value,
+                        batch_idx=batch_idx,
+                    )
 
-            if use_training_delta and (not mode == self._Mode.TEST):
-                assert isinstance(self.delta, _NonLinearGP)
-                assert self.train_delta_every is not None
-                if self.current_epoch % self.train_delta_every == 0:
-                    if mode == self._Mode.TRAIN:
-                        self.delta.train(
-                            data=self.train_dataloader(),
-                            set_name=self._Mode.TRAIN.value,
-                        )
-                    elif mode == self._Mode.VALIDATION:
-                        self.delta.train(
-                            data=self.val_dataloader(),
-                            set_name=self._Mode.VALIDATION.value,
-                        )
-                    else:
-                        raise ValueError("Do not train the delta in test mode")
-
-                x_prime: torch.Tensor = self.delta.load_x_prime(batch_idx=batch_idx)
+                x_prime: torch.Tensor = self.delta.load_x_prime(
+                    batch_idx=batch_idx, set_name=mode.value
+                )
 
             else:
-                if mode == self._Mode.TEST and self.test_delta is not None:
-                    x_prime = self.test_delta.forward(x, y)
-                else:
-                    x_prime = self.delta.forward(x, y)
+                x_prime = self.delta.forward(x, y)
 
-            predictions = self.forward(x_prime)
+            predictions = self.model.forward(x_prime)
 
             loss = self.loss_fn(predictions, y)
 
@@ -204,18 +206,42 @@ class ModelSuit(pl.LightningModule):
                     linear_delta=self.delta,
                     cost=cost,
                 )
-                loss += regularization_term
+                loss = loss + regularization_term
 
         linear_regularization_term: torch.Tensor = torch.tensor(0.0)
 
         if self.linear_regularization is not None:
             assert isinstance(self.model, LinearModel)
             for reg in self.linear_regularization:
-                linear_regularization_term += reg(self.model)
+                linear_regularization_term = linear_regularization_term + reg(
+                    self.model
+                )
 
-        loss += linear_regularization_term
+        loss = loss + linear_regularization_term
 
         return loss, predictions
+
+    def train_delta_for_test(self, dataloader: Optional[DataLoader] = None) -> None:
+
+        if self.test_delta is None:
+            if not isinstance(self.delta, _NonLinearGP):
+                return
+
+            dataloader = (
+                dataloader if dataloader is not None else self.test_dataloader()
+            )
+            self.delta.train()
+            self.delta.set_mapping(data=dataloader, set_name=self._Mode.TEST.value)
+
+        else:
+            if not isinstance(self.test_delta, _NonLinearGP):
+                return
+
+            dataloader = (
+                dataloader if dataloader is not None else self.test_dataloader()
+            )
+            self.test_delta.train()
+            self.test_delta.set_mapping(data=dataloader, set_name=self._Mode.TEST.value)
 
     def configure_optimizers(self):
         optimizer_class = self.training_params.get("optimizer_class", optim.SGD)
@@ -238,3 +264,13 @@ class ModelSuit(pl.LightningModule):
 
     def test_dataloader(self) -> DataLoader:
         return self.test_loader
+
+    def get_dataloader(self, mode: _Mode) -> DataLoader:
+        if mode == self._Mode.TRAIN:
+            return self.train_dataloader()
+        elif mode == self._Mode.VALIDATION:
+            return self.val_dataloader()
+        elif mode == self._Mode.TEST:
+            return self.test_dataloader()
+        else:
+            raise ValueError("Mode not supported")

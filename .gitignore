@@ -157,6 +157,9 @@ dmypy.json
 # pytype static type analyzer
 .pytype/
 
+# Specific to this project
+tests/model_suit/delta_data/*
+
 # Cython debug symbols
 cython_debug/
 
