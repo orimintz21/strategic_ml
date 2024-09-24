@@ -32,10 +32,8 @@ from .gsc import (
     _LinearGP,
     LinearAdvDelta,
     LinearStrategicDelta,
-    LinearNoisyLabelDelta,
     _NonLinearGP,
     NonLinearStrategicDelta,
-    NonLinearNoisyLabelDelta,
     NonLinearAdvDelta,
 )
 
@@ -74,10 +72,8 @@ __all__: list = [
     "_LinearGP",
     "LinearAdvDelta",
     "LinearStrategicDelta",
-    "LinearNoisyLabelDelta",
     "_NonLinearGP",
     "NonLinearStrategicDelta",
-    "NonLinearNoisyLabelDelta",
     "NonLinearAdvDelta",
     # Linear Model
     "LinearModel",

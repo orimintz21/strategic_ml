@@ -69,7 +69,7 @@ class LinearStrategicDelta(_LinearGP):
             torch.Tensor: An array of ones with the number of x samples.
         """
         batch_size = x.shape[0]
-        return torch.ones((batch_size, 1))
+        return torch.ones((batch_size, 1), dtype=x.dtype, device=x.device)
 
     def get_minimal_distance(self, x: torch.Tensor) -> torch.Tensor:
         """This method returns the minimal distance of the strategic users.
@@ -85,5 +85,5 @@ class LinearStrategicDelta(_LinearGP):
         Returns:
             torch.Tensor: The minimal distance of the strategic users.
         """
-        ones = torch.ones((x.shape[0], 1))
+        ones = torch.ones((x.shape[0], 1), dtype=x.dtype, device=x.device)
         return super()._get_minimal_distance(x, ones)

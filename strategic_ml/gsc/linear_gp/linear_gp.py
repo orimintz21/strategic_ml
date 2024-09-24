@@ -82,42 +82,49 @@ class _LinearGP(_GSC):
         # Get the weights and bias of the model
         assert isinstance(
             self.strategic_model, LinearModel
-        ), "The model should be a LinearModel, but got {}".format(
-            type(self.strategic_model)
-        )
+        ), "The model should be a LinearModel."
         weights, bias = self.strategic_model.get_weight_and_bias()
 
-        # Ensure dtype consistency
-        x = x.to(weights.dtype)
-        z = z.to(weights.dtype)
+        # Ensure dtype and device consistency
+        device = weights.device
+        dtype = weights.dtype
+        x = x.to(dtype=dtype, device=device)
+        z = z.to(dtype=dtype, device=device)
 
-        x_prime: Optional[torch.Tensor] = None
+        # Calculate projections for all samples
+        projections = self._calculate_projection(x, weights, bias, z)
 
-        for x_sample, z_sample in zip(x, z):
-            x_sample = x_sample.view(1, -1)
-            projection: torch.Tensor = self._calculate_projection(
-                x_sample, weights, bias, z_sample
-            )
+        # Ensure that projections produce the correct predictions
+        projection_outputs = self.strategic_model(projections)
+        projection_signs = torch.sign(projection_outputs)
+        assert (
+            projection_signs == z
+        ).all(), "Projections do not yield correct predictions."
 
-            assert (
-                torch.sign(self.strategic_model(projection)) == z_sample
-            ), "The projection is wrong, {}".format(self.strategic_model(projection))
+        # Determine if it's worth moving to the projection
+        cost_of_movement = (
+            self.cost(x, projections) * self.cost_weight
+        )  # Shape: [batch_size]
+        worth_to_move = cost_of_movement < 2  # Shape: [batch_size]
 
-            worth_to_move: bool = self._worth_to_move(x_sample, projection)
+        # Determine if the original predictions are already correct
+        original_outputs = self.strategic_model(x)  # Shape: [batch_size, 1]
+        original_signs = torch.sign(original_outputs)
+        original_correct = (original_signs == z).squeeze(1)  # Shape: [batch_size]
 
-            if (torch.sign(self.strategic_model(x_sample)) == z_sample) or (
-                not worth_to_move
-            ):
-                what_to_add = x_sample
-            else:
-                what_to_add = projection
+        # Ensure both are BoolTensors
+        worth_to_move = worth_to_move.bool()
+        original_correct = original_correct.bool()
 
-            if x_prime is None:
-                x_prime = what_to_add
-            else:
-                x_prime = torch.cat((x_prime, what_to_add))
+        # Compute the condition tensor
+        condition = original_correct | (~worth_to_move)  # Shape: [batch_size]
 
-        assert x_prime is not None, "The x_prime is None after the loop"
+        # Expand the condition tensor to match x's shape
+        condition = condition.unsqueeze(1).expand(
+            -1, x.size(1)
+        )  # Shape: [batch_size, feature_dim]
+
+        x_prime = torch.where(condition, x, projections)
         return x_prime
 
     def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
@@ -149,45 +156,31 @@ class _LinearGP(_GSC):
         """
         self._validate_input(x, z)
         # Get the weights and bias of the model
-        assert isinstance(
-            self.strategic_model, LinearModel
-        ), "The model should be a LinearModel, but got {}".format(
-            type(self.strategic_model)
-        )
         weights, bias = self.strategic_model.get_weight_and_bias()
-        costs: Optional[torch.Tensor] = None
 
-        for x_sample, z_sample in zip(x, z):
-            x_sample: torch.Tensor = x_sample.view(1, -1)
-            if torch.sign(self.strategic_model(x_sample)) == z_sample:
-                costs_of_moment = torch.tensor([0.0])
-            else:
-                projection: torch.Tensor = self._calculate_projection(
-                    x_sample, weights, bias, z_sample
-                )
+        # Ensure dtype and device consistency
+        x = x.to(weights.dtype).to(weights.device)
+        z = z.to(weights.dtype).to(weights.device)
 
-                assert (
-                    torch.sign(self.strategic_model(projection)) == z_sample
-                ), "The projection is wrong, {}".format(
-                    self.strategic_model(projection)
-                )
+        # Calculate model outputs
+        model_outputs = self.strategic_model(x)  # Shape: [batch_size, 1]
+        original_correct = torch.sign(model_outputs).squeeze(1) == z.squeeze(
+            1
+        )  # Shape: [batch_size]
 
-                costs_of_moment: torch.Tensor = self.cost(x_sample, projection)
+        # Calculate projections
+        projections = self._calculate_projection(
+            x, weights, bias, z
+        )  # Shape: [batch_size, feature_dim]
 
-            costs_of_moment = costs_of_moment.view(
-                -1
-            )  # Ensure 1D tensor for concatenation
+        # Calculate costs
+        cost_of_movement = self.cost(x, projections)
 
-            if costs is None:
-                costs = costs_of_moment
-            else:
-                costs = torch.cat((costs, costs_of_moment))
+        # Set cost to zero where original predictions are correct
+        costs = torch.where(
+            original_correct, torch.zeros_like(cost_of_movement), cost_of_movement
+        )
 
-        if costs is None:
-            # Return a zero tensor if no costs were calculated
-            return torch.zeros(x.shape[0], dtype=torch.float64)
-
-        # assert costs is not None, "The costs is None after the loop"
         return costs
 
     def _assert_cost(self) -> None:
@@ -213,6 +206,8 @@ class _LinearGP(_GSC):
             [batch_size, 1]
         ), "z should be of size [batch_size, 1], but got {}".format(z.size())
 
+        assert x.device == z.device, "x and z should be on the same device"
+
         w, b = self.strategic_model.get_weight_and_bias()
         # Ensure all tensors have consistent dtype
         assert (
@@ -230,6 +225,7 @@ class _LinearGP(_GSC):
         ), "All tensors should have the same dtype but we got x: {0}, z: {3}".format(
             x.dtype, z.dtype
         )
+        assert x.device == w.device, "x and w should be on the same device"
 
     def _assert_model(self) -> None:
         """This function asserts that the strategic model is a LinearModel"""
@@ -242,51 +238,39 @@ class _LinearGP(_GSC):
         x: torch.Tensor,
         w: torch.Tensor,
         b: torch.Tensor,
-        z: torch.Tensor = torch.tensor([1]),
-        norm_waits: Optional[torch.Tensor] = None,
+        z: torch.Tensor,
+        norm_weights: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        """This method calculates the projection on the model.
+        # Ensure z is of shape [batch_size, 1]
+        if z.dim() == 1:
+            z = z.unsqueeze(1)  # Shape: [batch_size, 1]
 
-        Args:
-            x (torch.Tensor): The data
-            w (torch.Tensor): The weights of the model
-            b (torch.Tensor): The bias of the model
-            norm_waits (torch.Tensor): The weights of the cost function
+        if norm_weights is None:
+            # Calculate norm_w as scalar
+            norm_w = torch.norm(w, p=2) ** 2  # Scalar
 
-        Returns:
-            torch.Tensor: The projection on the model
-        """
+            # Compute numerator and denominator separately
+            numerator = x @ w.T + b  # Shape: [batch_size, 1]
+            denominator = norm_w  # Scalar
 
-        assert z.size() == torch.Size(
-            [1]
-        ), "z should be of size [1], but got {}".format(z.size())
-
-        if norm_waits is None:
-            norm_w = torch.matmul(w, w.T)
-            projection = x - ((torch.matmul(x, w.T) + b) / (norm_w)) * w
-
+            # Compute projection
+            projection = x - (numerator / denominator) * w  # Broadcasting over batch
         else:
-            inverse_norm_waits: torch.Tensor = torch.inverse(norm_waits)
-            norm_w = torch.matmul(w, torch.matmul(inverse_norm_waits, w.T))
-            projection = x - ((torch.matmul(x, w.T) + b) / norm_w) * torch.matmul(
-                inverse_norm_waits, w.T
-            )
+            # Handle weighted norm case
+            inverse_norm_weights = torch.inverse(norm_weights).to(x.device)
+            norm_w = w @ inverse_norm_weights @ w.T  # Scalar
 
-        unit_w = w / norm_w
-        projection_with_safety = projection + z * self.epsilon * unit_w
+            numerator = x @ w.T + b  # Shape: [batch_size, 1]
+            denominator = norm_w  # Scalar
+
+            projection = (
+                x - (numerator / denominator) * (inverse_norm_weights @ w.T).T
+            )  # Shape: [batch_size, feature_dim]
+
+        # Add epsilon adjustment
+        unit_w = w / torch.norm(w, p=2)  # Shape: [1, feature_dim]
+        projection_with_safety = (
+            projection + z * self.epsilon * unit_w
+        )  # Broadcasting over batch
+
         return projection_with_safety
-
-    def _worth_to_move(self, x: torch.Tensor, projection: torch.Tensor) -> bool:
-        """This function checks if it is worth to move the data point to the projection.
-        It is worth to move the data point if the cost of the moment  times its
-        weight is smaller than 2.
-
-        Args:
-            x (torch.Tensor): The data
-            projection (torch.Tensor): The projection of the data on the model.
-
-        Returns:
-            bool: If it is worth to move the data point to the projection.
-        """
-        cost_of_moment = self.cost_weight * self.cost(x, projection)
-        return bool(cost_of_moment < 2)

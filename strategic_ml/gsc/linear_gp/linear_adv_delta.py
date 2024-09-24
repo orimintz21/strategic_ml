@@ -5,6 +5,7 @@ from torch import nn
 # Internal imports
 from strategic_ml.cost_functions.cost_function import _CostFunction
 from strategic_ml.gsc.linear_gp.linear_gp import _LinearGP
+from strategic_ml.models import LinearModel
 
 
 class LinearAdvDelta(_LinearGP):
@@ -54,6 +55,11 @@ class LinearAdvDelta(_LinearGP):
             x (torch.Tensor): The data.
             y (torch.Tensor): The label.
         """
+        assert isinstance(self.strategic_model, LinearModel)
+        device = self.strategic_model.model.weight.device
+        x = x.to(device)
+        y = y.to(device).to(self.strategic_model.model.weight.dtype)
+
         return super().find_x_prime(x, -y)
 
     def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:

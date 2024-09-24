@@ -34,6 +34,9 @@ class LinearModel(nn.Module):
             self.set_weight_and_bias(weight, bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        assert (
+            x.device == self.model.weight.device
+        ), f"Input tensor is on a different device than the model. {x.device} != {self.model.weight.device}"
         return self.model(x)
 
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
@@ -42,14 +45,22 @@ class LinearModel(nn.Module):
     def train(self, mode: bool = True) -> "LinearModel":
         return super().train(mode)
 
-    def get_weight_and_bias(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_weight_and_bias(
+        self, device: Optional[torch.device] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         The get_weight_and_bias method returns the weights and bias of the model
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: the weights and bias of the model
         """
-        return self.model.weight.detach(), self.model.bias.detach()
+        weight = self.model.weight.detach()
+        bias = self.model.bias.detach()
+        if device is not None:
+            weight = weight.to(device)
+            bias = bias.to(device)
+
+        return weight, bias
 
     def set_weight_and_bias(self, weight: torch.Tensor, bias: torch.Tensor) -> None:
         """
@@ -75,6 +86,11 @@ class LinearModel(nn.Module):
         ), "This is a binary classification model, the number of outputs should be 1 instead of {}".format(
             bias.shape[0]
         )
+        # Move weight and bias to the model's device
+        device = self.model.weight.device
+        weight = weight.to(device)
+        bias = bias.to(device)
+
         # Set the weights and bias
         with torch.no_grad():
             self.model.weight.copy_(weight)

@@ -1,13 +1,14 @@
-""" This module contains the abstract class CostFunction, which is the base class for all cost functions in the strategic_ml package.
-When creating a new cost function, you should inherit from this class and implement the forward method.
-"""
-
+# External imports
 import torch
 from torch import nn
 from typing import Optional, Union, List, Tuple
 
 
 class _CostFunction(nn.Module):
+    """This module contains the abstract class CostFunction, which is the base class for all cost functions in the strategic_ml package.
+    When creating a new cost function, you should inherit from this class and implement the forward method.
+    """
+
     def __init__(self, dim: Optional[Union[int, List[int], Tuple[int]]] = None) -> None:
         """Constructor for the _CostFunction class."""
         super(_CostFunction, self).__init__()
