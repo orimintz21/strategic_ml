@@ -65,6 +65,9 @@ class Recourse(_StrategicRegularization):
         assert (
             x.shape[0] == delta_predictions.shape[0]
         ), "x and delta_predictions must have the same batch size"
+        assert (
+            delta_predictions.device == x.device
+        ), "x and delta_predictions must be on the same device"
 
         if model is not None:
             x_predictions: torch.Tensor = model(x)
@@ -74,6 +77,12 @@ class Recourse(_StrategicRegularization):
             ), "model must be passed to the forward method or the Recourse object must have a model"
             x_predictions = self.model(x)
 
+        assert (
+            x_predictions.device == x.device
+        ), "x and x_predictions must be on the same device"
+        assert (
+            x.dtype == x_predictions.dtype
+        ), "x and x_predictions must have the same dtype"
         x_neg_predictions_sig: torch.Tensor = torch.sigmoid(
             -x_predictions * self.sigmoid_temp
         )

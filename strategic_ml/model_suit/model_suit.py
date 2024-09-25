@@ -91,7 +91,6 @@ class ModelSuit(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-
         val_loss, predictions = self._calculate_loss_and_predictions(
             x=x, y=y, batch_idx=batch_idx, mode=self._Mode.VALIDATION
         )
@@ -116,12 +115,19 @@ class ModelSuit(pl.LightningModule):
             logging.debug(f"Test batch contents: {len(batch)} elements")
 
             x, y = batch
+            device = x.device
             if self.test_delta is not None:
                 # We are testing an In The Dark scenario
                 if isinstance(self.test_delta, _NonLinearGP):
-                    x_prime = self.test_delta.load_x_prime(batch_idx=batch_idx)
+                    x_prime = self.test_delta.load_x_prime(
+                        batch_idx=batch_idx, device=device
+                    )
                 else:
-                    x_prime = self.test_delta.forward(x, y)
+                    x_prime = self.test_delta.forward(x, y).to(device)
+
+                assert (
+                    x_prime.device == device
+                ), f"x_prime is on {x_prime.device} device, but should be on {device} device"
                 predictions = self.model.forward(x_prime)
                 test_loss = self.loss_fn(predictions, y)
 
@@ -150,6 +156,12 @@ class ModelSuit(pl.LightningModule):
         mode: _Mode,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
 
+        device = x.device
+
+        assert (
+            y.device == device
+        ), f"y ({y.device}) should be on the same device as x ({device})"
+
         if isinstance(self.loss_fn, StrategicHingeLoss):
             assert (
                 self.regularization is None
@@ -168,25 +180,31 @@ class ModelSuit(pl.LightningModule):
             if isinstance(self.delta, _NonLinearGP):
                 # Now we have two option, or we use the precomputed x_prime or we calculate it
                 # and then use it.
-                if (
-                    (self.train_delta_every is not None)
-                    and (self.current_epoch % self.train_delta_every == 0)
-                    and (mode != self._Mode.TEST)
-                ):
-                    self.delta.set_mapping_for_batch(
-                        x_batch=x,
-                        y_batch=y,
-                        set_name=mode.value,
-                        batch_idx=batch_idx,
-                    )
+                assert self.train_delta_every is not None
+                if (mode != self._Mode.TEST) and self.train_delta_every == 1:
+                    x_prime = self.delta.forward(x, y)
 
-                x_prime: torch.Tensor = self.delta.load_x_prime(
-                    batch_idx=batch_idx, set_name=mode.value
-                )
+                else:
+                    if (self.current_epoch % self.train_delta_every == 0) and (
+                        mode != self._Mode.TEST
+                    ):
+                        self.delta.set_mapping_for_batch(
+                            x_batch=x,
+                            y_batch=y,
+                            set_name=mode.value,
+                            batch_idx=batch_idx,
+                        )
+
+                    x_prime: torch.Tensor = self.delta.load_x_prime(
+                        batch_idx=batch_idx, set_name=mode.value, device=x.device
+                    )
 
             else:
                 x_prime = self.delta.forward(x, y)
 
+            assert (
+                x_prime.device == device
+            ), f"x_prime should be on the same device as the model, but x_prime is on {x_prime.device} device and the x is on {device} device"
             predictions = self.model.forward(x_prime)
 
             loss = self.loss_fn(predictions, y)
@@ -208,7 +226,7 @@ class ModelSuit(pl.LightningModule):
                 )
                 loss = loss + regularization_term
 
-        linear_regularization_term: torch.Tensor = torch.tensor(0.0)
+        linear_regularization_term: torch.Tensor = torch.tensor(0.0, device=self.device)
 
         if self.linear_regularization is not None:
             assert isinstance(self.model, LinearModel)
@@ -222,14 +240,12 @@ class ModelSuit(pl.LightningModule):
         return loss, predictions
 
     def train_delta_for_test(self, dataloader: Optional[DataLoader] = None) -> None:
+        dataloader = dataloader if dataloader is not None else self.test_dataloader()
 
         if self.test_delta is None:
             if not isinstance(self.delta, _NonLinearGP):
                 return
 
-            dataloader = (
-                dataloader if dataloader is not None else self.test_dataloader()
-            )
             self.delta.train()
             self.delta.set_mapping(data=dataloader, set_name=self._Mode.TEST.value)
 
@@ -237,9 +253,6 @@ class ModelSuit(pl.LightningModule):
             if not isinstance(self.test_delta, _NonLinearGP):
                 return
 
-            dataloader = (
-                dataloader if dataloader is not None else self.test_dataloader()
-            )
             self.test_delta.train()
             self.test_delta.set_mapping(data=dataloader, set_name=self._Mode.TEST.value)
 

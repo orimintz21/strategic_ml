@@ -55,19 +55,32 @@ class StrategicHingeLoss(nn.Module):
         :param y: True labels as a torch.tensor.
         :return: Computed loss as a torch.tensor.
         """
+        device = x.device
+        dtype = x.dtype
         assert isinstance(
             self.model, LinearModel
         ), f"model should be an instance of LinearModel, but it is {type(self.model)}"
         z = self.delta.get_z(x, y)
         assert (
+            z.dtype == x.dtype
+        ), f"z should have the same dtype as x, but z has {z.dtype} dtype and x has {x.dtype} dtype"
+        assert (
+            z.device == x.device
+        ), f"z should have the same device as x, but z has {z.device} device and x has {x.device} device"
+        assert (
             z.shape[0] == x.shape[0]
         ), f"z should have the same number of samples as x, but z has {z.shape[0]} samples and x has {x.shape[0]} samples"
         w, b = self.model.get_weight_and_bias_ref()
+        w = w.to(device=device, dtype=dtype)
+        b = b.to(device=device, dtype=dtype)
+
         cost_weight = self.delta.get_cost_weight()
 
         linear_output = torch.matmul(x, w.T) + b
+        w_norm = torch.linalg.norm(w, ord=2, dtype=dtype)
+        b_norm = torch.abs(b).squeeze()  # b is a scalar
 
-        norm = torch.linalg.norm(w, ord=2) + torch.linalg.norm(b, ord=2)
+        norm = w_norm + b_norm
 
         additional_term = 2 * cost_weight * z * y * norm
 

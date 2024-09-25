@@ -28,6 +28,12 @@ from strategic_ml import (
     StrategicHingeLoss,
 )
 
+DUMMY_RUN = False
+GPUS = 1
+ACCELERATOR = "auto"
+print("DUMMY_RUN: ", DUMMY_RUN)
+print(f"CUDA Available: {torch.cuda.is_available()}")
+
 
 DELTA_TRAINING_PARAMS: Dict[str, Any] = {
     "num_epochs": 100,
@@ -65,15 +71,28 @@ def reset_seed():
 
 
 torch.set_default_dtype(torch.float64)
-train_size = 5000
-val_size = 1000
-test_size = 1000
+if torch.cuda.is_available():
+    train_size = 500000
+    val_size = 10000
+    test_size = 10000
 
-blobs_dist = 11
-blobs_std = 1.5
-blobs_x2_std = 1.5
-pos_noise_frac = 0.0
-neg_noise_frac = 0.0
+    blobs_dist = 15
+    blobs_std = 4
+    blobs_x2_std = 3
+    pos_noise_frac = 0.1
+    neg_noise_frac = 0.1
+    num_epochs = 10
+else:
+    train_size = 5000
+    val_size = 1000
+    test_size = 1000
+
+    blobs_dist = 11
+    blobs_std = 1.5
+    blobs_x2_std = 1.5
+    pos_noise_frac = 0.0
+    neg_noise_frac = 0.0
+    num_epochs = 100
 
 
 def gen_custom_normal_data(
@@ -121,8 +140,12 @@ def gen_custom_normal_data(
         1,
     )
 
+    if torch.cuda.is_available():
+        batch_size = 1000
+    else:
+        batch_size = 100
     dataset = TensorDataset(X, Y)
-    return DataLoader(dataset, batch_size=100, shuffle=False, num_workers=5)
+    return DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8)
 
 
 def print_if_verbose(message: str) -> None:
@@ -271,35 +294,28 @@ class TestModelSuit(unittest.TestCase):
 
     def test_linear_model(self):
         # Pass the logger to the Trainer
+
+        max_epochs = 1 if DUMMY_RUN else num_epochs
         trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=max_epochs,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
+            devices=GPUS,
+            accelerator=ACCELERATOR,
         )
 
         trainer.fit(self.linear_test_suite)
         trainer.test(self.linear_test_suite)
 
-        # visualize the results
-        if isinstance(self.linear_model, LinearModel):
-            visualize_data_and_delta_2D(
-                self.linear_model,
-                self.train_dataLoader,
-                self.linear_delta,
-                display_percentage=0.05,
-                prefix="train",
-            )
-            visualize_data_and_delta_2D(
-                self.linear_model,
-                self.test_dataLoader,
-                self.linear_delta,
-                display_percentage=0.5,
-                prefix="test",
-            )
-        else:
-            print(
-                f"self.linear_model is not an instance of LinearModel, it's {type(self.linear_model)}"
-            )
+        visualize_train_and_test_2D(
+            self.linear_model,
+            self.train_dataLoader,
+            self.test_dataLoader,
+            self.linear_delta,
+            display_percentage_train=0.05,
+            display_percentage_test=0.5,
+            prefix="linear",
+        )
 
     def test_identity_delta(self):
         linear_model = LinearModel(2)
@@ -316,10 +332,13 @@ class TestModelSuit(unittest.TestCase):
         )
 
         # Pass the logger to the Trainer
+        max_epochs = 1 if DUMMY_RUN else num_epochs
         trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=max_epochs,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
+            devices=GPUS,
+            accelerator=ACCELERATOR,
         )
 
         trainer.fit(identity_model)
@@ -378,10 +397,13 @@ class TestModelSuit(unittest.TestCase):
         )
 
         # Pass the logger to the Trainer
+        max_epochs = 1 if DUMMY_RUN else num_epochs
         trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=max_epochs,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
+            devices=GPUS,
+            accelerator=ACCELERATOR,
         )
 
         trainer.fit(model_suit)
@@ -390,14 +412,14 @@ class TestModelSuit(unittest.TestCase):
             self.linear_model,
             self.train_dataLoader,
             self.linear_delta,
-            display_percentage=1,
+            display_percentage=0.05,
             prefix="train_s_hinge",
         )
         visualize_data_and_delta_2D(
             self.linear_model,
             self.test_dataLoader,
             self.linear_delta,
-            display_percentage=1,
+            display_percentage=0.05,
             prefix="test_s_hinge",
         )
 
@@ -414,13 +436,15 @@ class TestModelSuit(unittest.TestCase):
             test_loader=self.test_dataLoader_one_dim,
             training_params=LINEAR_TRAINING_PARAMS,
         )
-        logger = pl.loggers.CSVLogger("logs/", name="my_experiment")
 
+        max_epochs = 1 if DUMMY_RUN else num_epochs
         # Pass the logger to the Trainer
         trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=max_epochs,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
+            devices=GPUS,
+            accelerator=ACCELERATOR,
         )
 
         trainer.fit(model_suit)
@@ -429,7 +453,7 @@ class TestModelSuit(unittest.TestCase):
             linear_model,
             self.train_dataLoader_one_dim,
             delta,
-            display_percentage=0.5,
+            display_percentage=0.05,
             prefix="train_one_dim",
         )
         visualize_data_and_delta_1D(
@@ -441,7 +465,6 @@ class TestModelSuit(unittest.TestCase):
         )
 
     def test_non_linear_model(self):
-        logger = pl.loggers.CSVLogger("logs/", name="my_experiment")
         identity_delta = IdentityDelta(cost=None, strategic_model=self.non_linear_model)
 
         non_linear_train_suite = ModelSuit(
@@ -456,10 +479,15 @@ class TestModelSuit(unittest.TestCase):
         )
 
         # Train the model without delta
+        max_epochs = 1 if DUMMY_RUN else 10
+        if torch.cuda.is_available():
+            max_epochs = 3
         trainer = pl.Trainer(
-            max_epochs=10,
+            max_epochs=max_epochs,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
+            devices=GPUS,
+            accelerator=ACCELERATOR,
         )
 
         trainer.fit(non_linear_train_suite)
@@ -475,16 +503,19 @@ class TestModelSuit(unittest.TestCase):
             None,
             self.test_dataLoader,
             identity_delta,
-            display_percentage=0.5,
+            display_percentage=0.05,
             prefix="non_linear_delta_pre_delta_test",
         )
         non_linear_train_suite.delta = self.non_linear_delta
 
         # Train the model with delta
+        max_epochs = 1 if DUMMY_RUN else num_epochs
         trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=max_epochs,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
+            devices=GPUS,
+            accelerator=ACCELERATOR,
         )
         trainer.fit(non_linear_train_suite)
         non_linear_train_suite.train_delta_for_test()
@@ -508,7 +539,6 @@ class TestModelSuit(unittest.TestCase):
         )
 
     def test_non_linear_model_one_dim(self):
-        logger = pl.loggers.CSVLogger("logs/", name="my_experiment")
         identity_delta = IdentityDelta(cost=None, strategic_model=self.non_linear_model)
         non_linear_model = NonLinearModel(1)
         delta = NonLinearStrategicDelta(
@@ -531,10 +561,15 @@ class TestModelSuit(unittest.TestCase):
         )
 
         # Train the model without delta
+        max_epochs = 1 if DUMMY_RUN else 10
+        if torch.cuda.is_available():
+            max_epochs = 3
         trainer = pl.Trainer(
-            max_epochs=10,
+            max_epochs=max_epochs,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
+            devices=GPUS,
+            accelerator=ACCELERATOR,
         )
 
         trainer.fit(non_linear_train_suite)
@@ -556,10 +591,13 @@ class TestModelSuit(unittest.TestCase):
         non_linear_train_suite.delta = delta
 
         # Train the model with delta
+        max_epochs = 1 if DUMMY_RUN else num_epochs
         trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=max_epochs,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
+            devices=GPUS,
+            accelerator=ACCELERATOR,
         )
         trainer.fit(non_linear_train_suite)
         non_linear_train_suite.train_delta_for_test()
@@ -619,11 +657,14 @@ class TestModelSuit(unittest.TestCase):
             test_loader=val_dataLoader_in_the_dark,
             training_params=LINEAR_TRAINING_PARAMS,
         )
+        max_epochs = 1 if DUMMY_RUN else num_epochs
 
         in_the_dark_trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=max_epochs,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
+            devices=GPUS,
+            accelerator=ACCELERATOR,
         )
         in_the_dark_trainer.fit(in_the_dark_module_suite)
         in_the_dark_trainer.test(in_the_dark_module_suite)
@@ -632,7 +673,7 @@ class TestModelSuit(unittest.TestCase):
             train_dataLoader_in_the_dark,
             val_dataLoader_in_the_dark,
             delta_test,
-            display_percentage_train=0.5,
+            display_percentage_train=0.05,
             display_percentage_test=0.5,
             prefix="in_the_dark_dummy_model",
         )
@@ -647,11 +688,13 @@ class TestModelSuit(unittest.TestCase):
             delta_test=delta_test,
             training_params=LINEAR_TRAINING_PARAMS,
         )
-
+        max_epochs = 1 if DUMMY_RUN else num_epochs
         trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=max_epochs,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
+            devices=GPUS,
+            accelerator=ACCELERATOR,
         )
         trainer.fit(model_suit)
         trainer.test(model_suit)
@@ -661,7 +704,7 @@ class TestModelSuit(unittest.TestCase):
             self.train_dataLoader,
             self.test_dataLoader,
             delta_test,
-            display_percentage_train=0.5,
+            display_percentage_train=0.05,
             display_percentage_test=0.5,
             prefix="in_the_dark_model",
         )
@@ -712,10 +755,14 @@ class TestModelSuit(unittest.TestCase):
             training_params=LINEAR_TRAINING_PARAMS,
         )
 
+        max_epochs = 1 if DUMMY_RUN else num_epochs
+
         in_the_dark_trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=max_epochs,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
+            devices=GPUS,
+            accelerator=ACCELERATOR,
         )
         # set the dummy to create the delta
         in_the_dark_trainer.fit(in_the_dark_module_suite)
@@ -727,7 +774,7 @@ class TestModelSuit(unittest.TestCase):
             train_dataLoader_in_the_dark,
             val_dataLoader_in_the_dark,
             delta_test,
-            display_percentage_train=0.5,
+            display_percentage_train=0.05,
             display_percentage_test=0.5,
             prefix="in_the_dark_dummy_model_non_linear",
         )
@@ -745,10 +792,14 @@ class TestModelSuit(unittest.TestCase):
             training_params=LINEAR_TRAINING_PARAMS,
         )
 
+        max_epochs = 1 if DUMMY_RUN else 100
+
         trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=max_epochs,
             logger=CSVLogger("logs/", name="my_experiment"),
             log_every_n_steps=1,  # Ensure logging at each step
+            devices=GPUS,
+            accelerator=ACCELERATOR,
         )
 
         trainer.fit(model_suit)
@@ -760,7 +811,7 @@ class TestModelSuit(unittest.TestCase):
             self.train_dataLoader,
             self.test_dataLoader,
             delta_test,
-            display_percentage_train=0.5,
+            display_percentage_train=0.05,
             display_percentage_test=0.5,
             prefix="in_the_dark_model_non_linear",
         )

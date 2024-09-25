@@ -76,7 +76,10 @@ class NonLinearAdvDelta(_NonLinearGP):
         Returns:
             torch.Tensor: x_prime, the delta.
         """
-        return super().find_x_prime(x, -y)
+        y = y.to(x.device)
+        z = -y
+        return super().find_x_prime(x, z)
 
     def _gen_z_fn(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        y = y.to(x.device)
         return -y

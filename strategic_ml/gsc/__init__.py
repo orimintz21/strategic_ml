@@ -10,12 +10,10 @@ from strategic_ml.gsc.linear_gp import (
     _LinearGP,
     LinearAdvDelta,
     LinearStrategicDelta,
-    LinearNoisyLabelDelta,
 )
 from strategic_ml.gsc.non_linear_gp import (
     _NonLinearGP,
     NonLinearStrategicDelta,
-    NonLinearNoisyLabelDelta,
     NonLinearAdvDelta,
 )
 
@@ -25,9 +23,7 @@ __all__ = [
     "_LinearGP",
     "LinearAdvDelta",
     "LinearStrategicDelta",
-    "LinearNoisyLabelDelta",
     "_NonLinearGP",
     "NonLinearStrategicDelta",
-    "NonLinearNoisyLabelDelta",
     "NonLinearAdvDelta",
 ]

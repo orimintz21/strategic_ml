@@ -58,6 +58,10 @@ class L2Regularization(_LinearRegularization):
             torch.Tensor: the regularization term.
         """
         weight, bias = linear_model.get_weight_and_bias_ref()
+
+        device = weight.device
+        assert device == bias.device, "Weight and bias must be on the same device"
+
         return self.lambda_ * (torch.norm(weight, p=2) + torch.norm(bias, p=2))
 
 
@@ -89,6 +93,10 @@ class L1Regularization(_LinearRegularization):
             torch.Tensor: the regularization term.
         """
         weight, bias = linear_model.get_weight_and_bias_ref()
+
+        device = weight.device
+        assert device == bias.device, "Weight and bias must be on the same device"
+
         return self.lambda_ * (torch.norm(weight, p=1) + torch.norm(bias, p=1))
 
 
@@ -127,6 +135,9 @@ class ElasticNetRegularization(_LinearRegularization):
         """
         # Get the weight and bias of the model
         weight, bias = linear_model.get_weight_and_bias_ref()
+
+        device = weight.device
+        assert device == bias.device, "Weight and bias must be on the same device"
 
         # Calculate the L1 and L2 regularization terms
         l1_loss: torch.Tensor = (1 - self.alpha) * (
@@ -169,6 +180,10 @@ class InfRegularization(_LinearRegularization):
             torch.Tensor: the regularization term.
         """
         weight, bias = linear_model.get_weight_and_bias_ref()
+
+        device = weight.device
+        assert device == bias.device, "Weight and bias must be on the same device"
+
         return self.lambda_ * (
             torch.norm(weight, p=float("inf")) + torch.norm(bias, p=float("inf"))
         )
