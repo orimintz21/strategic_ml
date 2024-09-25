@@ -66,6 +66,13 @@ class ExpectedUtility(_StrategicRegularization):
         ), "delta_predictions must have only one output"
         assert cost.shape[1] == 1, "cost must have only one output"
 
+        # they should be on the same device
+        assert (
+            delta_predictions.device == cost.device
+        ), "delta_predictions and cost must be on the same device"
+        # they shouldn't be empty
+        assert delta_predictions.shape[0] > 0, "delta_predictions should not be empty"
+
         # The predictions of the model aren't in scale of -1 to 1, so we need
         # to normalize them using tanh
         delta_predictions_tanh: torch.Tensor = torch.tanh(

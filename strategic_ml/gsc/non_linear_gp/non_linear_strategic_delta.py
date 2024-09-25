@@ -64,7 +64,7 @@ class NonLinearStrategicDelta(_NonLinearGP):
             training_params=training_params,
         )
 
-    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """This function calculates the delta for the strategic users.
         It uses the find_x_prime method from the parent class with the label 1.
         If precomputed x_prime is not available, it will calculate it.
@@ -78,8 +78,8 @@ class NonLinearStrategicDelta(_NonLinearGP):
             torch.Tensor: x_prime, the delta.
         """
         # array of ones with the number of rows of x
-        ones = torch.ones((x.shape[0], 1), dtype=x.dtype, device=x.device)
-        return super().find_x_prime(x, ones)
+        z = torch.ones((x.shape[0], 1), dtype=x.dtype, device=x.device)
+        return super().find_x_prime(x, z)
 
     def _gen_z_fn(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return torch.ones_like(y)

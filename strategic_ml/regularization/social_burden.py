@@ -67,10 +67,12 @@ class SocialBurden(_StrategicRegularization):
         ), "x, x_prime, and y must have the same batch size"
 
         assert y.shape[1] == 1, "y must be a 1D tensor"
+        y = y.to(device=x.device, dtype=x.dtype)
 
-        positive_label = y == 1
-        positive_label = positive_label.squeeze()
+        positive_label = (y == 1).squeeze()
         x_positive = x[positive_label]
+        if x_positive.numel() == 0:
+            return torch.tensor(0.0).to(device=x.device, dtype=x.dtype)
 
         if linear_delta is not None:
             distance = linear_delta.get_minimal_distance(x_positive)

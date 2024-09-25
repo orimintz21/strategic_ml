@@ -8,7 +8,9 @@ from strategic_ml.models import LinearModel, L2Regularization, L1Regularization
 
 class TestGPUOnModel(unittest.TestCase):
     def test_model_on_device(self):
-        device = torch.device("cuda")
+        device = (
+            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        )
         model = LinearModel(in_features=10).to(device)
         x = torch.randn(5, 10).to(device)
         output = model(x)
@@ -20,7 +22,9 @@ class TestGPUOnModel(unittest.TestCase):
         assert reg_term.device == device
 
     def test_L1Regularization_on_device(self):
-        device = torch.device("cuda")
+        device = (
+            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        )
         model = LinearModel(in_features=10).to(device)
         x = torch.randn(5, 10).to(device)
         output = model(x)

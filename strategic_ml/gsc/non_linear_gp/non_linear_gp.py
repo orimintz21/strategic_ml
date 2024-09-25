@@ -99,91 +99,92 @@ class _NonLinearGP(_GSC):
         torch.save(x_prime, save_path)
         logging.debug(f"Saved x_prime for batch {batch_idx} to {save_path}")
 
-    def load_x_prime(self, batch_idx: int, set_name: str = "") -> torch.Tensor:
+    def load_x_prime(
+        self, batch_idx: int, set_name: str = "", device: Optional[torch.device] = None
+    ) -> torch.Tensor:
         """
         Load precomputed x_prime values from disk for a specific batch.
 
         :param batch_idx: Index of the batch to load
+        :device: Device to load the tensor to, if None, load to the gpu if available else cpu
+
         :return: Loaded x_prime tensor
         """
         save_dir: str = os.path.join(self.save_dir, set_name)
 
         save_path: str = os.path.join(save_dir, f"x_prime_batch_{batch_idx}.pt")
+        if device is None:
+            # Load to gpu if available
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         if os.path.exists(save_path):
-            x_prime: torch.Tensor = torch.load(save_path, weights_only=True)
+            x_prime: torch.Tensor = torch.load(
+                save_path, weights_only=True, map_location=device
+            )
             logging.debug(f"Loaded x_prime for batch {batch_idx} from {save_path}")
             return x_prime
         else:
             raise FileNotFoundError(f"No saved x_prime found at {save_path}")
 
     def find_x_prime(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        assert x.device == z.device, "x and z should be on the same device"
+        assert x.size(0) == z.size(0), "x and z should have the same batch size"
+        device = x.device
+        dtype = x.dtype
         with torch.enable_grad():
-            # Save original requires_grad values
-            original_requires_grad = {}
-            for name, param in self.strategic_model.named_parameters():
-                original_requires_grad[name] = param.requires_grad
-                param.requires_grad = True  # Enable gradients for parameters
+            batch_size: int = x.size(0)
+            x_prime: torch.Tensor = x.clone().detach().to(x.device).requires_grad_(True)
+            optimizer: optim.Optimizer = self.optimizer_class(
+                [x_prime], **self.optimizer_params
+            )
+            scheduler: Optional[Any] = None
+            if self.has_scheduler:
+                scheduler = self.scheduler_class(optimizer, **self.scheduler_params)
 
-            try:
-                batch_size: int = x.size(0)
-                x_prime: torch.Tensor = x.clone().detach().requires_grad_(True)
-                optimizer: optim.Optimizer = self.optimizer_class(
-                    [x_prime], **self.optimizer_params
+            best_loss: torch.Tensor = torch.full(
+                (batch_size,), float("inf"), device=device, dtype=dtype
+            )
+            best_x_prime: torch.Tensor = x_prime.clone().detach().to(device)
+            patience_counter: torch.Tensor = torch.zeros(
+                batch_size, dtype=torch.int, device=device
+            )
+
+            for epoch in range(self.num_epochs):
+                optimizer.zero_grad()
+
+                logits: torch.Tensor = self.strategic_model.forward(x_prime) * z.view(
+                    -1, 1
                 )
-                scheduler: Optional[Any] = None
-                if self.has_scheduler:
-                    scheduler = self.scheduler_class(optimizer, **self.scheduler_params)
+                output: torch.Tensor = torch.tanh(logits * self.temp).squeeze()
+                movement_cost: torch.Tensor = self.cost(x, x_prime)
+                if batch_size != 1:
+                    movement_cost = movement_cost.squeeze()
 
-                best_loss: torch.Tensor = torch.full(
-                    (batch_size,), float("inf"), device=x.device
-                )
-                best_x_prime: torch.Tensor = x_prime.clone().detach()
-                patience_counter: torch.Tensor = torch.zeros(
-                    batch_size, dtype=torch.int, device=x.device
-                )
+                loss: torch.Tensor = output - self.cost_weight * movement_cost
+                loss = -loss  # Since we're maximizing, we minimize the negative loss
 
-                for epoch in range(self.num_epochs):
-                    optimizer.zero_grad()
+                with torch.no_grad():
+                    improved: torch.Tensor = loss < best_loss
+                    best_loss[improved] = loss[improved]
+                    best_x_prime[improved] = x_prime[improved].clone().detach()
 
-                    logits: torch.Tensor = self.strategic_model.forward(
-                        x_prime
-                    ) * z.view(-1, 1)
-                    output: torch.Tensor = torch.tanh(logits * self.temp).squeeze()
-                    movement_cost: torch.Tensor = self.cost(x, x_prime)
-                    if batch_size != 1:
-                        movement_cost = movement_cost.squeeze()
+                    if self.early_stopping != -1:
+                        patience_counter[~improved] += 1
+                        patience_counter[improved] = 0
 
-                    loss: torch.Tensor = output - self.cost_weight * movement_cost
-                    loss = (
-                        -loss
-                    )  # Since we're maximizing, we minimize the negative loss
+                loss.mean().backward()
+                optimizer.step()
+                if scheduler:
+                    scheduler.step()
 
-                    with torch.no_grad():
-                        improved: torch.Tensor = loss < best_loss
-                        best_loss[improved] = loss[improved]
-                        best_x_prime[improved] = x_prime[improved].clone().detach()
+                if (
+                    self.early_stopping != -1
+                    and patience_counter.max().item() >= self.early_stopping
+                ):
+                    break
 
-                        if self.early_stopping != -1:
-                            patience_counter[~improved] += 1
-                            patience_counter[improved] = 0
-
-                    loss.mean().backward()
-                    optimizer.step()
-                    if scheduler:
-                        scheduler.step()
-
-                    if (
-                        self.early_stopping != -1
-                        and patience_counter.max().item() >= self.early_stopping
-                    ):
-                        break
-
-                x_prime = best_x_prime
-                self.current_x_prime = x_prime
-            finally:
-                # Restore original requires_grad values
-                for name, param in self.strategic_model.named_parameters():
-                    param.requires_grad = original_requires_grad[name]
+            x_prime = best_x_prime
+            self.current_x_prime = x_prime
 
         return x_prime
 

@@ -72,4 +72,6 @@ class LinearAdvDelta(_LinearGP):
         Returns:
             torch.Tensor: The z value, which is -y.
         """
+        device = self.strategic_model.model.weight.device
+        y = y.to(device).to(self.strategic_model.model.weight.dtype)
         return -y

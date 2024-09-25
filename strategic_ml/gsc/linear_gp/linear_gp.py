@@ -84,12 +84,12 @@ class _LinearGP(_GSC):
             self.strategic_model, LinearModel
         ), "The model should be a LinearModel."
         weights, bias = self.strategic_model.get_weight_and_bias()
+        assert weights.device == x.device, "x and w should be on the same device"
 
         # Ensure dtype and device consistency
-        device = weights.device
         dtype = weights.dtype
-        x = x.to(dtype=dtype, device=device)
-        z = z.to(dtype=dtype, device=device)
+        x = x.to(dtype=dtype)
+        z = z.to(dtype=dtype)
 
         # Calculate projections for all samples
         projections = self._calculate_projection(x, weights, bias, z)
@@ -159,8 +159,9 @@ class _LinearGP(_GSC):
         weights, bias = self.strategic_model.get_weight_and_bias()
 
         # Ensure dtype and device consistency
-        x = x.to(weights.dtype).to(weights.device)
-        z = z.to(weights.dtype).to(weights.device)
+        assert x.device == weights.device, "x and w should be on the same device"
+        x = x.to(weights.dtype)
+        z = z.to(weights.dtype)
 
         # Calculate model outputs
         model_outputs = self.strategic_model(x)  # Shape: [batch_size, 1]

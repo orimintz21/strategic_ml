@@ -104,3 +104,7 @@ class LinearModel(nn.Module):
             Tuple[torch.Tensor, torch.Tensor]: the weights and bias of the model
         """
         return self.model.weight, self.model.bias
+
+    @property
+    def device(self):
+        return next(self.parameters()).device

@@ -100,7 +100,8 @@ def visualize_data_and_delta_2D(
     if delta is not None:
         X_selected = X[displayed_indices]  # Only selected points
         x_prime = delta.forward(
-            torch.from_numpy(X_selected).to(torch.float64)
+            torch.from_numpy(X_selected).to(torch.float64),
+            torch.from_numpy(Y[displayed_indices]).to(torch.float64),
         )  # Compute for selected points
         deltas = (x_prime - torch.from_numpy(X_selected)).detach().cpu().numpy()
 
@@ -281,7 +282,8 @@ def visualize_data_and_delta_1D(
     if delta is not None:
         X_selected = X[displayed_indices]  # Only selected points
         x_prime = delta.forward(
-            torch.from_numpy(X_selected).unsqueeze(1).to(torch.float64)
+            torch.from_numpy(X_selected).unsqueeze(1).to(torch.float64),
+            torch.from_numpy(Y[displayed_indices]).to(torch.float64),
         )  # Compute for selected points
         deltas = (
             (x_prime - torch.from_numpy(X_selected).unsqueeze(1)).detach().cpu().numpy()
