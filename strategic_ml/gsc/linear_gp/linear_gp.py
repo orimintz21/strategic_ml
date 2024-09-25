@@ -15,25 +15,21 @@ from strategic_ml.cost_functions import (
 
 class _LinearGP(_GSC):
     """
-    The GP is a strategic delta that is calculated by the following formula:
-    delta_h(x,z) = argmax_{x' in X}(1{model(x') = z} - r/2 * (cost(x,x')))
+    Abstract base class for linear Generalized Strategic Classification (GSC) models.
 
-    We can see that if model(x) == z then x is the best x' that we can choose.
-    If for every x' in X, such that model(x') != z, we get cost(x,x') > 2/r, then
-    the GP will be x (it is not worth to change x).
+    This class implements the strategic delta computation for linear models, assuming
+    the cost function is either L2 or a weighted L2 norm. The delta is computed using
+    a closed-form solution based on the projection of the input data onto the decision
+    boundary of the model.
 
-    If we assume that the model is linear and the cost is norm2, or weighted
-    norm, we see that if model(x) != z and the margin from the model is smaller than
-    the wait of the cost using the norm to calculate the margin, then the GP will be
-    the projection of x on the model.
+    The GP is calculated by the following formula:
+    delta_h(x, z) = argmax_{x' in X}(1{model(x') = z} - r/2 * (cost(x, x')))
 
-    Then the GP is calculated by the following formula:
-    x_prime = x - ((w.T @ x + b) / (w.T @ w)) * w
-    if we use the norm2 cost function.
-    and
-    x_prime = x - ((w.T @ x + b) / (w.T @ inverse(Lambda) @ w)) * inverse(Lambda) @ w
-    if we use the weighted norm cost function with Lambda as the weight matrix.
-
+    Attributes:
+        cost (_CostFunction): The cost function used in the delta computation.
+        strategic_model (nn.Module): The linear model used for the strategic classification.
+        cost_weight (float): The weight of the cost function in the strategic calculation.
+        epsilon (float): A small adjustment added to ensure correct model predictions.
     """
 
     def __init__(
@@ -43,18 +39,14 @@ class _LinearGP(_GSC):
         cost_weight: float = 1.0,
         epsilon: float = 0.01,
     ) -> None:
-        """This is the LinearGP model. This model assumes that the model is linear.
-        The reason for this assumption is that we can calculate the GP in a closed form
-        for linear models.
-        Therefore we do not need to train a delta model.
+        """
+        Initializes the _LinearGP class.
 
         Args:
-            cost (_CostFunction): The cost function of the delta.
-            strategic_model (nn.Module): the strategic that the delta is calculated on.
-            cost_weight (int): The weight of the cost function.
-            epsilon (float): move to the negative/positive direction of the model
-            to make sure that the model will predict the label correctly. The
-            delta does it by adding the (epsilon * w/||w||). Defaults to 0.01.
+            cost (_CostFunction): The cost function used in the delta computation.
+            strategic_model (nn.Module): The linear model used for the strategic classification.
+            cost_weight (float, optional): The weight of the cost function. Defaults to 1.0.
+            epsilon (float, optional): A small adjustment added to ensure correct model predictions. Defaults to 0.01.
         """
         super(_LinearGP, self).__init__(
             strategic_model=strategic_model, cost=cost, cost_weight=cost_weight
@@ -64,18 +56,15 @@ class _LinearGP(_GSC):
         self.epsilon: float = epsilon
 
     def find_x_prime(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
-        """This function calculates x' based on the GP formula.
+        """
+        Computes the modified input `x'` based on the linear GP formula.
 
         Args:
-            x (torch.Tensor): The input of the model.
-            z (torch.Tensor): Meta data for the GP.
-
-        Raises:
-            AssertionError: If the cost or the model is None.
-            NotImplementedError: If the model is not a Linear model (This should not happen)
+            x (torch.Tensor): The input data.
+            z (torch.Tensor): Metadata for the GP, typically the desired label.
 
         Returns:
-            torch.Tensor: x' the GP.
+            torch.Tensor: The strategically modified data `x'`.
         """
         self._validate_input(x, z)
 
@@ -128,28 +117,25 @@ class _LinearGP(_GSC):
         return x_prime
 
     def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """This function returns the meta data for the GP.
-        It should be implemented by the child class.
+        """
+        Returns the metadata `z` for the GP, which should be implemented by subclasses.
 
         Args:
-            x (torch.Tensor): The input of the model.
-            y (torch.Tensor): The true labels of the model.
-
-        Raises:
-            NotImplementedError: Should be implemented by the child class.
+            x (torch.Tensor): The input data.
+            y (torch.Tensor): The true labels.
 
         Returns:
-            torch.Tensor: The meta data for the GP.
+            torch.Tensor: The metadata `z` for the GP.
         """
         raise NotImplementedError("This is an abstract method")
 
     def _get_minimal_distance(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
-        """This function calculates the minimal cost that the strategic agent needs to do
-        to get a positive outcome from the model.
+        """
+        Calculates the minimal cost required for the strategic agent to be classified as z.
 
         Args:
-            x (torch.Tensor): The data.
-            z (torch.Tensor): The meta data for the GP.
+            x (torch.Tensor): The input data.
+            z (torch.Tensor): Metadata for the GP.
 
         Returns:
             torch.Tensor: The minimal cost for each data sample.
@@ -186,18 +172,19 @@ class _LinearGP(_GSC):
 
     def _assert_cost(self) -> None:
         """
-        This function asserts that the cost is a CostNormL2 or CostWeightedLoss
+        Asserts that the cost function is either L2 or a weighted L2 norm.
         """
         assert isinstance(self.cost, CostNormL2) or isinstance(
             self.cost, CostWeightedLoss
         ), "The cost should be a  CostNormL2 or CostWeightedLoss"
 
     def _validate_input(self, x: torch.Tensor, z: torch.Tensor) -> None:
-        """This function validates the input of the linear gp.
+        """
+        Validates the input data and metadata for the linear GP.
 
         Args:
-            x (torch.Tensor): The data
-            z (torch.Tensor): The meta data for the GP.
+            x (torch.Tensor): The input data.
+            z (torch.Tensor): Metadata for the GP.
         """
         # Check the input
         self._assert_cost()
@@ -229,7 +216,9 @@ class _LinearGP(_GSC):
         assert x.device == w.device, "x and w should be on the same device"
 
     def _assert_model(self) -> None:
-        """This function asserts that the strategic model is a LinearModel"""
+        """
+        Asserts that the strategic model is a LinearModel.
+        """        
         assert isinstance(
             self.strategic_model, LinearModel
         ), "The strategic model should be a StrategicModel"
@@ -242,6 +231,19 @@ class _LinearGP(_GSC):
         z: torch.Tensor,
         norm_weights: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
+        """
+        Calculates the projection of `x` onto the decision boundary of the linear model.
+
+        Args:
+            x (torch.Tensor): The input data.
+            w (torch.Tensor): The weights of the linear model.
+            b (torch.Tensor): The bias of the linear model.
+            z (torch.Tensor): Metadata for the GP.
+            norm_weights (Optional[torch.Tensor]): Weights for the weighted norm calculation, if applicable.
+
+        Returns:
+            torch.Tensor: The projection of `x` onto the decision boundary.
+        """
         # Ensure z is of shape [batch_size, 1]
         if z.dim() == 1:
             z = z.unsqueeze(1)  # Shape: [batch_size, 1]

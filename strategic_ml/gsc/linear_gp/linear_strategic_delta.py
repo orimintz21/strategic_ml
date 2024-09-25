@@ -10,18 +10,17 @@ from strategic_ml.gsc.linear_gp.linear_gp import _LinearGP
 
 class LinearStrategicDelta(_LinearGP):
     """
-    This is the LinearStrategicDelta model. This model assumes that the model
-    is linear and that the cost function is L2 or weighted L2.
-    The reason for this assumption is that we can calculate the delta in a
-    closed form for linear models and not via GD or any other optimization
-    algorithm. Therefore we do not need to train a delta model.
-    In this case, the strategic users tries to maximize the prediction of the
-    model with the minimal cost. The delta is calculated by the following formula:
-    x_prime = argmax_{x' in X}(1{model(x') = 1} - r/2 * (cost(x,x')))
-    For more information, see _LinearGP class, the paper "Strategic Classification Made Practical"
-    , and the paper "Generalized Strategic Classification and the Case of Aligned Incentives".
+    Implements the LinearStrategicDelta for strategic classification with linear models.
 
-    Parent Class: _LinearGP
+    This model assumes that the strategic users aim to maximize their prediction with minimal cost.
+    The delta is calculated using a closed-form solution for linear models with an L2 or weighted L2 
+    cost function.
+
+    Attributes:
+        cost (_CostFunction): The cost function used in the delta computation.
+        strategic_model (nn.Module): The linear model used for the strategic classification.
+        cost_weight (float): The weight of the cost function in the strategic calculation.
+        epsilon (float): A small adjustment added to ensure correct model predictions.
     """
 
     def __init__(
@@ -31,15 +30,14 @@ class LinearStrategicDelta(_LinearGP):
         cost_weight: float = 1.0,
         epsilon: float = 0.01,
     ) -> None:
-        """Initializer for the LinearStrategicDelta model.
+        """
+        Initializes the LinearStrategicDelta model.
 
         Args:
-            cost (_CostFunction): The cost function of the delta, we assume that the cost is L2 or weighted L2.
-            strategic_model (nn.Module): The strategic model that the delta is calculated on, we assume that the model is linear.
+            cost (_CostFunction): The cost function used in the delta computation.
+            strategic_model (nn.Module): The linear model used for the strategic classification.
             cost_weight (float, optional): The weight of the cost function. Defaults to 1.0.
-            epsilon (float): move to the negative/positive direction of the model
-            to make sure that the model will predict the label correctly. The
-            delta does it by adding the (epsilon * w/||w||). Defaults to 0.01.
+            epsilon (float, optional): A small adjustment added to ensure correct model predictions. Defaults to 0.01.
         """
         super(LinearStrategicDelta, self).__init__(
             cost, strategic_model, cost_weight, epsilon
@@ -47,43 +45,42 @@ class LinearStrategicDelta(_LinearGP):
 
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """
-        The forward method of the LinearStrategicDelta model. This method calculates the delta
-        for the strategic users.
-        Note that the delta is calculated by a closed form and not by an optimization algorithm.
-        It uses the find_x_prime method from the parent class with the label 1.
+        Computes the delta for strategic users aiming to maximize their prediction.
+
         Args:
-            x (torch.Tensor): The data.
+            x (torch.Tensor): The input data.
+
+        Returns:
+            torch.Tensor: The strategically modified data `x'`.
         """
         # array of ones with the number of rows of x
         ones = torch.ones((x.shape[0], 1), dtype=x.dtype, device=x.device)
         return super().find_x_prime(x, ones)
 
     def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """This method returns the z value for the strategic users which is 1.
+        """
+        Returns the metadata `z` for the strategic users, which is `1` in this case.
 
         Args:
-            x (torch.Tensor): The data.
-            y (torch.Tensor): The labels.
+            x (torch.Tensor): The input data.
+            y (torch.Tensor): The true label.
 
         Returns:
-            torch.Tensor: An array of ones with the number of x samples.
+            torch.Tensor: A tensor of ones, representing the desired prediction `z`.
         """
         batch_size = x.shape[0]
         return torch.ones((batch_size, 1), dtype=x.dtype, device=x.device)
 
     def get_minimal_distance(self, x: torch.Tensor) -> torch.Tensor:
-        """This method returns the minimal distance of the strategic users.
-        Which means the minimal cost that the strategic users can get pay
-        to change the model prediction to positive.
-        Note that this may be different from the distance between x and
-        x_prime, because in this function we are not bounded by the model, so
-        we can 'pay' more than the review of changing the model prediction.
+        """
+        Returns the minimal distance (cost) required for strategic users to 
+        achieve a positive outcome.
 
         Args:
-            x (torch.Tensor): The data.
+            x (torch.Tensor): The input data.
 
         Returns:
-            torch.Tensor: The minimal distance of the strategic users.
+            torch.Tensor: The minimal cost required for a positive outcome.
         """
         ones = torch.ones((x.shape[0], 1), dtype=x.dtype, device=x.device)
         return super()._get_minimal_distance(x, ones)

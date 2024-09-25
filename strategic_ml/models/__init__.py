@@ -1,6 +1,3 @@
-""":file: __init__.py
-"""
-
 from .linear_model import LinearModel
 from strategic_ml.models.linear_regularization import (
     L2Regularization,

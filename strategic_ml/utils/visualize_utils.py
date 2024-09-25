@@ -19,15 +19,16 @@ def visualize_data_and_delta_2D(
     prefix="",
 ):
     """
-    Visualizes a binary classification model's decision boundary and data points.
+    Visualizes a binary classification model's decision boundary and data points in 2D.
 
     Args:
-        model: The trained classification model. Only supports LinearModel,
-        if the model is not a LinearModel, set it to None.
-        dataset: The dataset containing the features and labels.
-        delta (optional): The delta values for strategic point manipulations.
-        grid_size: The number of grid points for the decision boundary visualization.
-        display_percentage: The percentage of data points to display (from 0 to 1).
+        model (Optional[LinearModel]): The trained classification model. Only supports LinearModel.
+                                       If the model is not a LinearModel, set it to None.
+        data_loader (DataLoader): The data loader containing the features and labels.
+        delta (_GSC): The delta values representing strategic point manipulations.
+        grid_size (int, optional): The number of grid points for the decision boundary visualization. Defaults to 100.
+        display_percentage (float, optional): The percentage of data points to display (from 0 to 1). Defaults to 1.0.
+        prefix (str, optional): Prefix for the saved plot filename. Defaults to "".
 
     Returns:
         None
@@ -188,15 +189,15 @@ def visualize_data_and_delta_1D(
 ):
     """
     Visualizes a binary classification model's decision boundary and data points in 1D,
-    making the arrows clearer and adjusting point styles based on delta values.
+    enhancing the clarity of delta arrows and adjusting point styles based on delta values.
 
     Args:
-        model: The trained classification model. Only supports LinearModel.
-               If the model is not a LinearModel, set it to None.
-        data_loader: The data loader containing the features and labels.
-        delta (optional): The delta values for strategic point manipulations.
-        display_percentage: The percentage of data points to display (from 0 to 1).
-        prefix: Prefix for the saved plot filename.
+        model (Optional[LinearModel]): The trained classification model. Only supports LinearModel.
+                                       If the model is not a LinearModel, set it to None.
+        data_loader (DataLoader): The data loader containing the features and labels.
+        delta (Optional[_GSC], optional): The delta values representing strategic point manipulations. Defaults to None.
+        display_percentage (float, optional): The percentage of data points to display (from 0 to 1). Defaults to 1.0.
+        prefix (str, optional): Prefix for the saved plot filename. Defaults to "".
 
     Returns:
         None

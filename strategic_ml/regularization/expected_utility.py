@@ -9,16 +9,18 @@ from strategic_ml.regularization.strategic_regularization import (
 
 class ExpectedUtility(_StrategicRegularization):
     """
-    ExpectedUtility class.
-    This is the implementation of the Expected Utility regularization method that
-    is described in the paper "Strategic Classification Made Practical".
-    Expected Utility is a strategic regularization method that tries to maximize
-    the expected utility of the strategic agents, meaning the difference between
-    the predictions of the model and the cost of the strategic agents,
-    i.e., the difference between the predictions after the movement of the
-    strategic agents and the cost of the movement.
+    Implements the Expected Utility regularization method, as described in the paper 
+    "Strategic Classification Made Practical." 
 
-    Parent Class: _StrategicRegularization
+    Expected Utility is a strategic regularization method that maximizes the expected 
+    utility of strategic agents by considering the difference between the model's 
+    predictions and the cost incurred by agents when they alter their features.
+    The formula for the Expected Utility term is:
+    Expected Utility = -mean(tanh(f(x) * temp) - cost)
+
+    Attributes:
+        tanh_temp (float): The temperature for the tanh function that normalizes the predictions.
+
     """
 
     def __init__(
@@ -26,8 +28,10 @@ class ExpectedUtility(_StrategicRegularization):
         tanh_temp: float = 1.0,
     ) -> None:
         """
-        Constructor for the ExpectedUtility class.
-        :param tanh_temp: The temperature for the tanh function that normalizes the predictions.
+        Initializes the ExpectedUtility class.
+
+        Args:
+            tanh_temp (float): Temperature for the tanh function used to normalize predictions. Must be positive.
         """
         super(ExpectedUtility, self).__init__()
         assert tanh_temp > 0, "The temperature for the tanh should be positive"
@@ -41,17 +45,11 @@ class ExpectedUtility(_StrategicRegularization):
         **kwargs,
     ) -> torch.Tensor:
         """
-        This is the forward method of the ExpectedUtility class.
-        This function calculates the Expected Utility regularization term.
-        The Expected Utility regularization term is calculated by the following
-        formula:
-        Expected Utility = -mean(prediction - cost)
-        where the prediction is the predictions of the model after the movement
-        of the strategic agents and is normalized using tanh.
+        Computes the Expected Utility regularization term.
 
         Args:
-            delta_predictions (torch.Tensor): The predictions of the model on the delta of x.
-            cost (torch.Tensor): The cost of the strategic agents (i.e., the cost of the movement).
+            delta_predictions (torch.Tensor): Predictions of the model after strategic modification.
+            cost (torch.Tensor): Cost of the strategic agents (i.e., the cost of modification).
 
         Returns:
             torch.Tensor: The Expected Utility regularization term.

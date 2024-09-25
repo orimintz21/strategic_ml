@@ -13,15 +13,14 @@ from strategic_ml.gsc.generalized_strategic_delta import _GSC
 
 
 class _NonLinearGP(_GSC):
-    """The NonLinearGP is a strategic delta that is calculated by the following formula:
+    """
+    The NonLinearGP is a strategic delta model that calculates the delta based on the following formula:
     delta_h(x,z) = argmax_{x' in X}(1{model(x') = z} - r/2 * (cost(x,x')))
-    By using the gradient of the model, we can find the x' that will be close to
-    the optimal x'.
-    We don't want to run the optimization for epoch of the model, so we optimize
-    the delta and the model alternately. Note that the number of samples
-    could be large, so we need to write x' to the disk and load it when needed.
 
-    Parent Class: _GSC
+    This class uses gradient-based optimization to find the optimal x' that minimizes the cost.
+    The optimization process alternates between updating the model and the delta, and large datasets
+    require saving x' to disk for later retrieval.
+
     """
 
     def __init__(
@@ -34,23 +33,23 @@ class _NonLinearGP(_GSC):
         *args,
         training_params: Dict[str, Any],
     ) -> None:
-        """Initializer for the NonLinearGP class.
+        """
+        Initializes the NonLinearGP model.
 
         Args:
             cost (_CostFunction): The cost function of the delta.
-            strategic_model (nn.Module): The strategic model that the delta is calculated on.
+            strategic_model (nn.Module): The model used for strategic classification.
             cost_weight (float, optional): The weight of the cost function. Defaults to 1.
-            save_dir (str): Directory to save the computed x_prime values
-            training_params (Dict[str, Any]): A dictionary that contains the training parameters.
-
-            expected keys:
-                - optimizer_class: The optimizer class that will be used for the optimization. (default: SGD)
-                - optimizer_params: The parameters for the optimizer. (default: {"lr": 0.01})
-                - scheduler_class: The scheduler class that will be used for the optimization. (optional)
-                - scheduler_params: The parameters for the scheduler. (default: {})
-                - early_stopping: The number of epochs to wait before stopping the optimization. (default: -1, i.e. no early stopping)
-                - num_epochs: The number of epochs for the optimization. (default: 100)
-                - temp: The temperature for the tanh function for the model. (default: 1.0)
+            save_dir (str, optional): Directory to save the computed x_prime values. Defaults to ".".
+            logging_level (int, optional): Logging level for the model. Defaults to logging.INFO.
+            training_params (Dict[str, Any]): Dictionary containing training parameters such as:
+                - optimizer_class: The optimizer class (default: SGD)
+                - optimizer_params: Parameters for the optimizer (default: {"lr": 0.01})
+                - scheduler_class: (optional) The scheduler class for learning rate adjustment
+                - scheduler_params: Parameters for the scheduler (default: {})
+                - early_stopping: Epochs to wait before early stopping (default: -1, no early stopping)
+                - num_epochs: Number of epochs (default: 100)
+                - temp: Temperature for the tanh function (default: 1.0)
         """
         super().__init__(strategic_model, cost, cost_weight)
         self.training_params: Dict[str, Any] = training_params
@@ -67,10 +66,11 @@ class _NonLinearGP(_GSC):
         set_name: str = "",
     ) -> None:
         """
-        Train the model by finding x_prime for all data in x_loader and z_loader,
-        and save the results to disk.
+        Trains the model by computing x_prime for all data and saving the results to disk.
 
-        :param data: DataLoader for x and y
+        Args:
+            data (DataLoader): DataLoader containing input data.
+            set_name (str, optional): Identifier for the dataset. Defaults to "".
         """
         # Add the set_name to the save_dir
         for batch_idx, data_batch in enumerate(data):
@@ -85,10 +85,13 @@ class _NonLinearGP(_GSC):
         set_name: str = "",
     ) -> None:
         """
-        Train the model by finding x_prime for a specific batch and save the results to disk.
+        Computes x_prime for a specific batch and saves the results to disk.
 
-        :param data_batch: Tensor for x and y
-        :param batch_idx: Index of the batch
+        Args:
+            x_batch (torch.Tensor): Input data for the batch.
+            y_batch (torch.Tensor): Labels for the batch.
+            batch_idx (int): Index of the batch.
+            set_name (str, optional): Identifier for the dataset. Defaults to "".
         """
         save_dir: str = os.path.join(self.save_dir, set_name)
         os.makedirs(save_dir, exist_ok=True)
@@ -103,12 +106,15 @@ class _NonLinearGP(_GSC):
         self, batch_idx: int, set_name: str = "", device: Optional[torch.device] = None
     ) -> torch.Tensor:
         """
-        Load precomputed x_prime values from disk for a specific batch.
+        Loads precomputed x_prime values from disk for a specific batch.
 
-        :param batch_idx: Index of the batch to load
-        :device: Device to load the tensor to, if None, load to the gpu if available else cpu
+        Args:
+            batch_idx (int): Index of the batch to load.
+            set_name (str, optional): Identifier for the dataset. Defaults to "".
+            device (torch.device, optional): Device to load the tensor to. Defaults to GPU if available, else CPU.
 
-        :return: Loaded x_prime tensor
+        Returns:
+            torch.Tensor: The loaded x_prime tensor.
         """
         save_dir: str = os.path.join(self.save_dir, set_name)
 
@@ -127,6 +133,17 @@ class _NonLinearGP(_GSC):
             raise FileNotFoundError(f"No saved x_prime found at {save_path}")
 
     def find_x_prime(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        """
+        Finds the optimal x' based on the given x and z using gradient-based optimization.
+
+        Args:
+            x (torch.Tensor): Input data.
+            z (torch.Tensor): Labels or target outputs.
+
+        Returns:
+            torch.Tensor: The optimized x_prime tensor.
+        """
+        
         assert x.device == z.device, "x and z should be on the same device"
         assert x.size(0) == z.size(0), "x and z should have the same batch size"
         device = x.device
@@ -189,14 +206,18 @@ class _NonLinearGP(_GSC):
         return x_prime
 
     def _set_optimizer_params(self) -> None:
-        """Set the optimizer class and parameters for the optimization."""
+        """
+        Set the optimizer class and parameters for the optimization.
+        """
         self.optimizer_class = self.training_params.get("optimizer_class", optim.SGD)
         self.optimizer_params = self.training_params.get(
             "optimizer_params", {"lr": 0.01}
         )
 
     def _set_scheduler_params(self) -> None:
-        """Set the scheduler class and parameters for the optimization."""
+        """
+        Set the scheduler class and parameters for the optimization.
+        """
         assert self.optimizer_class is not None, "call _set_optimizer_params first"
 
         self.has_scheduler = False
@@ -206,11 +227,15 @@ class _NonLinearGP(_GSC):
             self.scheduler_params = self.training_params.get("scheduler_params", {})
 
     def _set_early_stopping(self) -> None:
-        """Set the early stopping for the optimization."""
+        """
+        Set the early stopping for the optimization.
+        """
         self.early_stopping: int = self.training_params.get("early_stopping", -1)
 
     def set_training_params(self) -> None:
-        """Set the training parameters for the optimization."""
+        """
+        Sets the training parameters for the optimization process.
+        """        
         assert self.training_params is not None, "training_params should not be None"
         self.temp: float = self.training_params.get("temp", 1.0)
 
@@ -223,23 +248,22 @@ class _NonLinearGP(_GSC):
         self._set_early_stopping()
 
     def update_training_params(self, training_params: Dict[str, Any]) -> None:
-        """Update the training parameters for the optimization.
+        """
+        Updates the training parameters for the optimization.
 
         Args:
-            training_params (Dict[str, Any]):
-            - optimizer_class: The optimizer class that will be used for the optimization. (default: SGD)
-            - optimizer_params: The parameters for the optimizer. (default: {"lr": 0.01})
-            - scheduler_class: The scheduler class that will be used for the optimization. (optional)
-            - scheduler_params: The parameters for the scheduler. (default: {})
-            - early_stopping: The number of epochs to wait before stopping the optimization. (default: -1, i.e. no early stopping)
-            - num_epochs: The number of epochs for the optimization. (default: 100)
-            - temp: The temperature for the tanh function for the model. (default: 1.0)
+            training_params (Dict[str, Any]): Dictionary containing updated training parameters.
         """
         self.training_params.update(training_params)
         self.set_training_params()
 
     def _gen_z_fn(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """Abstract method to generate the z values for the optimization"""
+        """
+        Abstract method to generate the z values for the optimization.
+
+        Returns:
+            torch.Tensor: Generated z values for the optimization.
+        """        
         raise NotImplementedError(
             "This method should be implemented in the child class"
         )
