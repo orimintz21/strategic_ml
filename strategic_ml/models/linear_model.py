@@ -1,12 +1,3 @@
-""" linear_strategic_model.py
-This is the linear strategic model.
-The linear strategic model calculates the relent delta and the strategic regularization
-and uses them to modify the input data before passing it to the model.
-
-We implement the LinearModel class because when we use a linear model
-we can calculate the strategic delta in a closed form.
-"""
-
 # External imports
 import torch
 from torch import nn
@@ -16,6 +7,15 @@ from typing import Any, Tuple, Optional
 
 
 class LinearModel(nn.Module):
+    """
+    Implements a linear binary classification model. This model calculates the relevant
+    strategic delta and regularization terms before modifying the input data and passing 
+    it to the model. The linear nature of this model allows for closed-form calculations
+    of the strategic delta.
+
+    Attributes:
+        model (torch.nn.Linear): The linear layer for binary classification.
+    """
     def __init__(
         self,
         in_features: int,
@@ -23,8 +23,12 @@ class LinearModel(nn.Module):
         bias: Optional[torch.Tensor] = None,
     ) -> None:
         """
-        Constructor for the LinearModel class.
-        This is a binary classification model therefore the output features is 1.
+        Initializes the LinearModel class.
+
+        Args:
+            in_features (int): Number of input features.
+            weight (Optional[torch.Tensor]): Initial weights for the model. Defaults to None.
+            bias (Optional[torch.Tensor]): Initial bias for the model. Defaults to None.
         """
         super(LinearModel, self).__init__()
         self.model: torch.nn.Linear = torch.nn.Linear(
@@ -34,25 +38,55 @@ class LinearModel(nn.Module):
             self.set_weight_and_bias(weight, bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Performs a forward pass through the linear model.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Output of the linear model.
+        """
         assert (
             x.device == self.model.weight.device
         ), f"Input tensor is on a different device than the model. {x.device} != {self.model.weight.device}"
         return self.model(x)
 
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Calls the forward method.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Output of the linear model.
+        """
         return self.forward(x)
 
     def train(self, mode: bool = True) -> "LinearModel":
+        """
+        Sets the model in training mode.
+
+        Args:
+            mode (bool, optional): Whether to set training mode (True) or evaluation mode (False). Defaults to True.
+
+        Returns:
+            LinearModel: The model itself in the specified mode.
+        """
         return super().train(mode)
 
     def get_weight_and_bias(
         self, device: Optional[torch.device] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        The get_weight_and_bias method returns the weights and bias of the model
+        Returns the weights and bias of the model.
+
+        Args:
+            device (Optional[torch.device]): Device to move the tensors to. Defaults to None.
 
         Returns:
-            Tuple[torch.Tensor, torch.Tensor]: the weights and bias of the model
+            Tuple[torch.Tensor, torch.Tensor]: The weights and bias of the model.
         """
         weight = self.model.weight.detach()
         bias = self.model.bias.detach()
@@ -64,11 +98,11 @@ class LinearModel(nn.Module):
 
     def set_weight_and_bias(self, weight: torch.Tensor, bias: torch.Tensor) -> None:
         """
-        The set_weight_and_bias method sets the weight and bias of the model
+        Sets the weights and bias of the model.
 
         Args:
-            weighs (torch.Tensor): the new weighs
-            bias (torch.Tensor): the new bias
+            weight (torch.Tensor): The new weights for the model.
+            bias (torch.Tensor): The new bias for the model.
         """
         # Check the input
         assert (
@@ -98,13 +132,19 @@ class LinearModel(nn.Module):
 
     def get_weight_and_bias_ref(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        The get_weight_and_bias method returns the weights and bias of the model
+        Returns references to the weights and bias of the model.
 
         Returns:
-            Tuple[torch.Tensor, torch.Tensor]: the weights and bias of the model
+            Tuple[torch.Tensor, torch.Tensor]: References to the weights and bias of the model.
         """
         return self.model.weight, self.model.bias
 
     @property
-    def device(self):
+    def device(self) -> torch.device:
+        """
+        Returns the device on which the model's parameters are located.
+
+        Returns:
+            torch.device: The device of the model's parameters.
+        """
         return next(self.parameters()).device

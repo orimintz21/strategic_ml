@@ -1,7 +1,3 @@
-""" file: __init__.py
-This is the init file for the strategic regularization.
-"""
-
 from strategic_ml.regularization.strategic_regularization import (
     _StrategicRegularization,
 )

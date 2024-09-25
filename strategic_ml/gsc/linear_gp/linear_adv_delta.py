@@ -10,18 +10,17 @@ from strategic_ml.models import LinearModel
 
 class LinearAdvDelta(_LinearGP):
     """
-    This is the LinearAdvDelta model. This model assumes that the model
-    is linear and that the cost function is L2 or weighted L2.
-    The reason for this assumption is that we can calculate the delta in a
-    closed form for linear models and not via GD or any other optimization
-    algorithm. Therefore we do not need to train a delta model.
-    In this case, the strategic users tries to get the wrong prediction
-    with the minimal cost. The delta is calculated by the following formula:
-    x_prime = argmax_{x' in X}(1{model(x') = -y} - r/2 * (cost(x,x')))
-    For more information, see _LinearGP class, the paper
-    "Generalized Strategic Classification and the Case of Aligned Incentives".
+    Implements the LinearAdversarialDelta for strategic classification with linear models.
 
-    Parent Class: _LinearGP
+    This model assumes that the strategic users aim to get an incorrect prediction (i.e., 
+    the opposite of their true label) with minimal cost. The delta is calculated using a 
+    closed-form solution for linear models with an L2 or weighted L2 cost function.
+
+    Attributes:
+        cost (_CostFunction): The cost function used in the delta computation.
+        strategic_model (nn.Module): The linear model used for the strategic classification.
+        cost_weight (float): The weight of the cost function in the strategic calculation.
+        epsilon (float): A small adjustment added to ensure correct model predictions.
     """
 
     def __init__(
@@ -31,15 +30,14 @@ class LinearAdvDelta(_LinearGP):
         cost_weight: float = 1.0,
         epsilon: float = 0.01,
     ) -> None:
-        """Initializer for the LinearStrategicDelta model.
+        """
+        Initializes the LinearAdvDelta model.
 
         Args:
-            cost (_CostFunction): The cost function of the delta, we assume that the cost is L2 or weighted L2.
-            strategic_model (nn.Module): The strategic model that the delta is calculated on, we assume that the model is linear.
+            cost (_CostFunction): The cost function used in the delta computation.
+            strategic_model (nn.Module): The linear model used for the strategic classification.
             cost_weight (float, optional): The weight of the cost function. Defaults to 1.0.
-            epsilon (float): move to the negative/positive direction of the model
-            to make sure that the model will predict the label correctly. The
-            delta does it by adding the (epsilon * w/||w||). Defaults to 0.01.
+            epsilon (float, optional): A small adjustment added to ensure correct model predictions. Defaults to 0.01.
         """
         super(LinearAdvDelta, self).__init__(
             cost, strategic_model, cost_weight, epsilon
@@ -47,13 +45,14 @@ class LinearAdvDelta(_LinearGP):
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
-        The forward method of the LinearAdvDelta model. This method calculates the delta
-        for the strategic users.
-        Note that the delta is calculated by a closed form and not by an optimization algorithm.
-        It uses the find_x_prime method from the parent class with the label -y.
+        Computes the delta for strategic users aiming to get an incorrect prediction.
+
         Args:
-            x (torch.Tensor): The data.
-            y (torch.Tensor): The label.
+            x (torch.Tensor): The input data.
+            y (torch.Tensor): The true label.
+
+        Returns:
+            torch.Tensor: The strategically modified data `x'`.
         """
         assert isinstance(self.strategic_model, LinearModel)
         device = self.strategic_model.model.weight.device
@@ -63,14 +62,15 @@ class LinearAdvDelta(_LinearGP):
         return super().find_x_prime(x, -y)
 
     def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """Return the z value for the cost function. In this case, the z value is -y.
+        """
+        Returns the metadata `z` for the cost function, which is `-y` in this case.
 
         Args:
-            x (torch.Tensor): The data.
-            y (torch.Tensor): The label.
+            x (torch.Tensor): The input data.
+            y (torch.Tensor): The true label.
 
         Returns:
-            torch.Tensor: The z value, which is -y.
+            torch.Tensor: The metadata `z`, which is `-y`.
         """
         device = self.strategic_model.model.weight.device
         y = y.to(device).to(self.strategic_model.model.weight.dtype)

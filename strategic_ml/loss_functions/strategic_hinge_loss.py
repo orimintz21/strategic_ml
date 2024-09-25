@@ -9,33 +9,30 @@ from strategic_ml.models import LinearModel
 
 class StrategicHingeLoss(nn.Module):
     """
-    This module implements the Strategic Hinge Loss (s-hinge), a modified version
-    of the standard hinge loss function designed to account for strategic behavior
-    in classification settings. The s-hinge loss anticipates and incorporates the
-    strategic modifications that agents might apply to their features to achieve
-    better classification outcomes.
+    Implements the Strategic Hinge Loss (s-hinge), a modified version of the standard hinge loss 
+    function that accounts for strategic behavior in classification settings. The s-hinge loss 
+    anticipates and incorporates the strategic modifications that agents might apply to their 
+    features to achieve better classification outcomes.
 
-    It maintains a differentiable form, allowing for optimization.
-    THe s-hinge loss assumes that the model is a linear model, the delta
-    is Linear Delta ,and the cost function is L2 norm.
+    The loss function maintains a differentiable form, allowing for optimization. The s-hinge loss 
+    assumes that the model is linear, the delta is a Linear Delta, and the cost function is the L2 norm.
 
     The s-hinge loss is defined as:
-    L(x, z, y; w, b) = max(x, 1-y(w^T x + b) - 2 * cost_weight * z * y * (||w||_2 + ||b||_2))
+    L(x, z, y; w, b) = max(0, 1 - y * (w^T * x + b) - 2 * cost_weight * z * y * (||w||_2 + ||b||_2))
 
-
-    See more: "Generalized Strategic Classification and the Case of Aligned Incentives" Article
+    Reference: "Generalized Strategic Classification and the Case of Aligned Incentives"
     """
-
     def __init__(
         self,
         model: LinearModel,
         delta: _LinearGP,
     ) -> None:
         """
-        Initialize the Strategic Hinge Loss class.
+        Initializes the Strategic Hinge Loss class.
 
-        :param model: The strategic model.
-        :param regularization_lambda: Regularization parameter.
+        Args:
+            model (LinearModel): The linear model used in the strategic classification.
+            delta (_LinearGP): The Linear Delta that accounts for strategic modifications.
         """
         super(StrategicHingeLoss, self).__init__()
         self.model = model
@@ -49,11 +46,14 @@ class StrategicHingeLoss(nn.Module):
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
-        Forward pass to compute the strategic hinge loss.
+        Computes the strategic hinge loss for a batch of input features and true labels.
 
-        :param x: Input features as a torch.tensor.
-        :param y: True labels as a torch.tensor.
-        :return: Computed loss as a torch.tensor.
+        Args:
+            x (torch.Tensor): Input features.
+            y (torch.Tensor): True labels.
+
+        Returns:
+            torch.Tensor: The computed loss.
         """
         device = x.device
         dtype = x.dtype

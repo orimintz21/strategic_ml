@@ -10,18 +10,20 @@ from strategic_ml.cost_functions import _CostFunction
 
 class IdentityDelta(_GSC):
     """
-    A No Operation (Identity) Delta class that implements the _GSC interface.
-    This class returns the input as it is, without applying any strategic
-    manipulations or modifications.
+    Implements a No-Operation (Identity) Delta for GSC models.
+
+    This class provides an identity transformation, meaning the input data `x`
+    is returned unchanged. It serves as a baseline or a no-op scenario where 
+    no strategic modifications are applied.
     """
 
     def __init__(self, cost: Optional[_CostFunction], strategic_model: nn.Module):
         """
-        Initialize the IdentityDelta class.
+        Initializes the IdentityDelta class.
 
         Args:
-            cost (nn.Module): Optional cost function, not used in this implementation.
-            strategic_model (nn.Module): the model, it is not used but is kept to keep similar interface.
+            cost (_CostFunction): An optional cost function, not used in this implementation.
+            strategic_model (nn.Module): The strategic model, included for interface consistency.
         """
         if cost is None:
             cost = _CostFunction()
@@ -29,49 +31,37 @@ class IdentityDelta(_GSC):
 
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """
-        Forward method that returns the input as it is.
+        Returns the input data `x` unchanged.
 
         Args:
-            x (torch.Tensor): The input tensor.
+            x (torch.Tensor): The input data.
 
         Returns:
-            torch.Tensor: The same input tensor without any modifications.
+            torch.Tensor: The same input data `x`.
         """
         return x
 
-    def compute_deltas(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Method to compute the delta, which is zero in this case.
-
-        Args:
-            x (torch.Tensor): The input tensor.
-
-        Returns:
-            torch.Tensor: A zero tensor of the same shape as x.
-        """
-        return torch.zeros_like(x)
-
     def get_z(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
-        Return a zero tensor for the strategic modification.
+        Returns a zero tensor as the strategic modification.
 
         Args:
-            x (torch.Tensor): The input tensor.
-            y (torch.Tensor): The labels.
+            x (torch.Tensor): The input data.
+            y (torch.Tensor): The associated labels.
 
         Returns:
-            torch.Tensor: A zero tensor of the same shape as x.
+            torch.Tensor: A zero tensor of the same shape as `x`.
         """
         return torch.zeros_like(x)
 
     def get_minimal_distance(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Return a zero tensor for the minimal distance, since there is no modification.
+        Returns a zero tensor as the minimal distance since no modification is applied.
 
         Args:
-            x (torch.Tensor): The input tensor.
+            x (torch.Tensor): The input data.
 
         Returns:
-            torch.Tensor: A zero tensor of the same shape as x.
+            torch.Tensor: A zero tensor of the same shape as `x`.
         """
         return torch.zeros_like(x)

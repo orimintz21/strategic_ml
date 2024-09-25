@@ -20,29 +20,34 @@ from strategic_ml.cost_functions import _CostFunction
 
 # Implementation
 class _GSC(nn.Module):
+    """
+    Abstract base class for Generalized Strategic Classification (GSC) models.
+
+    This class defines the interface for GSC models that modify input data `x`
+    to a new value `x'` based on strategic considerations. Subclasses should
+    implement specific strategies for altering the input data.
+
+    Attributes:
+        strategic_model (nn.Module): The model used to calculate the strategic delta.
+        cost (_CostFunction): The cost function applied in the strategic setting.
+        cost_weight (float): The weight of the cost in the strategic calculation.
+    """
     def __init__(
         self,
         strategic_model: nn.Module,
         cost: _CostFunction,
         cost_weight: float = 1.0,
-        delta_model: Optional[nn.Module] = None,
         *args,
         **kwargs,
     ) -> None:
-        """Constructor for the _GSC class.
-        When creating a new GSC model, you should inherit from this class.
-        The strategic_model is the model that the GSC will use to calculate the strategic
-        delta. Note that the model could be different from the main model
-        (i.e. the one that holds this GSC).
-        The args and kwargs are for the delta model training.
-
+        """
+        Initializes the _GSC class.
 
         Args:
-            strategic_model (nn.Module): the model for the GSC.
-            cost (_CostFunction): the cost function for the GSC.
-            delta_model [nn.Module]: the delta model for the GSC
-            this is the model that will be used to calculate the delta.
-            Not all of the GSC models will use a delta model.
+            strategic_model (nn.Module): The model for strategic classification.
+            cost (_CostFunction): The cost function applied in the GSC.
+            cost_weight (float): The weight of the cost function in the GSC.
+            delta_model (Optional[nn.Module]): The model used to calculate the delta, if applicable.
         """
         super(_GSC, self).__init__()
 
@@ -50,106 +55,116 @@ class _GSC(nn.Module):
         self.cost: _CostFunction = cost
         self.cost_weight: float = cost_weight
 
-        if delta_model is not None:
-            self.delta_model: nn.Module = delta_model
-
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        """The forward method of the GSC class.
+        """
+        The forward method for applying the strategic modifications.
 
         Args:
-            x (torch.Tensor): the data
-            *args: additional arguments
-            **kwargs: additional keyword arguments
+            x (torch.Tensor): The input data.
+            *args: Additional arguments.
+            **kwargs: Additional keyword arguments.
 
         Raises:
-            NotImplementedError: This is an interface, you should implement this method in your subclass
+            NotImplementedError: Must be implemented in subclasses.
 
         Returns:
-            torch.Tensor: x' - the modified data
+            torch.Tensor: The strategically modified data `x'`.
         """
         raise NotImplementedError()
 
     def find_x_prime(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
-        """This method will find the x'
-        It is an interface method that should be implemented in the subclass.
+        """
+        Finds the modified input `x'` based on the strategic model and cost function.
 
         Args:
-            x (torch.Tensor): the data
-            z (torch.Tensor): the label
+            x (torch.Tensor): The input data.
+            z (torch.Tensor): The label associated with the input.
+
+        Raises:
+            NotImplementedError: Must be implemented in subclasses.
 
         Returns:
-            torch.Tensor: x' - the modified data
+            torch.Tensor: The strategically modified data `x'`.
         """
         raise NotImplementedError()
 
     def __call__(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        """The call method of the GSC class.
+        """
+        Calls the forward method to apply the strategic modifications.
 
         Args:
-            x (torch.Tensor): the data
-            *args: additional arguments
-            **kwargs: additional keyword arguments
+            x (torch.Tensor): The input data.
+            *args: Additional arguments.
+            **kwargs: Additional keyword arguments.
 
         Returns:
-            torch.Tensor: x' - the modified data
+            torch.Tensor: The strategically modified data `x'`.
         """
         return self.forward(x, *args, **kwargs)
 
     def train_delta_model(self, x: torch.Tensor, *args, **kwargs) -> None:
-        """This is the method that will train the delta model. It is
-        part of the training of the strategic model. Some models will
+        """
+        Trains the delta model, if applicable, as part of the strategic model training.
+        Override this method in subclasses to implement delta model training.
 
         Args:
-            x (torch.Tensor): The data
-            *args: additional arguments
-            **kwargs: additional keyword arguments
+            x (torch.Tensor): The input data.
+            *args: Additional arguments.
+            **kwargs: Additional keyword arguments.
+
         """
-        raise NotImplementedError()
+        pass
 
     def get_strategic_model(self) -> nn.Module:
-        """Getter for the strategic model.
+        """
+        Returns the strategic model.
 
         Returns:
-            nn.Module: the model
+            nn.Module: The strategic model.
         """
         return self.strategic_model
 
     def set_strategic_model(self, model: nn.Module) -> None:
-        """Setter for the strategic model.
+        """
+        Sets the strategic model.
 
         Args:
-            model (nn.Module): the model
+            model (nn.Module): The strategic model to be set.
         """
         self.strategic_model = model
 
     def get_cost(self) -> _CostFunction:
-        """Getter for the cost function.
+        """
+        Returns the cost function.
 
         Returns:
-            _CostFunction: the cost function
+            _CostFunction: The cost function used in the GSC.
         """
         return self.cost
 
     def set_cost(self, cost: _CostFunction) -> None:
-        """Setter for the cost function.
+        """
+        Sets the cost function.
 
         Args:
-            cost (_CostFunction): the cost function
+            cost (_CostFunction): The cost function to be set.
         """
         self.cost = cost
 
     def get_cost_weight(self) -> float:
-        """Getter for the cost weight.
+        """
+        Returns the cost weight.
 
         Returns:
-            float: the cost weight
+            float: The weight of the cost function in the GSC.
         """
         return self.cost_weight
 
     def set_cost_weight(self, cost_weight: float) -> None:
-        """Setter for the cost weight.
+        """
+        Sets the cost weight.
 
         Args:
-            cost_weight (float): the cost weight
+            cost_weight (float): The weight of the cost function in the GSC.
         """
         self.cost_weight = cost_weight

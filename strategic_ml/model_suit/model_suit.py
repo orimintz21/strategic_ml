@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
-from typing import Optional, TYPE_CHECKING, Dict, Any, Tuple, List
+from typing import Optional, Dict, Any, Tuple, List, Union
 import logging
 from enum import Enum
 
@@ -15,7 +15,13 @@ from strategic_ml.regularization import _StrategicRegularization
 from strategic_ml.loss_functions import StrategicHingeLoss
 
 
-class ModelSuit(pl.LightningModule):
+class ModelSuit(pl.LightningModule):    
+    """
+    A PyTorch Lightning module that integrates various components of the strategic_ml library to train, validate,
+    and test machine learning models within the context of strategic classification. This module handles the
+    training process, including strategic deltas, loss functions, regularization, and logging.
+    """
+    
     def __init__(
         self,
         *args,
@@ -33,6 +39,24 @@ class ModelSuit(pl.LightningModule):
         train_delta_every: Optional[int] = None,
         **kwargs,
     ) -> None:
+        """
+        Initializes the ModelSuit class with the specified model, delta, loss function, regularization,
+        and other configurations.
+
+        Args:
+            model (nn.Module): The main model to be trained, validated, and tested.
+            delta (_GSC): The strategic delta model, responsible for modifying the input data based on strategic behavior.
+            loss_fn (nn.Module): The loss function to optimize.
+            regularization (Optional[_StrategicRegularization]): A strategic regularization method. Default is None.
+            linear_regularization (Optional[List[_LinearRegularization]]): A list of linear regularization methods. Default is None.
+            train_loader (DataLoader): DataLoader for the training data.
+            validation_loader (DataLoader): DataLoader for the validation data.
+            test_loader (DataLoader): DataLoader for the test data.
+            test_delta (Optional[_GSC]): An optional strategic delta for testing purposes. Default is None.
+            logging_level (int): The logging level, e.g., logging.INFO. Default is logging.INFO.
+            training_params (Dict[str, Any]): A dictionary of parameters for configuring the training process.
+            train_delta_every (Optional[int]): Frequency of training the delta during the training process. Default is None.
+        """
         super(ModelSuit, self).__init__()
         self.model = model
         self.delta = delta
@@ -63,14 +87,36 @@ class ModelSuit(pl.LightningModule):
                 )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass for the model.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+
+        Returns:
+            torch.Tensor: The output of the model.
+        """
         return self.model(x)
 
     class _Mode(Enum):
+        """
+        Enum class representing the mode of operation: TRAIN, VALIDATION, or TEST.
+        """
         TRAIN = "train"
         VALIDATION = "validation"
         TEST = "test"
 
     def training_step(self, batch, batch_idx):
+        """
+        Performs a single training step, including loss calculation, logging, and metrics computation.
+
+        Args:
+            batch: A batch of data from the training DataLoader.
+            batch_idx (int): The index of the current batch.
+
+        Returns:
+            torch.Tensor: The computed loss for the current batch.
+        """
         x, y = batch
         loss, predictions = self._calculate_loss_and_predictions(
             x=x, y=y, batch_idx=batch_idx, mode=self._Mode.TRAIN
@@ -90,6 +136,16 @@ class ModelSuit(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
+        """
+        Performs a single validation step, including loss calculation, logging, and metrics computation.
+
+        Args:
+            batch: A batch of data from the validation DataLoader.
+            batch_idx (int): The index of the current batch.
+
+        Returns:
+            dict: A dictionary containing the validation loss and zero-one loss.
+        """
         x, y = batch
         val_loss, predictions = self._calculate_loss_and_predictions(
             x=x, y=y, batch_idx=batch_idx, mode=self._Mode.VALIDATION
@@ -109,6 +165,19 @@ class ModelSuit(pl.LightningModule):
         return {"val_loss": val_loss.mean(), "zero_one_loss": zero_one_loss}
 
     def test_step(self, batch, batch_idx):
+        """
+        Performs a single test step, including loss calculation, logging, and metrics computation.
+
+        Note: If the delta that is used in the test phase is a NonLinearGP, 
+        you need to train the delta for the test set using the train_delta_for_test method.
+
+        Args:
+            batch: A batch of data from the test DataLoader.
+            batch_idx (int): The index of the current batch.
+
+        Returns:
+            dict: A dictionary containing the test loss and zero-one loss.
+        """
         # Enable gradient computation during test_step
         with torch.enable_grad():
             # Log the structure of the batch
@@ -155,6 +224,18 @@ class ModelSuit(pl.LightningModule):
         batch_idx: int,
         mode: _Mode,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """
+        Calculates the loss and predictions for a given batch.
+
+        Args:
+            x (torch.Tensor): The input data.
+            y (torch.Tensor): The true labels.
+            batch_idx (int): The index of the current batch.
+            mode (_Mode): The mode of operation (TRAIN, VALIDATION, TEST).
+
+        Returns:
+            Tuple[torch.Tensor, Optional[torch.Tensor]]: The loss and predictions.
+        """
 
         device = x.device
 
@@ -184,7 +265,7 @@ class ModelSuit(pl.LightningModule):
                 if (mode != self._Mode.TEST) and self.train_delta_every == 1:
                     x_prime = self.delta.forward(x, y)
 
-                else:
+                else: 
                     if (self.current_epoch % self.train_delta_every == 0) and (
                         mode != self._Mode.TEST
                     ):
@@ -240,6 +321,20 @@ class ModelSuit(pl.LightningModule):
         return loss, predictions
 
     def train_delta_for_test(self, dataloader: Optional[DataLoader] = None) -> None:
+        """
+        Trains the delta model specifically for the test set. 
+        Use this method when you want to test the model with a non-linear delta.
+        If you are using a linear delta, you do not need to train the delta for the test set.
+
+        If you don't use this function before testing and you are using a non-linear 
+        delta, the test will fail.
+
+        Args:
+            dataloader (Optional[DataLoader]): The DataLoader for the test data. If None, the test DataLoader is used.
+
+        Returns:
+            None
+        """
         dataloader = dataloader if dataloader is not None else self.test_dataloader()
 
         if self.test_delta is None:
@@ -257,6 +352,12 @@ class ModelSuit(pl.LightningModule):
             self.test_delta.set_mapping(data=dataloader, set_name=self._Mode.TEST.value)
 
     def configure_optimizers(self):
+        """
+        Configures the optimizers and learning rate schedulers for the training process.
+
+        Returns:
+            Union[Optimizer, Tuple[List[Optimizer], List[Any]]]: The optimizer(s) and optionally the scheduler(s).
+        """
         optimizer_class = self.training_params.get("optimizer_class", optim.SGD)
         optimizer_params = self.training_params.get("optimizer_params", {"lr": 0.01})
         optimizer = optimizer_class(self.model.parameters(), **optimizer_params)
@@ -270,15 +371,42 @@ class ModelSuit(pl.LightningModule):
         return optimizer
 
     def train_dataloader(self) -> DataLoader:
+        """
+        Returns the DataLoader for the training data.
+
+        Returns:
+            DataLoader: The training DataLoader.
+        """
         return self.train_loader
 
     def val_dataloader(self) -> DataLoader:
+        """
+        Returns the DataLoader for the validation data.
+
+        Returns:
+            DataLoader: The validation DataLoader.
+        """
         return self.validation_loader
 
     def test_dataloader(self) -> DataLoader:
+        """
+        Returns the DataLoader for the test data.
+
+        Returns:
+            DataLoader: The test DataLoader.
+        """
         return self.test_loader
 
     def get_dataloader(self, mode: _Mode) -> DataLoader:
+        """
+        Returns the appropriate DataLoader based on the mode.
+
+        Args:
+            mode (_Mode): The mode of operation (TRAIN, VALIDATION, TEST).
+
+        Returns:
+            DataLoader: The corresponding DataLoader.
+        """
         if mode == self._Mode.TRAIN:
             return self.train_dataloader()
         elif mode == self._Mode.VALIDATION:
