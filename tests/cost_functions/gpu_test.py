@@ -39,8 +39,8 @@ class TestGPUOnCost(unittest.TestCase):
         test_cost_function_on_device(self, CostNormL1(), torch.device("cpu"))
 
     def test_CostNormLInf(self):
-        test_cost_function_on_device(self, CostNormLInf(), torch.device("cuda"))
         test_cost_function_on_device(self, CostNormLInf(), torch.device("cpu"))
+        test_cost_function_on_device(self, CostNormLInf(), torch.device("cuda"))
 
 
 if __name__ == "__main__":

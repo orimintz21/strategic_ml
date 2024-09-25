@@ -159,6 +159,7 @@ dmypy.json
 
 # Specific to this project
 tests/model_suit/delta_data/*
+py-sbatch.sh
 
 # Cython debug symbols
 cython_debug/

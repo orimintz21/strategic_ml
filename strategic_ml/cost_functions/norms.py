@@ -99,21 +99,28 @@ class CostWeightedLoss(_CostFunction):
         """Calculates the weighted loss cost function.
 
         Args:
-            x (torch.Tensor): the original data
-            x_prime (torch.Tensor): modified data
+            x (torch.Tensor): the original data, shape [batch_size, features]
+            x_prime (torch.Tensor): modified data, same shape
 
         Returns:
-            torch.Tensor: the weighted loss of moving from x to x_prime
+            torch.Tensor: the weighted loss of moving from x to x_prime, shape [batch_size]
         """
-        assert x.size() == x_prime.size()
+        assert x.size() == x_prime.size(), "Input tensors must have the same shape."
         assert x.device == x_prime.device, "Input tensors are on different devices."
         if self.weights.device != x.device:
             self.weights = self.weights.to(x.device)
-        distance = x - x_prime
-        if self.dim == 1:
-            return torch.sqrt(torch.einsum("ij,ij->", distance, self.weights))
-
-        return torch.sqrt(distance @ self.weights @ distance.T)
+        distance = x - x_prime  # Shape: [batch_size, features] or [features]
+        squared_distance = distance**2  # Element-wise square
+        weighted_squared_distance = (
+            squared_distance * self.weights
+        )  # Element-wise multiplication
+        if distance.dim() == 1:
+            # Sum over all features
+            cost = torch.sqrt(weighted_squared_distance.sum())
+        else:
+            # Sum over the specified dimension
+            cost = torch.sqrt(weighted_squared_distance.sum(dim=self.dim))
+        return cost
 
 
 class CostNormL1(_CostFunction):

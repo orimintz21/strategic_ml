@@ -115,6 +115,7 @@ class ModelSuit(pl.LightningModule):
             logging.debug(f"Test batch contents: {len(batch)} elements")
 
             x, y = batch
+            device = x.device
             if self.test_delta is not None:
                 # We are testing an In The Dark scenario
                 if isinstance(self.test_delta, _NonLinearGP):
@@ -126,7 +127,7 @@ class ModelSuit(pl.LightningModule):
 
                 assert (
                     x_prime.device == device
-                ), f"x_prime should be on the same device as the model, but x_prime is on {x_prime.device} device and the model is on {device} device"
+                ), f"x_prime is on {x_prime.device} device, but should be on {device} device"
                 predictions = self.model.forward(x_prime)
                 test_loss = self.loss_fn(predictions, y)
 
@@ -155,13 +156,11 @@ class ModelSuit(pl.LightningModule):
         mode: _Mode,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
 
-        device = self.model.device
-        assert (
-            x.device == device
-        ), f"x should be on the same device as the model, but x is on {x.device} device and the model is on {device} device"
+        device = x.device
+
         assert (
             y.device == device
-        ), f"y should be on the same device as the model, but y is on {y.device} device and the model is on {device} device"
+        ), f"y ({y.device}) should be on the same device as x ({device})"
 
         if isinstance(self.loss_fn, StrategicHingeLoss):
             assert (
@@ -205,7 +204,7 @@ class ModelSuit(pl.LightningModule):
 
             assert (
                 x_prime.device == device
-            ), f"x_prime should be on the same device as the model, but x_prime is on {x_prime.device} device and the model is on {device} device"
+            ), f"x_prime should be on the same device as the model, but x_prime is on {x_prime.device} device and the x is on {device} device"
             predictions = self.model.forward(x_prime)
 
             loss = self.loss_fn(predictions, y)
