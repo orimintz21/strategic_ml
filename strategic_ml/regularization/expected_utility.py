@@ -62,7 +62,6 @@ class ExpectedUtility(_StrategicRegularization):
         assert (
             delta_predictions.shape[1] == 1
         ), "delta_predictions must have only one output"
-        assert cost.shape[1] == 1, "cost must have only one output"
 
         # they should be on the same device
         assert (

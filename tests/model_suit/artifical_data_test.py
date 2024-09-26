@@ -28,7 +28,7 @@ from strategic_ml import (
     StrategicHingeLoss,
 )
 
-DUMMY_RUN = True
+DUMMY_RUN = False
 GPUS = 1
 ACCELERATOR = "auto"
 print("DUMMY_RUN: ", DUMMY_RUN)
@@ -318,7 +318,9 @@ class TestModelSuit(unittest.TestCase):
         )
 
     def test_identity_delta(self):
-        linear_model = LinearModel(2)
+        w = torch.tensor([[1.0, 0] ], dtype=torch.float64)
+        b = torch.tensor([-10], dtype=torch.float64)
+        linear_model = LinearModel(2, weight=w, bias=b)
         delta = IdentityDelta(cost=None, strategic_model=linear_model)
 
         identity_model = ModelSuit(
@@ -340,7 +342,21 @@ class TestModelSuit(unittest.TestCase):
             devices=GPUS,
             accelerator=ACCELERATOR,
         )
-
+        trainer.test(identity_model)
+        visualize_data_and_delta_2D(
+            linear_model,
+            self.train_dataLoader,
+            delta,
+            display_percentage=1,
+            prefix="no_train",
+        )
+        visualize_data_and_delta_2D(
+            linear_model,
+            self.test_dataLoader,
+            delta,
+            display_percentage=1,
+            prefix="test_no_train",
+        )
         trainer.fit(identity_model)
         trainer.test(identity_model)
         visualize_data_and_delta_2D(

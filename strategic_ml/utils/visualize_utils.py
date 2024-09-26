@@ -88,12 +88,13 @@ def visualize_data_and_delta_2D(
         # wx + b = 0 => y = -(w[0]/w[1]) * x - (b/w[1])
         if w[1] != 0:  # Prevent division by zero in case w[1] is zero
             y_vals = -(w[0] / w[1]) * xx - (b / w[1])
+            plt.plot(xx[0], y_vals[0], label="Decision Boundary wx+b=0", color="red")
         else:
             # In case w[1] is zero, the line is vertical
-            x_vals = np.full_like(xx, -b / w[0])
-            y_vals = np.linspace(y_min, y_max, 100)
+            # We need to plot a vertical line at x = -b/w[0]
+            plt.axvline(x=-b / w[0], label="Decision Boundary wx+b=0", color="red")
+            
 
-        plt.plot(xx[0], y_vals[0], label="Decision Boundary wx+b=0", color="red")
         print(f"Weight: {w}, Bias: {b}")
     deltas = None
 
