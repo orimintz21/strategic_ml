@@ -29,6 +29,7 @@ class ModelSuit(pl.LightningModule):
         delta: _GSC,
         loss_fn: nn.Module,
         regularization: Optional[_StrategicRegularization] = None,
+        regularization_weight: float = 0.0,
         linear_regularization: Optional[List[_LinearRegularization]] = None,
         train_loader: DataLoader,
         validation_loader: DataLoader,
@@ -46,6 +47,7 @@ class ModelSuit(pl.LightningModule):
             delta (_GSC): The strategic delta model, responsible for modifying the input data based on strategic behavior.
             loss_fn (nn.Module): The loss function to optimize.
             regularization (Optional[_StrategicRegularization]): A strategic regularization method. Default is None.
+            regularization_weight (float): The weight of the strategic regularization. Default is 0.
             linear_regularization (Optional[List[_LinearRegularization]]): A list of linear regularization methods. Default is None.
             train_loader (DataLoader): DataLoader for the training data.
             validation_loader (DataLoader): DataLoader for the validation data.
@@ -64,6 +66,7 @@ class ModelSuit(pl.LightningModule):
         self.delta = delta
         self.loss_fn = loss_fn
         self.regularization = regularization
+        self.regularization_weight = regularization_weight
         self.linear_regularization = linear_regularization
         self.train_loader = train_loader
         self.validation_loader = validation_loader
@@ -289,11 +292,13 @@ class ModelSuit(pl.LightningModule):
 
             loss = self.loss_fn(predictions, y)
 
-            if self.regularization is not None and mode == self._Mode.TRAIN:
+            if (
+                self.regularization is not None
+                and mode == self._Mode.TRAIN
+                and self.regularization_weight > 0
+                and not isinstance(self.delta, IdentityDelta)
+            ):
                 assert not isinstance(self.loss_fn, StrategicHingeLoss)
-                assert not isinstance(
-                    self.delta, IdentityDelta
-                ), "IdentityDelta is not supported for regularization"
                 cost = self.delta.get_cost().forward(x, x_prime)
 
                 regularization_term = self.regularization(
@@ -304,7 +309,7 @@ class ModelSuit(pl.LightningModule):
                     linear_delta=self.delta,
                     cost=cost,
                 )
-                loss = loss + regularization_term
+                loss = loss + self.regularization_weight * regularization_term
 
         linear_regularization_term: torch.Tensor = torch.tensor(0.0, device=self.device)
 
