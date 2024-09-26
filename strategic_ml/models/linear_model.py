@@ -9,13 +9,14 @@ from typing import Any, Tuple, Optional
 class LinearModel(nn.Module):
     """
     Implements a linear binary classification model. This model calculates the relevant
-    strategic delta and regularization terms before modifying the input data and passing 
+    strategic delta and regularization terms before modifying the input data and passing
     it to the model. The linear nature of this model allows for closed-form calculations
     of the strategic delta.
 
     Attributes:
         model (torch.nn.Linear): The linear layer for binary classification.
     """
+
     def __init__(
         self,
         in_features: int,

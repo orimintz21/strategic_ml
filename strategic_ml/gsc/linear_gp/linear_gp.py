@@ -218,7 +218,7 @@ class _LinearGP(_GSC):
     def _assert_model(self) -> None:
         """
         Asserts that the strategic model is a LinearModel.
-        """        
+        """
         assert isinstance(
             self.strategic_model, LinearModel
         ), "The strategic model should be a StrategicModel"

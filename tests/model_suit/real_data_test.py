@@ -13,6 +13,9 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, TensorDataset
 from strategic_ml.loss_functions import StrategicHingeLoss
 
+DATA_DIR = "tests/data"
+DATA_NAME = "creditcard.csv"
+
 
 # internal imports
 from strategic_ml import (
@@ -22,26 +25,6 @@ from strategic_ml import (
     CostNormL2,
     SocialBurden,
 )
-
-
-# Helper functions to load real data
-def load_real_data():
-    # Paths for your data files
-
-    features_dir = "tests/data/user_item_features"
-    data_dir = "tests/data/"
-    user_features_path = os.path.join(features_dir, "user_features.ascii")
-    item_features_path = os.path.join(features_dir, "item_features.ascii")
-    train_path = os.path.join(data_dir, "train.ascii")
-    test_path = os.path.join(data_dir, "test.ascii")
-
-    # Load the real data from .ascii files
-    user_features = np.loadtxt(user_features_path)
-    item_features = np.loadtxt(item_features_path)
-    train_data = np.loadtxt(train_path)
-    test_data = np.loadtxt(test_path)
-
-    return user_features, item_features, train_data, test_data
 
 
 # Parameters for training

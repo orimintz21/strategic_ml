@@ -28,7 +28,7 @@ from strategic_ml import (
     StrategicHingeLoss,
 )
 
-DUMMY_RUN = False
+DUMMY_RUN = True
 GPUS = 1
 ACCELERATOR = "auto"
 print("DUMMY_RUN: ", DUMMY_RUN)
@@ -625,7 +625,7 @@ class TestModelSuit(unittest.TestCase):
         model_train = LinearModel(in_features=2)
         model_test = LinearModel(in_features=2)
         delta_train = LinearStrategicDelta(cost=self.cost, strategic_model=model_train)
-        delta_test = LinearStrategicDelta(cost=self.cost, strategic_model=model_test)
+        test_delta = LinearStrategicDelta(cost=self.cost, strategic_model=model_test)
         train_dataLoader_in_the_dark = gen_custom_normal_data(
             train_size // 3,
             2,
@@ -650,7 +650,7 @@ class TestModelSuit(unittest.TestCase):
 
         in_the_dark_module_suite = ModelSuit(
             model=model_test,
-            delta=delta_test,
+            delta=test_delta,
             loss_fn=self.loss_fn,
             train_loader=train_dataLoader_in_the_dark,
             validation_loader=val_dataLoader_in_the_dark,
@@ -672,7 +672,7 @@ class TestModelSuit(unittest.TestCase):
             model_test,
             train_dataLoader_in_the_dark,
             val_dataLoader_in_the_dark,
-            delta_test,
+            test_delta,
             display_percentage_train=0.05,
             display_percentage_test=0.5,
             prefix="in_the_dark_dummy_model",
@@ -685,7 +685,7 @@ class TestModelSuit(unittest.TestCase):
             train_loader=self.train_dataLoader,
             validation_loader=self.val_dataLoader,
             test_loader=self.test_dataLoader,
-            delta_test=delta_test,
+            test_delta=test_delta,
             training_params=LINEAR_TRAINING_PARAMS,
         )
         max_epochs = 1 if DUMMY_RUN else num_epochs
@@ -703,7 +703,7 @@ class TestModelSuit(unittest.TestCase):
             model_train,
             self.train_dataLoader,
             self.test_dataLoader,
-            delta_test,
+            test_delta,
             display_percentage_train=0.05,
             display_percentage_test=0.5,
             prefix="in_the_dark_model",
@@ -788,7 +788,7 @@ class TestModelSuit(unittest.TestCase):
             train_loader=self.train_dataLoader,
             validation_loader=self.val_dataLoader,
             test_loader=self.test_dataLoader,
-            delta_test=delta_test,
+            test_delta=delta_test,
             training_params=LINEAR_TRAINING_PARAMS,
         )
 

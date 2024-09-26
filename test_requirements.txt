@@ -1,3 +1,6 @@
 numpy
 torch>=2.1.0
+matplotlib
+scikit-learn
 pytorch-lightning
+pandas

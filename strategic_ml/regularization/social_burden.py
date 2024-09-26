@@ -13,11 +13,11 @@ from strategic_ml.regularization.strategic_regularization import (
 
 class SocialBurden(_StrategicRegularization):
     """
-    Implements the Social Burden regularization method, as described in the paper 
-    "Strategic Classification Made Practical." 
+    Implements the Social Burden regularization method, as described in the paper
+    "Strategic Classification Made Practical."
 
-    Social Burden minimizes the effort required by strategic agents labeled as positive 
-    to achieve a favorable outcome. This method only works with linear strategic deltas 
+    Social Burden minimizes the effort required by strategic agents labeled as positive
+    to achieve a favorable outcome. This method only works with linear strategic deltas
     and convex cost functions.
 
     The formula for the Social Burden term is:
@@ -54,7 +54,7 @@ class SocialBurden(_StrategicRegularization):
         Computes the Social Burden regularization term.
 
         The formula is:
-        Social Burden = sum_{xi in X, yi == 1}(distance(xi)), where distance(x) is the minimal 
+        Social Burden = sum_{xi in X, yi == 1}(distance(xi)), where distance(x) is the minimal
         cost required by the strategic agent to achieve a positive outcome.
 
         Args:

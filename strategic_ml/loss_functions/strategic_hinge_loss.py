@@ -9,12 +9,12 @@ from strategic_ml.models import LinearModel
 
 class StrategicHingeLoss(nn.Module):
     """
-    Implements the Strategic Hinge Loss (s-hinge), a modified version of the standard hinge loss 
-    function that accounts for strategic behavior in classification settings. The s-hinge loss 
-    anticipates and incorporates the strategic modifications that agents might apply to their 
+    Implements the Strategic Hinge Loss (s-hinge), a modified version of the standard hinge loss
+    function that accounts for strategic behavior in classification settings. The s-hinge loss
+    anticipates and incorporates the strategic modifications that agents might apply to their
     features to achieve better classification outcomes.
 
-    The loss function maintains a differentiable form, allowing for optimization. The s-hinge loss 
+    The loss function maintains a differentiable form, allowing for optimization. The s-hinge loss
     assumes that the model is linear, the delta is a Linear Delta, and the cost function is the L2 norm.
 
     The s-hinge loss is defined as:
@@ -22,6 +22,7 @@ class StrategicHingeLoss(nn.Module):
 
     Reference: "Generalized Strategic Classification and the Case of Aligned Incentives"
     """
+
     def __init__(
         self,
         model: LinearModel,
