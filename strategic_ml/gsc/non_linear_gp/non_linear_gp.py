@@ -42,7 +42,7 @@ class _NonLinearGP(_GSC):
             cost_weight (float, optional): The weight of the cost function. Defaults to 1.
             save_dir (str, optional): Directory to save the computed x_prime values. Defaults to ".".
             logging_level (int, optional): Logging level for the model. Defaults to logging.INFO.
-            training_params (Dict[str, Any]): Dictionary containing training parameters such as:
+            training_params (Dict[str, Any]): Dictionary containing training parameters:
                 - optimizer_class: The optimizer class (default: SGD)
                 - optimizer_params: Parameters for the optimizer (default: {"lr": 0.01})
                 - scheduler_class: (optional) The scheduler class for learning rate adjustment
@@ -143,7 +143,7 @@ class _NonLinearGP(_GSC):
         Returns:
             torch.Tensor: The optimized x_prime tensor.
         """
-        
+
         assert x.device == z.device, "x and z should be on the same device"
         assert x.size(0) == z.size(0), "x and z should have the same batch size"
         device = x.device
@@ -235,7 +235,7 @@ class _NonLinearGP(_GSC):
     def set_training_params(self) -> None:
         """
         Sets the training parameters for the optimization process.
-        """        
+        """
         assert self.training_params is not None, "training_params should not be None"
         self.temp: float = self.training_params.get("temp", 1.0)
 
@@ -263,7 +263,7 @@ class _NonLinearGP(_GSC):
 
         Returns:
             torch.Tensor: Generated z values for the optimization.
-        """        
+        """
         raise NotImplementedError(
             "This method should be implemented in the child class"
         )

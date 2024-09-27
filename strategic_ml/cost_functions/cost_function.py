@@ -10,7 +10,7 @@ class _CostFunction(nn.Module):
 
     This class serves as a base for implementing various cost functions that
     calculate the cost of transitioning from an original data point `x` to a
-    modified data point `x_prime`. Subclasses should implement the `forward` 
+    modified data point `x_prime`. Subclasses should implement the `forward`
     method to define specific cost calculations.
 
     Attributes:

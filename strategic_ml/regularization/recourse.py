@@ -11,8 +11,8 @@ from strategic_ml.regularization.strategic_regularization import (
 
 class Recourse(_StrategicRegularization):
     """
-    Implements the Recourse regularization method, which quantifies the ability of strategic agents 
-    to modify their features in order to obtain a favorable outcome. The recourse term is a soft 
+    Implements the Recourse regularization method, which quantifies the ability of strategic agents
+    to modify their features in order to obtain a favorable outcome. The recourse term is a soft
     version of the sum of indicators for negative predictions before and after modification.
 
     The formula for the recourse term is:
@@ -21,6 +21,7 @@ class Recourse(_StrategicRegularization):
     Attributes:
         sigmoid_temp (float): The temperature for the sigmoids.
     """
+
     def __init__(
         self, sigmoid_temp: float = 1.0, model: Optional[nn.Module] = None
     ) -> None:

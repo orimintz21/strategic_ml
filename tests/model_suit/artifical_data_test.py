@@ -318,7 +318,9 @@ class TestModelSuit(unittest.TestCase):
         )
 
     def test_identity_delta(self):
-        linear_model = LinearModel(2)
+        w = torch.tensor([[1.0, 0]], dtype=torch.float64)
+        b = torch.tensor([-10], dtype=torch.float64)
+        linear_model = LinearModel(2, weight=w, bias=b)
         delta = IdentityDelta(cost=None, strategic_model=linear_model)
 
         identity_model = ModelSuit(
@@ -340,7 +342,21 @@ class TestModelSuit(unittest.TestCase):
             devices=GPUS,
             accelerator=ACCELERATOR,
         )
-
+        trainer.test(identity_model)
+        visualize_data_and_delta_2D(
+            linear_model,
+            self.train_dataLoader,
+            delta,
+            display_percentage=1,
+            prefix="no_train",
+        )
+        visualize_data_and_delta_2D(
+            linear_model,
+            self.test_dataLoader,
+            delta,
+            display_percentage=1,
+            prefix="test_no_train",
+        )
         trainer.fit(identity_model)
         trainer.test(identity_model)
         visualize_data_and_delta_2D(
@@ -625,7 +641,7 @@ class TestModelSuit(unittest.TestCase):
         model_train = LinearModel(in_features=2)
         model_test = LinearModel(in_features=2)
         delta_train = LinearStrategicDelta(cost=self.cost, strategic_model=model_train)
-        delta_test = LinearStrategicDelta(cost=self.cost, strategic_model=model_test)
+        test_delta = LinearStrategicDelta(cost=self.cost, strategic_model=model_test)
         train_dataLoader_in_the_dark = gen_custom_normal_data(
             train_size // 3,
             2,
@@ -650,7 +666,7 @@ class TestModelSuit(unittest.TestCase):
 
         in_the_dark_module_suite = ModelSuit(
             model=model_test,
-            delta=delta_test,
+            delta=test_delta,
             loss_fn=self.loss_fn,
             train_loader=train_dataLoader_in_the_dark,
             validation_loader=val_dataLoader_in_the_dark,
@@ -672,7 +688,7 @@ class TestModelSuit(unittest.TestCase):
             model_test,
             train_dataLoader_in_the_dark,
             val_dataLoader_in_the_dark,
-            delta_test,
+            test_delta,
             display_percentage_train=0.05,
             display_percentage_test=0.5,
             prefix="in_the_dark_dummy_model",
@@ -685,7 +701,7 @@ class TestModelSuit(unittest.TestCase):
             train_loader=self.train_dataLoader,
             validation_loader=self.val_dataLoader,
             test_loader=self.test_dataLoader,
-            delta_test=delta_test,
+            test_delta=test_delta,
             training_params=LINEAR_TRAINING_PARAMS,
         )
         max_epochs = 1 if DUMMY_RUN else num_epochs
@@ -703,7 +719,7 @@ class TestModelSuit(unittest.TestCase):
             model_train,
             self.train_dataLoader,
             self.test_dataLoader,
-            delta_test,
+            test_delta,
             display_percentage_train=0.05,
             display_percentage_test=0.5,
             prefix="in_the_dark_model",
@@ -788,7 +804,7 @@ class TestModelSuit(unittest.TestCase):
             train_loader=self.train_dataLoader,
             validation_loader=self.val_dataLoader,
             test_loader=self.test_dataLoader,
-            delta_test=delta_test,
+            test_delta=delta_test,
             training_params=LINEAR_TRAINING_PARAMS,
         )
 

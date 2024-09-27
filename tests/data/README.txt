@@ -1,3 +1,0 @@
-- train.ascii: Ratings for a subset of self-selected items
-- test.ascii: Ratings for a subset of random items
-- propensities.ascii: Learned propensities from data in /propensity_data

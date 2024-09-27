@@ -9,11 +9,11 @@ from strategic_ml.regularization.strategic_regularization import (
 
 class ExpectedUtility(_StrategicRegularization):
     """
-    Implements the Expected Utility regularization method, as described in the paper 
-    "Strategic Classification Made Practical." 
+    Implements the Expected Utility regularization method, as described in the paper
+    "Strategic Classification Made Practical."
 
-    Expected Utility is a strategic regularization method that maximizes the expected 
-    utility of strategic agents by considering the difference between the model's 
+    Expected Utility is a strategic regularization method that maximizes the expected
+    utility of strategic agents by considering the difference between the model's
     predictions and the cost incurred by agents when they alter their features.
     The formula for the Expected Utility term is:
     Expected Utility = -mean(tanh(f(x) * temp) - cost)
@@ -62,7 +62,6 @@ class ExpectedUtility(_StrategicRegularization):
         assert (
             delta_predictions.shape[1] == 1
         ), "delta_predictions must have only one output"
-        assert cost.shape[1] == 1, "cost must have only one output"
 
         # they should be on the same device
         assert (

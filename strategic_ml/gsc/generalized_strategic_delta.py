@@ -32,6 +32,7 @@ class _GSC(nn.Module):
         cost (_CostFunction): The cost function applied in the strategic setting.
         cost_weight (float): The weight of the cost in the strategic calculation.
     """
+
     def __init__(
         self,
         strategic_model: nn.Module,

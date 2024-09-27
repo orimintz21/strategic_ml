@@ -14,6 +14,7 @@ class _StrategicRegularization(nn.Module):
 
     This class should be inherited to create custom strategic regularization methods.
     """
+
     def __init__(self) -> None:
         """
         Initializes the _StrategicRegularization class.

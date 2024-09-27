@@ -13,7 +13,7 @@ class LinearStrategicDelta(_LinearGP):
     Implements the LinearStrategicDelta for strategic classification with linear models.
 
     This model assumes that the strategic users aim to maximize their prediction with minimal cost.
-    The delta is calculated using a closed-form solution for linear models with an L2 or weighted L2 
+    The delta is calculated using a closed-form solution for linear models with an L2 or weighted L2
     cost function.
 
     Attributes:
@@ -73,7 +73,7 @@ class LinearStrategicDelta(_LinearGP):
 
     def get_minimal_distance(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Returns the minimal distance (cost) required for strategic users to 
+        Returns the minimal distance (cost) required for strategic users to
         achieve a positive outcome.
 
         Args:

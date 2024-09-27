@@ -10,7 +10,7 @@ class CostNormL2(_CostFunction):
     """
     Implements the L2 norm cost function.
 
-    Calculates the Euclidean distance between the original data `x` and the 
+    Calculates the Euclidean distance between the original data `x` and the
     modified data `x_prime`, representing the cost of moving from `x` to `x_prime`.
     """
 
@@ -19,7 +19,7 @@ class CostNormL2(_CostFunction):
         Initializes the L2 norm cost function.
 
         Args:
-            dim (Optional[Union[int, List[int], Tuple[int]]]): Dimensions over which the L2 norm is calculated. 
+            dim (Optional[Union[int, List[int], Tuple[int]]]): Dimensions over which the L2 norm is calculated.
                 If None, the norm is calculated over all dimensions.
         """
         super(CostNormL2, self).__init__(dim=dim)
@@ -47,16 +47,16 @@ class CostMeanSquaredError(_CostFunction):
     Implements the mean squared error (MSE) cost function.
 
     Calculates the average squared difference between the original data `x`
-    and the modified data `x_prime`, representing the cost of moving from `x` 
+    and the modified data `x_prime`, representing the cost of moving from `x`
     to `x_prime`.
     """
-        
+
     def __init__(self, dim: Optional[Union[int, List[int], Tuple[int]]] = None) -> None:
         """
         Initializes the mean squared error cost function.
 
         Args:
-            dim (Optional[Union[int, List[int], Tuple[int]]]): Dimensions over which the MSE is calculated. 
+            dim (Optional[Union[int, List[int], Tuple[int]]]): Dimensions over which the MSE is calculated.
                 If None, the error is averaged over all dimensions.
         """
         super(CostMeanSquaredError, self).__init__(dim=dim)
@@ -84,9 +84,10 @@ class CostWeightedLoss(_CostFunction):
     """
     Implements a weighted loss cost function based on the mean squared error (MSE).
 
-    Applies weights to each feature in the calculation of the squared difference 
+    Applies weights to each feature in the calculation of the squared difference
     between the original data `x` and the modified data `x_prime`.
     """
+
     def __init__(
         self,
         weights: torch.Tensor,
@@ -97,7 +98,7 @@ class CostWeightedLoss(_CostFunction):
 
         Args:
             weights (torch.Tensor): The weights to apply to the loss.
-            dim (Optional[Union[int, List[int], Tuple[int]]] Optional): Dimensions over which the loss is calculated. 
+            dim (Optional[Union[int, List[int], Tuple[int]]] Optional): Dimensions over which the loss is calculated.
                 If None, the loss is calculated over all dimensions.
         """
         super(CostWeightedLoss, self).__init__(dim=dim)
@@ -156,15 +157,16 @@ class CostNormL1(_CostFunction):
     Implements the LInf norm cost function.
 
     Calculates the Chebyshev distance (LInf norm) between the original data `x`
-    and the modified data `x_prime`, representing the cost of moving from `x` 
+    and the modified data `x_prime`, representing the cost of moving from `x`
     to `x_prime`.
     """
+
     def __init__(self, dim: Optional[Union[int, List[int], Tuple[int]]] = None) -> None:
         """
         Initializes the LInf norm cost function.
 
         Args:
-            dim (Optional[Union[int, List[int], Tuple[int]]] Optional): Dimensions over which the LInf norm is calculated. 
+            dim (Optional[Union[int, List[int], Tuple[int]]] Optional): Dimensions over which the LInf norm is calculated.
                 If None, the norm is calculated over all dimensions.
         """
         super(CostNormL1, self).__init__(dim=dim)

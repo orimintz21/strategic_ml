@@ -13,7 +13,7 @@ class IdentityDelta(_GSC):
     Implements a No-Operation (Identity) Delta for GSC models.
 
     This class provides an identity transformation, meaning the input data `x`
-    is returned unchanged. It serves as a baseline or a no-op scenario where 
+    is returned unchanged. It serves as a baseline or a no-op scenario where
     no strategic modifications are applied.
     """
 

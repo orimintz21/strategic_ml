@@ -12,8 +12,8 @@ class LinearAdvDelta(_LinearGP):
     """
     Implements the LinearAdversarialDelta for strategic classification with linear models.
 
-    This model assumes that the strategic users aim to get an incorrect prediction (i.e., 
-    the opposite of their true label) with minimal cost. The delta is calculated using a 
+    This model assumes that the strategic users aim to get an incorrect prediction (i.e.,
+    the opposite of their true label) with minimal cost. The delta is calculated using a
     closed-form solution for linear models with an L2 or weighted L2 cost function.
 
     Attributes:

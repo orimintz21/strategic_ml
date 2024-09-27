@@ -1,12 +1,12 @@
 # External imports
+from enum import Enum
+from typing import Optional, Dict, Any, Tuple, List, Union
+import logging
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
-from typing import Optional, Dict, Any, Tuple, List, Union
-import logging
-from enum import Enum
 
 # Internal imports
 from strategic_ml.gsc import _LinearGP, _NonLinearGP, _GSC, IdentityDelta
@@ -15,29 +15,28 @@ from strategic_ml.regularization import _StrategicRegularization
 from strategic_ml.loss_functions import StrategicHingeLoss
 
 
-class ModelSuit(pl.LightningModule):    
+class ModelSuit(pl.LightningModule):
     """
     A PyTorch Lightning module that integrates various components of the strategic_ml library to train, validate,
     and test machine learning models within the context of strategic classification. This module handles the
     training process, including strategic deltas, loss functions, regularization, and logging.
     """
-    
+
     def __init__(
         self,
-        *args,
+        *,
         model: nn.Module,
         delta: _GSC,
         loss_fn: nn.Module,
         regularization: Optional[_StrategicRegularization] = None,
+        regularization_weight: float = 0.0,
         linear_regularization: Optional[List[_LinearRegularization]] = None,
         train_loader: DataLoader,
         validation_loader: DataLoader,
         test_loader: DataLoader,
         test_delta: Optional[_GSC] = None,
-        logging_level: int = logging.INFO,
-        training_params: Dict[str, Any],
         train_delta_every: Optional[int] = None,
-        **kwargs,
+        training_params: Dict[str, Any],
     ) -> None:
         """
         Initializes the ModelSuit class with the specified model, delta, loss function, regularization,
@@ -48,28 +47,32 @@ class ModelSuit(pl.LightningModule):
             delta (_GSC): The strategic delta model, responsible for modifying the input data based on strategic behavior.
             loss_fn (nn.Module): The loss function to optimize.
             regularization (Optional[_StrategicRegularization]): A strategic regularization method. Default is None.
+            regularization_weight (float): The weight of the strategic regularization. Default is 0.
             linear_regularization (Optional[List[_LinearRegularization]]): A list of linear regularization methods. Default is None.
             train_loader (DataLoader): DataLoader for the training data.
             validation_loader (DataLoader): DataLoader for the validation data.
             test_loader (DataLoader): DataLoader for the test data.
             test_delta (Optional[_GSC]): An optional strategic delta for testing purposes. Default is None.
-            logging_level (int): The logging level, e.g., logging.INFO. Default is logging.INFO.
-            training_params (Dict[str, Any]): A dictionary of parameters for configuring the training process.
             train_delta_every (Optional[int]): Frequency of training the delta during the training process. Default is None.
+            training_params (Dict[str, Any]): A dictionary of parameters for configuring the training process.
+                If you want to use the default values, pass an empty dictionary. Parameters include:
+                - optimizer_class (optim.Optimizer): The optimizer class to use for training. Default is optim.SGD.
+                - optimizer_params (Dict[str, Any]): The parameters for the optimizer. Default is {"lr": 0.01}.
+                - scheduler_class (Optional[Any]): The learning rate scheduler class. Default is None (no scheduler).
+                - scheduler_params (Dict[str, Any]): The parameters for the learning rate scheduler (if applicable).
         """
         super(ModelSuit, self).__init__()
         self.model = model
         self.delta = delta
         self.loss_fn = loss_fn
         self.regularization = regularization
+        self.regularization_weight = regularization_weight
         self.linear_regularization = linear_regularization
         self.train_loader = train_loader
         self.validation_loader = validation_loader
         self.test_loader = test_loader
         self.test_delta = test_delta
         self.training_params = training_params
-        logging.basicConfig(level=logging_level)
-
         self.train_delta_every: Optional[int] = train_delta_every
         if isinstance(self.delta, _NonLinearGP) and self.train_delta_every is None:
             logging.warning(
@@ -102,6 +105,7 @@ class ModelSuit(pl.LightningModule):
         """
         Enum class representing the mode of operation: TRAIN, VALIDATION, or TEST.
         """
+
         TRAIN = "train"
         VALIDATION = "validation"
         TEST = "test"
@@ -121,17 +125,19 @@ class ModelSuit(pl.LightningModule):
         loss, predictions = self._calculate_loss_and_predictions(
             x=x, y=y, batch_idx=batch_idx, mode=self._Mode.TRAIN
         )
+
         loss = loss.mean()
         zero_one_loss = (torch.sign(self.forward(x)) != y).sum().item() / len(y)
 
-        if batch_idx % 100 == 0:
-            logging.debug(
-                f"Batch {batch_idx} - Loss: {loss.item()}, Zero-One Loss: {zero_one_loss}"
-            )
-
         # Log metrics
-        self.log("train_loss_epoch", loss, on_epoch=True, prog_bar=True)
-        self.log("zero_one_loss_epoch", zero_one_loss, on_epoch=True, prog_bar=True)
+        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log(
+            "train_zero_one_loss",
+            zero_one_loss,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+        )
 
         return loss
 
@@ -154,21 +160,20 @@ class ModelSuit(pl.LightningModule):
 
         zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
 
-        if batch_idx % 100 == 0:
-            logging.debug(
-                f"Validation Batch {batch_idx} - Validation Loss: {val_loss.mean().item()}, Zero-One Loss: {zero_one_loss}"
-            )
-
-        self.log("val_loss_epoch", val_loss.mean(), on_epoch=True, prog_bar=True)
-        self.log("val_zero_one_loss_epoch", zero_one_loss, on_epoch=True, prog_bar=True)
-
-        return {"val_loss": val_loss.mean(), "zero_one_loss": zero_one_loss}
+        self.log("val_loss", val_loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log(
+            "val_zero_one_loss",
+            zero_one_loss,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+        )
 
     def test_step(self, batch, batch_idx):
         """
         Performs a single test step, including loss calculation, logging, and metrics computation.
 
-        Note: If the delta that is used in the test phase is a NonLinearGP, 
+        Note: If the delta that is used in the test phase is a NonLinearGP,
         you need to train the delta for the test set using the train_delta_for_test method.
 
         Args:
@@ -189,8 +194,12 @@ class ModelSuit(pl.LightningModule):
                 # We are testing an In The Dark scenario
                 if isinstance(self.test_delta, _NonLinearGP):
                     x_prime = self.test_delta.load_x_prime(
-                        batch_idx=batch_idx, device=device
+                        batch_idx=batch_idx,
+                        device=device,
+                        set_name=self._Mode.TEST.value,
                     )
+                elif isinstance(self.test_delta, IdentityDelta):
+                    x_prime = x
                 else:
                     x_prime = self.test_delta.forward(x, y).to(device)
 
@@ -206,16 +215,13 @@ class ModelSuit(pl.LightningModule):
                 )
 
             assert predictions is not None
+            zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
 
             # Log the test loss
             self.log("test_loss", test_loss, on_step=True, on_epoch=True)
 
-            zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
-
             # Log the zero-one loss for the test set
             self.log("test_zero_one_loss", zero_one_loss, on_step=True, on_epoch=True)
-
-            return {"test_loss": test_loss, "zero_one_loss": zero_one_loss}
 
     def _calculate_loss_and_predictions(
         self,
@@ -265,7 +271,7 @@ class ModelSuit(pl.LightningModule):
                 if (mode != self._Mode.TEST) and self.train_delta_every == 1:
                     x_prime = self.delta.forward(x, y)
 
-                else: 
+                else:
                     if (self.current_epoch % self.train_delta_every == 0) and (
                         mode != self._Mode.TEST
                     ):
@@ -280,6 +286,9 @@ class ModelSuit(pl.LightningModule):
                         batch_idx=batch_idx, set_name=mode.value, device=x.device
                     )
 
+            elif isinstance(self.delta, IdentityDelta):
+                x_prime = x
+
             else:
                 x_prime = self.delta.forward(x, y)
 
@@ -290,11 +299,13 @@ class ModelSuit(pl.LightningModule):
 
             loss = self.loss_fn(predictions, y)
 
-            if self.regularization is not None and mode == self._Mode.TRAIN:
+            if (
+                self.regularization is not None
+                and mode == self._Mode.TRAIN
+                and self.regularization_weight > 0
+                and not isinstance(self.delta, IdentityDelta)
+            ):
                 assert not isinstance(self.loss_fn, StrategicHingeLoss)
-                assert not isinstance(
-                    self.delta, IdentityDelta
-                ), "IdentityDelta is not supported for regularization"
                 cost = self.delta.get_cost().forward(x, x_prime)
 
                 regularization_term = self.regularization(
@@ -305,7 +316,7 @@ class ModelSuit(pl.LightningModule):
                     linear_delta=self.delta,
                     cost=cost,
                 )
-                loss = loss + regularization_term
+                loss = loss + self.regularization_weight * regularization_term
 
         linear_regularization_term: torch.Tensor = torch.tensor(0.0, device=self.device)
 
@@ -322,11 +333,11 @@ class ModelSuit(pl.LightningModule):
 
     def train_delta_for_test(self, dataloader: Optional[DataLoader] = None) -> None:
         """
-        Trains the delta model specifically for the test set. 
+        Trains the delta model specifically for the test set.
         Use this method when you want to test the model with a non-linear delta.
         If you are using a linear delta, you do not need to train the delta for the test set.
 
-        If you don't use this function before testing and you are using a non-linear 
+        If you don't use this function before testing and you are using a non-linear
         delta, the test will fail.
 
         Args:
