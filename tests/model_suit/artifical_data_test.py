@@ -34,6 +34,7 @@ ACCELERATOR = "auto"
 print("DUMMY_RUN: ", DUMMY_RUN)
 print(f"CUDA Available: {torch.cuda.is_available()}")
 
+
 class BCEWithLogitsLossPNOne(nn.Module):
     def __init__(self):
         super(BCEWithLogitsLossPNOne, self).__init__()

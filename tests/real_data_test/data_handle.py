@@ -66,7 +66,6 @@ def get_data_set(
     y_val = torch.tensor(y_val, dtype=dtype).unsqueeze(1)
     X_test = torch.tensor(X_test, dtype=dtype)
     y_test = torch.tensor(y_test, dtype=dtype).unsqueeze(1)
-    
 
     # We will now create the dataloaders
     train_dataset = TensorDataset(X_train, y_train)
@@ -117,4 +116,3 @@ def load_data(
     )
 
     return train_loader, val_loader, test_loader
-

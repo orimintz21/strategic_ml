@@ -33,6 +33,7 @@ DATA_NAME = "creditcard.csv"
 DATA_PATH = os.path.join(DATA_DIR, DATA_NAME)
 DATA_ROW_SIZE = 29
 
+
 class BCEWithLogitsLossPNOne(nn.Module):
     def __init__(self):
         super(BCEWithLogitsLossPNOne, self).__init__()
@@ -43,6 +44,7 @@ class BCEWithLogitsLossPNOne(nn.Module):
         input = (input + 1) / 2
         return self.loss(input, target)
 
+
 class MSEPNOne(nn.Module):
     def __init__(self):
         super(MSEPNOne, self).__init__()
@@ -52,6 +54,7 @@ class MSEPNOne(nn.Module):
         target = (target + 1) / 2
         input = (input + 1) / 2
         return self.loss(input, target)
+
 
 class CreditCardTest(unittest.TestCase):
     def setUp(self):

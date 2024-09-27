@@ -45,8 +45,8 @@ class ModelSuit(pl.LightningModule):
         Args:
             model (nn.Module): The main model to be trained, validated, and tested.
             delta (_GSC): The strategic delta model, responsible for modifying the input data based on strategic behavior.
-            loss_fn (nn.Module): The loss function to optimize. If this is not 
-            a StrategicHingeLoss, left first argument of the loss function 
+            loss_fn (nn.Module): The loss function to optimize. If this is not
+            a StrategicHingeLoss, left first argument of the loss function
             should be the predictions and the second should be the true labels.
             regularization (Optional[_StrategicRegularization]): A strategic regularization method. Default is None.
             regularization_weight (float): The weight of the strategic regularization. Default is 0.
@@ -132,7 +132,9 @@ class ModelSuit(pl.LightningModule):
         zero_one_loss = (torch.sign(self.forward(x)) != y).sum().item() / len(y)
 
         # Log metrics
-        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
         self.log(
             "train_zero_one_loss",
             zero_one_loss,
@@ -144,7 +146,7 @@ class ModelSuit(pl.LightningModule):
 
         return loss
 
-    def validation_step(self, batch: List[torch.Tensor], batch_idx: int)->None:
+    def validation_step(self, batch: List[torch.Tensor], batch_idx: int) -> None:
         """
         Performs a single validation step, including loss calculation, logging, and metrics computation.
 
@@ -163,7 +165,14 @@ class ModelSuit(pl.LightningModule):
 
         zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
 
-        self.log("val_loss", val_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "val_loss",
+            val_loss,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+        )
         self.log(
             "val_zero_one_loss",
             zero_one_loss,
@@ -225,7 +234,13 @@ class ModelSuit(pl.LightningModule):
             self.log("test_loss", test_loss, on_step=True, on_epoch=True, logger=True)
 
             # Log the zero-one loss for the test set
-            self.log("test_zero_one_loss", zero_one_loss, on_step=True, on_epoch=True, logger=True)
+            self.log(
+                "test_zero_one_loss",
+                zero_one_loss,
+                on_step=True,
+                on_epoch=True,
+                logger=True,
+            )
 
     def _calculate_loss_and_predictions(
         self,

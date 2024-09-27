@@ -3,7 +3,11 @@ import torch
 import unittest
 
 # Internal Imports
-from strategic_ml.models import LinearModel, LinearL2Regularization, LinearL1Regularization
+from strategic_ml.models import (
+    LinearModel,
+    LinearL2Regularization,
+    LinearL1Regularization,
+)
 
 
 class TestGPUOnModel(unittest.TestCase):
