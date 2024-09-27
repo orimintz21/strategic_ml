@@ -8,19 +8,13 @@ from typing import Tuple
 # Internal imports
 
 
-def load_data(
+def get_data_set(
     data_path: str,
     seed: int,
     test_frac: float,
     val_frac_from_train: float,
-    batch_size_train: int,
-    batch_size_val: int,
-    batch_size_test: int,
     dtype: torch.dtype,
-    train_num_workers: int = 0,
-    val_num_workers: int = 0,
-    test_num_workers: int = 0,
-) -> Tuple[DataLoader, DataLoader, DataLoader]:
+) -> Tuple[TensorDataset, TensorDataset, TensorDataset]:
     from sklearn.preprocessing import RobustScaler
     import numpy as np
     import math
@@ -72,11 +66,36 @@ def load_data(
     y_val = torch.tensor(y_val, dtype=dtype).unsqueeze(1)
     X_test = torch.tensor(X_test, dtype=dtype)
     y_test = torch.tensor(y_test, dtype=dtype).unsqueeze(1)
+    
 
     # We will now create the dataloaders
     train_dataset = TensorDataset(X_train, y_train)
     val_dataset = TensorDataset(X_val, y_val)
     test_dataset = TensorDataset(X_test, y_test)
+    return train_dataset, val_dataset, test_dataset
+
+
+def load_data(
+    data_path: str,
+    seed: int,
+    test_frac: float,
+    val_frac_from_train: float,
+    batch_size_train: int,
+    batch_size_val: int,
+    batch_size_test: int,
+    dtype: torch.dtype,
+    train_num_workers: int = 0,
+    val_num_workers: int = 0,
+    test_num_workers: int = 0,
+) -> Tuple[DataLoader, DataLoader, DataLoader]:
+
+    train_dataset, val_dataset, test_dataset = get_data_set(
+        data_path,
+        seed,
+        test_frac,
+        val_frac_from_train,
+        dtype,
+    )
 
     train_loader = DataLoader(
         train_dataset,
@@ -98,3 +117,4 @@ def load_data(
     )
 
     return train_loader, val_loader, test_loader
+

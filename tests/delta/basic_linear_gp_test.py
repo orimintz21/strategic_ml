@@ -7,7 +7,7 @@ from strategic_ml import (
     LinearStrategicDelta,
     LinearAdvDelta,
     StrategicHingeLoss,
-    L2Regularization,
+    LinearL2Regularization,
 )
 
 VERBOSE: bool = False
@@ -290,7 +290,7 @@ class TestLinearAdvDelta(unittest.TestCase):
 
         # Train the strategic model
         loss_fn = StrategicHingeLoss(model=strategic_model, delta=strategic_delta)
-        regularization = L2Regularization(lambda_=0.01)
+        regularization = LinearL2Regularization(lambda_=0.01)
         optimizer = torch.optim.Adam(strategic_model.parameters(), lr=0.01)
         strategic_model.train()
         # train without delta

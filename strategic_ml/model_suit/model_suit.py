@@ -45,7 +45,9 @@ class ModelSuit(pl.LightningModule):
         Args:
             model (nn.Module): The main model to be trained, validated, and tested.
             delta (_GSC): The strategic delta model, responsible for modifying the input data based on strategic behavior.
-            loss_fn (nn.Module): The loss function to optimize.
+            loss_fn (nn.Module): The loss function to optimize. If this is not 
+            a StrategicHingeLoss, left first argument of the loss function 
+            should be the predictions and the second should be the true labels.
             regularization (Optional[_StrategicRegularization]): A strategic regularization method. Default is None.
             regularization_weight (float): The weight of the strategic regularization. Default is 0.
             linear_regularization (Optional[List[_LinearRegularization]]): A list of linear regularization methods. Default is None.
@@ -110,7 +112,7 @@ class ModelSuit(pl.LightningModule):
         VALIDATION = "validation"
         TEST = "test"
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch: List[torch.Tensor], batch_idx: int) -> torch.Tensor:
         """
         Performs a single training step, including loss calculation, logging, and metrics computation.
 
@@ -130,18 +132,19 @@ class ModelSuit(pl.LightningModule):
         zero_one_loss = (torch.sign(self.forward(x)) != y).sum().item() / len(y)
 
         # Log metrics
-        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log(
             "train_zero_one_loss",
             zero_one_loss,
             on_step=True,
             on_epoch=True,
             prog_bar=True,
+            logger=True,
         )
 
         return loss
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch: List[torch.Tensor], batch_idx: int)->None:
         """
         Performs a single validation step, including loss calculation, logging, and metrics computation.
 
@@ -160,16 +163,17 @@ class ModelSuit(pl.LightningModule):
 
         zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
 
-        self.log("val_loss", val_loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("val_loss", val_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log(
             "val_zero_one_loss",
             zero_one_loss,
             on_step=True,
             on_epoch=True,
             prog_bar=True,
+            logger=True,
         )
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch: List[torch.Tensor], batch_idx: int) -> None:
         """
         Performs a single test step, including loss calculation, logging, and metrics computation.
 
@@ -218,10 +222,10 @@ class ModelSuit(pl.LightningModule):
             zero_one_loss = (torch.sign(predictions) != y).sum().item() / len(y)
 
             # Log the test loss
-            self.log("test_loss", test_loss, on_step=True, on_epoch=True)
+            self.log("test_loss", test_loss, on_step=True, on_epoch=True, logger=True)
 
             # Log the zero-one loss for the test set
-            self.log("test_zero_one_loss", zero_one_loss, on_step=True, on_epoch=True)
+            self.log("test_zero_one_loss", zero_one_loss, on_step=True, on_epoch=True, logger=True)
 
     def _calculate_loss_and_predictions(
         self,

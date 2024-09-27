@@ -26,7 +26,7 @@ class _LinearRegularization(ABC):
         pass
 
 
-class L2Regularization(_LinearRegularization):
+class LinearL2Regularization(_LinearRegularization):
     """
     Implements L2 regularization for a linear model. The L2 regularization term is calculated as:
     L2 Regularization = lambda * (||weight||_2 + ||bias||_2)
@@ -62,7 +62,7 @@ class L2Regularization(_LinearRegularization):
         return self.lambda_ * (torch.norm(weight, p=2) + torch.norm(bias, p=2))
 
 
-class L1Regularization(_LinearRegularization):
+class LinearL1Regularization(_LinearRegularization):
     """
     Implements L1 regularization for a linear model. The L1 regularization term is calculated as:
     L1 Regularization = lambda * (||weight||_1 + ||bias||_1)
@@ -98,7 +98,7 @@ class L1Regularization(_LinearRegularization):
         return self.lambda_ * (torch.norm(weight, p=1) + torch.norm(bias, p=1))
 
 
-class ElasticNetRegularization(_LinearRegularization):
+class LinearElasticNetRegularization(_LinearRegularization):
     """
     Implements Elastic Net regularization for a linear model, which combines L1 and L2 regularization.
     The Elastic Net regularization term is calculated as:
@@ -152,7 +152,7 @@ class ElasticNetRegularization(_LinearRegularization):
         return self.lambda_ * (l1_loss + l2_loss)
 
 
-class InfRegularization(_LinearRegularization):
+class LinearInfRegularization(_LinearRegularization):
     """
     Implements Inf regularization for a linear model. The Inf regularization term is calculated as:
     Inf Regularization = lambda * (||weight||_inf + ||bias||_inf)

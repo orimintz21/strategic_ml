@@ -3,7 +3,7 @@ import torch
 import unittest
 
 # Internal Imports
-from strategic_ml.models import LinearModel, L2Regularization, L1Regularization
+from strategic_ml.models import LinearModel, LinearL2Regularization, LinearL1Regularization
 
 
 class TestGPUOnModel(unittest.TestCase):
@@ -17,7 +17,7 @@ class TestGPUOnModel(unittest.TestCase):
         # Assert output shape and device
         assert output.device == device, f"{output.device} != {device}"
         # Test regularization
-        l2_reg = L2Regularization(lambda_=0.1)
+        l2_reg = LinearL2Regularization(lambda_=0.1)
         reg_term = l2_reg(model)
         assert reg_term.device == device
 
@@ -31,7 +31,7 @@ class TestGPUOnModel(unittest.TestCase):
         # Assert output shape and device
         assert output.device == device
         # Test regularization
-        l1_reg = L1Regularization(lambda_=0.1)
+        l1_reg = LinearL1Regularization(lambda_=0.1)
         reg_term = l1_reg(model)
         assert reg_term.device == device
 

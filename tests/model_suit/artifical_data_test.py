@@ -24,7 +24,7 @@ from strategic_ml import (
     visualize_data_and_delta_2D,
     visualize_data_and_delta_1D,
     IdentityDelta,
-    L2Regularization,
+    LinearL2Regularization,
     StrategicHingeLoss,
 )
 
@@ -33,6 +33,16 @@ GPUS = 1
 ACCELERATOR = "auto"
 print("DUMMY_RUN: ", DUMMY_RUN)
 print(f"CUDA Available: {torch.cuda.is_available()}")
+
+class BCEWithLogitsLossPNOne(nn.Module):
+    def __init__(self):
+        super(BCEWithLogitsLossPNOne, self).__init__()
+        self.loss = nn.BCEWithLogitsLoss()
+
+    def forward(self, input, target):
+        target = (target + 1) / 2
+        input = (input + 1) / 2
+        return self.loss(input, target)
 
 
 DELTA_TRAINING_PARAMS: Dict[str, Any] = {
@@ -265,7 +275,7 @@ class TestModelSuit(unittest.TestCase):
             neg_noise_frac=neg_noise_frac,
         )
 
-        self.loss_fn = nn.BCEWithLogitsLoss()
+        self.loss_fn = BCEWithLogitsLossPNOne()
         self.linear_model = LinearModel(2)
         self.non_linear_model = NonLinearModel(2)
         self.cost = CostNormL2(dim=1)
@@ -399,7 +409,7 @@ class TestModelSuit(unittest.TestCase):
         )
 
         loss_fn = StrategicHingeLoss(linear_model, linear_delta)
-        linear_regularization = L2Regularization(0.01)
+        linear_regularization = LinearL2Regularization(0.01)
 
         model_suit = ModelSuit(
             model=self.linear_model,
