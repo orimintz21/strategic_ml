@@ -318,7 +318,7 @@ class TestModelSuit(unittest.TestCase):
         )
 
     def test_identity_delta(self):
-        w = torch.tensor([[1.0, 0] ], dtype=torch.float64)
+        w = torch.tensor([[1.0, 0]], dtype=torch.float64)
         b = torch.tensor([-10], dtype=torch.float64)
         linear_model = LinearModel(2, weight=w, bias=b)
         delta = IdentityDelta(cost=None, strategic_model=linear_model)

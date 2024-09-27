@@ -93,7 +93,6 @@ def visualize_data_and_delta_2D(
             # In case w[1] is zero, the line is vertical
             # We need to plot a vertical line at x = -b/w[0]
             plt.axvline(x=-b / w[0], label="Decision Boundary wx+b=0", color="red")
-            
 
         print(f"Weight: {w}, Bias: {b}")
     deltas = None

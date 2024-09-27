@@ -194,7 +194,9 @@ class ModelSuit(pl.LightningModule):
                 # We are testing an In The Dark scenario
                 if isinstance(self.test_delta, _NonLinearGP):
                     x_prime = self.test_delta.load_x_prime(
-                        batch_idx=batch_idx, device=device, set_name=self._Mode.TEST.value
+                        batch_idx=batch_idx,
+                        device=device,
+                        set_name=self._Mode.TEST.value,
                     )
                 elif isinstance(self.test_delta, IdentityDelta):
                     x_prime = x
@@ -283,7 +285,7 @@ class ModelSuit(pl.LightningModule):
                     x_prime: torch.Tensor = self.delta.load_x_prime(
                         batch_idx=batch_idx, set_name=mode.value, device=x.device
                     )
-            
+
             elif isinstance(self.delta, IdentityDelta):
                 x_prime = x
 
