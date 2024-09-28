@@ -17,6 +17,7 @@ from strategic_ml import (
     CostNormL2,
     LinearL2Regularization,
     LinearAdvDelta,
+    StrategicHingeLoss,
     IdentityDelta,
     SocialBurden,
     ExpectedUtility,

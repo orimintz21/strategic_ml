@@ -9,6 +9,7 @@ import optuna
 from optuna.integration import PyTorchLightningPruningCallback
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.loggers import CSVLogger
+from pytorch_lightning.callbacks import EarlyStopping
 
 # Internal Imports
 import strategic_ml as sml
@@ -94,8 +95,7 @@ def objective(trial: optuna.trial.Trial) -> float:
     # Define the hyperparameters to optimize
     lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
     batch_size = trial.suggest_int("batch_size", 16, 256)
-    epochs = trial.suggest_int("epochs", 40, 120)
-    loss_fn = trial.suggest_categorical("loss_fn", ["hinge", "mse", "bce"])
+    early_stopping = trial.suggest_int("early_stopping", 5, 20)
     optimizer_str = trial.suggest_categorical("optimizer", ["adam", "sgd", "adagrad"])
 
     linear_reg_str = trial.suggest_categorical("linear_reg", ["none", "l1", "l2"])
@@ -151,14 +151,7 @@ def objective(trial: optuna.trial.Trial) -> float:
         strategic_model=model, cost=cost_fn, cost_weight=COST_WEIGHT
     )
 
-    if loss_fn == "hinge":
-        loss_fn = nn.HingeEmbeddingLoss()
-    elif loss_fn == "mse":
-        loss_fn = MSEPNOne()
-    elif loss_fn == "bce":
-        loss_fn = BCEWithLogitsLossPNOne()
-    else:
-        raise ValueError(f"Invalid loss function {loss_fn}")
+    loss_fn = sml.StrategicHingeLoss(model=model, delta=delta)
 
     if optimizer_str == "adam":
         optimizer_class = torch.optim.Adam
@@ -193,29 +186,28 @@ def objective(trial: optuna.trial.Trial) -> float:
         training_params=training_params,
         linear_regularization=linear_reg,
     )
+    early_stop_callback = EarlyStopping(
+        monitor="val_zero_one_loss_epoch",
+        min_delta=0.00,
+        patience=early_stopping,
+        verbose=False,
+    )
 
     trial_number = trial.number
-    callback = PyTorchLightningPruningCallback(trial, monitor="val_zero_one_loss")
     trainer = pl.Trainer(
         logger=CSVLogger(save_dir=LOG_DIR, name=f"trial_{trial_number}"),
-        max_epochs=epochs,
-        enable_checkpointing=False,
+        max_epochs=100,
+        enable_checkpointing=True,
         accelerator="auto",
-        # callbacks=[callback],
+        callbacks=[early_stop_callback],
     )
-    hyper_params = {
-        "lr": lr,
-        "batch_size": batch_size,
-        "epochs": epochs,
-        "loss_fn": loss_fn,
-        "optimizer": optimizer_str,
-        "linear_reg": linear_reg_str,
-        "linear_reg_lambda": linear_reg_lambda,
-    }
     # Train the model
     trainer.fit(model_suit)
+    evaluation_metrics = trainer.test()
+
     # Return the validation zero-one loss
-    return trainer.callback_metrics["val_zero_one_loss_epoch"].item()
+
+    return evaluation_metrics[0]["test_zero_one_loss_epoch"]
 
 
 if __name__ == "__main__":
@@ -223,16 +215,18 @@ if __name__ == "__main__":
         direction="minimize",
     )
 
-    study.optimize(objective, n_trials=50, n_jobs=2)
+    study.optimize(objective, n_trials=150, n_jobs=2)
     task_id = int(os.environ.get("SLURM_ARRAY_TASK_ID", 0))
     print("Task ID: ", task_id)
 
     print("Number of finished trials: ", len(study.trials))
 
-    print("Best trial:")
+    print("Best trial:", study.best_trial.number)
     trial = study.best_trial
     print("  Value: ", trial.value)
 
     print("  Params: ")
     for key, value in trial.params.items():
         print("    {}: {}".format(key, value))
+
+    # Save the study

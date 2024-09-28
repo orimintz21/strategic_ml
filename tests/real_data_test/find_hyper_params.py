@@ -197,7 +197,7 @@ def create_study():
         direction="minimize",
     )
 
-    study.optimize(objective, n_trials=150, n_jobs=1)
+    study.optimize(objective, n_trials=1, n_jobs=1)
     task_id = int(os.environ.get("SLURM_ARRAY_TASK_ID", 0))
     print("Task ID: ", task_id)
 
@@ -231,18 +231,7 @@ def create_study():
 
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    assert len(args) <= 2, "Too many arguments"
-    if len(args) > 0:
-        # This is a global variable
-        assert float(args[0]) >= 0, "Cost weight must be non-negative"
-        COST_WEIGHT = float(args[0])
-    else:
-        COST_WEIGHT = 1.0
-
-    if len(args) > 1:
-        COST_WEIGHT_TEST = float(args[1])
-    else:
+    for cost_weight in [1.0, 10.0, 100.0, float("inf")]:
+        COST_WEIGHT = cost_weight
         COST_WEIGHT_TEST = COST_WEIGHT
-
-    create_study()
+        create_study()
