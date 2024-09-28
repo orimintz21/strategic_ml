@@ -63,8 +63,8 @@ class CreditCardTest(unittest.TestCase):
         seed = 0
         test_frac = 0.2
         val_frac_from_train = 0.2
-        batch_size_train = 66 
-        batch_size_val = 66 
+        batch_size_train = 66
+        batch_size_val = 66
         batch_size_test = 66
         dtype = torch.float32
         self.train_loader, self.val_loader, self.test_loader = load_data(
@@ -90,7 +90,7 @@ class CreditCardTest(unittest.TestCase):
         """
         print("Test cost weights")
         TESTED_COST_WEIGHTS = [0.1, 0.5, 1.0, 2.0, 10.0, float("inf")]
-        MAX_EPOCHS = 96 
+        MAX_EPOCHS = 96
         model = LinearModel(in_features=DATA_ROW_SIZE)
         loss_fn = BCEWithLogitsLossPNOne()
         cost = CostNormL2(dim=1)
@@ -115,7 +115,6 @@ class CreditCardTest(unittest.TestCase):
                     cost=cost,
                     cost_weight=assumed_cost_weight,
                 )
-            
 
             model_suit = ModelSuit(
                 model=model,
@@ -140,7 +139,9 @@ class CreditCardTest(unittest.TestCase):
             cost_weight_assumed_to_tested_to_loss[assumed_cost_weight] = {}
 
             for test_cost_weight in TESTED_COST_WEIGHTS:
-                print(f"Assumed cost weight: {assumed_cost_weight}Test cost weight: {test_cost_weight}")
+                print(
+                    f"Assumed cost weight: {assumed_cost_weight}Test cost weight: {test_cost_weight}"
+                )
                 if test_cost_weight == float("inf"):
                     model_suit.test_delta = IdentityDelta(
                         cost=cost, strategic_model=model

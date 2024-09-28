@@ -26,6 +26,7 @@ DATA_DIR = os.path.join(THIS_DIR, "data")
 DATA_NAME = "creditcard.csv"
 DATA_PATH = os.path.join(DATA_DIR, DATA_NAME)
 DATA_ROW_SIZE = 29
+OUTPUT_DIR = os.path.join(THIS_DIR, "output")
 
 
 class BCEWithLogitsLossPNOne(nn.Module):
@@ -85,7 +86,6 @@ def objective(trial: optuna.trial.Trial) -> float:
         float: The computed loss.
     """
 
-
     # Define the hyperparameters to optimize
     lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
     batch_size = trial.suggest_int("batch_size", 16, 256)
@@ -110,23 +110,18 @@ def objective(trial: optuna.trial.Trial) -> float:
     model = sml.models.LinearModel(DATA_ROW_SIZE)
     cost_fn = sml.cost_functions.CostNormL2(dim=1)
     if COST_WEIGHT == float("inf"):
-        delta = sml.gsc.IdentityDelta(
-            strategic_model=model, cost=cost_fn
-        )
+        delta = sml.gsc.IdentityDelta(strategic_model=model, cost=cost_fn)
     else:
         delta = sml.gsc.LinearStrategicDelta(
             strategic_model=model, cost=cost_fn, cost_weight=COST_WEIGHT
         )
 
     if COST_WEIGHT_TEST == float("inf"):
-        test_delta = sml.gsc.IdentityDelta(
-            strategic_model=model, cost=cost_fn
-        )
+        test_delta = sml.gsc.IdentityDelta(strategic_model=model, cost=cost_fn)
     else:
         test_delta = sml.gsc.LinearStrategicDelta(
             strategic_model=model, cost=cost_fn, cost_weight=COST_WEIGHT_TEST
         )
-
 
     if loss_fn == "hinge":
         loss_fn = nn.HingeEmbeddingLoss()
@@ -196,11 +191,11 @@ def objective(trial: optuna.trial.Trial) -> float:
     out = trainer.test(model_suit)
     return out[0]["test_zero_one_loss_epoch"]
 
+
 def create_study():
     study = optuna.create_study(
         direction="minimize",
     )
-
 
     study.optimize(objective, n_trials=150, n_jobs=1)
     task_id = int(os.environ.get("SLURM_ARRAY_TASK_ID", 0))
@@ -217,6 +212,23 @@ def create_study():
     for key, value in trial.params.items():
         print("    {}: {}".format(key, value))
 
+    # write the results to file:
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    with open(
+        os.path.join(
+            OUTPUT_DIR,
+            f"task_{task_id}_cost_{COST_WEIGHT}_assume_{COST_WEIGHT_TEST}.txt",
+        ),
+        "w",
+    ) as f:
+        f.write(f"COST_WEIGHT: {COST_WEIGHT}\n")
+        f.write(f"COST_WEIGHT_TEST: {COST_WEIGHT_TEST}\n")
+        f.write(f"Best trial: {trial.number}\n")
+        f.write(f"Value: {trial.value}\n")
+        f.write("Params:\n")
+        for key, value in trial.params.items():
+            f.write(f"  {key}: {value}\n")
+
 
 if __name__ == "__main__":
     args = sys.argv[1:]
@@ -232,5 +244,5 @@ if __name__ == "__main__":
         COST_WEIGHT_TEST = float(args[1])
     else:
         COST_WEIGHT_TEST = COST_WEIGHT
-    
+
     create_study()
