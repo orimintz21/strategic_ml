@@ -15,6 +15,7 @@ from strategic_ml import (
     LinearModel,
     LinearStrategicDelta,
     CostNormL2,
+    LinearL2Regularization,
     LinearAdvDelta,
     IdentityDelta,
     SocialBurden,
@@ -26,9 +27,10 @@ from .data_handle import load_data
 from .visualization import visualize_cost_weight_test, visualize_reg_weight_test
 
 # Constants
-LOG_DIR = "tests/real_data_test/logs/"
-VISUALIZATION_DIR = "tests/real_data_test/visualizations/"
-DATA_DIR = "tests/real_data_test/data"
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_DIR = os.path.join(THIS_DIR, "logs/")
+VISUALIZATION_DIR = os.path.join(THIS_DIR, "visualizations/")
+DATA_DIR = os.path.join(THIS_DIR, "data/")
 DATA_NAME = "creditcard.csv"
 DATA_PATH = os.path.join(DATA_DIR, DATA_NAME)
 DATA_ROW_SIZE = 29
@@ -61,9 +63,9 @@ class CreditCardTest(unittest.TestCase):
         seed = 0
         test_frac = 0.2
         val_frac_from_train = 0.2
-        batch_size_train = 64
-        batch_size_val = 64
-        batch_size_test = 64
+        batch_size_train = 66 
+        batch_size_val = 66 
+        batch_size_test = 66
         dtype = torch.float32
         self.train_loader, self.val_loader, self.test_loader = load_data(
             data_path=DATA_PATH,
@@ -74,9 +76,9 @@ class CreditCardTest(unittest.TestCase):
             batch_size_val=batch_size_val,
             batch_size_test=batch_size_test,
             dtype=dtype,
-            train_num_workers=9,
-            val_num_workers=9,
-            test_num_workers=9,
+            train_num_workers=1,
+            val_num_workers=1,
+            test_num_workers=1,
         )
         self.fast_dev_run = False
 
@@ -88,13 +90,14 @@ class CreditCardTest(unittest.TestCase):
         """
         print("Test cost weights")
         TESTED_COST_WEIGHTS = [0.1, 0.5, 1.0, 2.0, 10.0, float("inf")]
-        MAX_EPOCHS = 50
+        MAX_EPOCHS = 96 
         model = LinearModel(in_features=DATA_ROW_SIZE)
         loss_fn = BCEWithLogitsLossPNOne()
         cost = CostNormL2(dim=1)
+        l2_reg = LinearL2Regularization(0.008)
         training_params = {
             "optimizer": torch.optim.Adam,
-            "lr": 0.01,
+            "lr": 5e-5,
         }
 
         cost_weight_assumed_to_tested_to_loss: Dict[
@@ -112,6 +115,8 @@ class CreditCardTest(unittest.TestCase):
                     cost=cost,
                     cost_weight=assumed_cost_weight,
                 )
+            
+
             model_suit = ModelSuit(
                 model=model,
                 delta=delta,
@@ -120,6 +125,7 @@ class CreditCardTest(unittest.TestCase):
                 validation_loader=self.val_loader,
                 test_loader=self.test_loader,
                 training_params=training_params,
+                linear_regularization=[l2_reg],
             )
 
             trainer = pl.Trainer(
@@ -134,7 +140,7 @@ class CreditCardTest(unittest.TestCase):
             cost_weight_assumed_to_tested_to_loss[assumed_cost_weight] = {}
 
             for test_cost_weight in TESTED_COST_WEIGHTS:
-                print(f"Test cost weight: {test_cost_weight}")
+                print(f"Assumed cost weight: {assumed_cost_weight}Test cost weight: {test_cost_weight}")
                 if test_cost_weight == float("inf"):
                     model_suit.test_delta = IdentityDelta(
                         cost=cost, strategic_model=model

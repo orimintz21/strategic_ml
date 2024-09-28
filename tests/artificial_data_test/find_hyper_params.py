@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 import optuna
+from optuna.integration import PyTorchLightningPruningCallback
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.loggers import CSVLogger
 
@@ -194,7 +195,7 @@ def objective(trial: optuna.trial.Trial) -> float:
     )
 
     trial_number = trial.number
-    callback = CustomPruningCallback(trial, monitor="val_zero_one_loss")
+    callback = PyTorchLightningPruningCallback(trial, monitor="val_zero_one_loss")
     trainer = pl.Trainer(
         logger=CSVLogger(save_dir=LOG_DIR, name=f"trial_{trial_number}"),
         max_epochs=epochs,
@@ -222,7 +223,7 @@ if __name__ == "__main__":
         direction="minimize",
     )
 
-    study.optimize(objective, n_trials=500, n_jobs=5)
+    study.optimize(objective, n_trials=50, n_jobs=2)
     task_id = int(os.environ.get("SLURM_ARRAY_TASK_ID", 0))
     print("Task ID: ", task_id)
 

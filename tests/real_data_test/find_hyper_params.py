@@ -1,5 +1,6 @@
 # External Imports
 import os
+import sys
 from typing import List, Optional
 import torch
 import torch.nn as nn
@@ -15,6 +16,9 @@ import strategic_ml as sml
 from .data_handle import get_data_set
 
 # Constants
+global COST_WEIGHT, COST_WEIGHT_TEST
+COST_WEIGHT = 1.0
+COST_WEIGHT_TEST = 1.0
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_DIR = os.path.join(THIS_DIR, "logs/find_hyper_params")
 VISUALIZATION_DIR = os.path.join(THIS_DIR, "/visualizations/")
@@ -22,7 +26,6 @@ DATA_DIR = os.path.join(THIS_DIR, "data")
 DATA_NAME = "creditcard.csv"
 DATA_PATH = os.path.join(DATA_DIR, DATA_NAME)
 DATA_ROW_SIZE = 29
-COST_WEIGHT = 1.0
 
 
 class BCEWithLogitsLossPNOne(nn.Module):
@@ -82,33 +85,53 @@ def objective(trial: optuna.trial.Trial) -> float:
         float: The computed loss.
     """
 
+
     # Define the hyperparameters to optimize
     lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
     batch_size = trial.suggest_int("batch_size", 16, 256)
     epochs = trial.suggest_int("epochs", 40, 140)
-    loss_fn = trial.suggest_categorical(
-        "loss_fn", ["hinge", "strategic_hinge", "mse", "bce"]
-    )
+    loss_fn = trial.suggest_categorical("loss_fn", ["hinge", "mse", "bce"])
     optimizer_str = trial.suggest_categorical("optimizer", ["adam", "sgd", "adagrad"])
     linear_reg_str = trial.suggest_categorical("linear_reg", ["none", "l1", "l2"])
     linear_reg_lambda = trial.suggest_float("linear_reg_lambda", 1e-5, 1e-1, log=True)
 
     # Load the data
-    train_dataloader = DataLoader(TRAIN_DATASET, batch_size=batch_size, shuffle=True)
-    val_dataloader = DataLoader(VAL_DATASET, batch_size=batch_size, shuffle=False)
-    test_dataloader = DataLoader(TEST_DATASET, batch_size=batch_size, shuffle=False)
+    train_dataloader = DataLoader(
+        TRAIN_DATASET, batch_size=batch_size, shuffle=True, num_workers=0
+    )
+    val_dataloader = DataLoader(
+        VAL_DATASET, batch_size=batch_size, shuffle=False, num_workers=0
+    )
+    test_dataloader = DataLoader(
+        TEST_DATASET, batch_size=batch_size, shuffle=False, num_workers=0
+    )
 
     # Define the model
     model = sml.models.LinearModel(DATA_ROW_SIZE)
     cost_fn = sml.cost_functions.CostNormL2(dim=1)
-    delta = sml.gsc.LinearStrategicDelta(
-        strategic_model=model, cost=cost_fn, cost_weight=COST_WEIGHT
-    )
+    if COST_WEIGHT == float("inf"):
+        delta = sml.gsc.IdentityDelta(
+            strategic_model=model, cost=cost_fn
+        )
+    else:
+        delta = sml.gsc.LinearStrategicDelta(
+            strategic_model=model, cost=cost_fn, cost_weight=COST_WEIGHT
+        )
+
+    if COST_WEIGHT_TEST == float("inf"):
+        test_delta = sml.gsc.IdentityDelta(
+            strategic_model=model, cost=cost_fn
+        )
+    else:
+        test_delta = sml.gsc.LinearStrategicDelta(
+            strategic_model=model, cost=cost_fn, cost_weight=COST_WEIGHT_TEST
+        )
+
 
     if loss_fn == "hinge":
         loss_fn = nn.HingeEmbeddingLoss()
-    elif loss_fn == "strategic_hinge":
-        loss_fn = sml.loss_functions.StrategicHingeLoss(model=model, delta=delta)
+    # elif loss_fn == "strategic_hinge":
+    #     loss_fn = sml.loss_functions.StrategicHingeLoss(model=model, delta=delta)
     elif loss_fn == "mse":
         loss_fn = MSEPNOne()
     elif loss_fn == "bce":
@@ -146,6 +169,7 @@ def objective(trial: optuna.trial.Trial) -> float:
         train_loader=train_dataloader,
         validation_loader=val_dataloader,
         test_loader=test_dataloader,
+        test_delta=test_delta,
         training_params=training_params,
         linear_regularization=linear_reg,
     )
@@ -169,16 +193,16 @@ def objective(trial: optuna.trial.Trial) -> float:
     }
     # Train the model
     trainer.fit(model_suit)
-    # Return the validation zero-one loss
-    return trainer.callback_metrics["val_zero_one_loss_epoch"].item()
+    out = trainer.test(model_suit)
+    return out[0]["test_zero_one_loss_epoch"]
 
-
-if __name__ == "__main__":
+def create_study():
     study = optuna.create_study(
         direction="minimize",
     )
 
-    study.optimize(objective, n_trials=500, n_jobs=1)
+
+    study.optimize(objective, n_trials=150, n_jobs=1)
     task_id = int(os.environ.get("SLURM_ARRAY_TASK_ID", 0))
     print("Task ID: ", task_id)
 
@@ -186,8 +210,27 @@ if __name__ == "__main__":
 
     print("Best trial:")
     trial = study.best_trial
+    print("  Trial number: ", trial.number)
     print("  Value: ", trial.value)
 
     print("  Params: ")
     for key, value in trial.params.items():
         print("    {}: {}".format(key, value))
+
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+    assert len(args) <= 2, "Too many arguments"
+    if len(args) > 0:
+        # This is a global variable
+        assert float(args[0]) >= 0, "Cost weight must be non-negative"
+        COST_WEIGHT = float(args[0])
+    else:
+        COST_WEIGHT = 1.0
+
+    if len(args) > 1:
+        COST_WEIGHT_TEST = float(args[1])
+    else:
+        COST_WEIGHT_TEST = COST_WEIGHT
+    
+    create_study()
