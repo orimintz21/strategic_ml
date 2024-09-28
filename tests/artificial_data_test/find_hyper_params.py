@@ -1,27 +1,46 @@
 # External Imports
 import os
 from typing import List, Optional
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 import optuna
-from optuna.integration import PyTorchLightningPruningCallback
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.loggers import CSVLogger
 
 # Internal Imports
 import strategic_ml as sml
-from .data_handle import get_data_set
+from .gen_data_loader import gen_custom_normal_data
 
 # Constants
-LOG_DIR = "tests/real_data_test/logs/find_hyper_params"
-VISUALIZATION_DIR = "tests/real_data_test/visualizations/"
-DATA_DIR = "tests/real_data_test/data"
-DATA_NAME = "creditcard.csv"
-DATA_PATH = os.path.join(DATA_DIR, DATA_NAME)
-DATA_ROW_SIZE = 29
+# Current directory
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_DIR = os.path.join(THIS_DIR, "logs/find_hyper_params")
+VISUALIZATION_DIR = os.path.join(THIS_DIR, "/visualizations/")
+DATA_ROW_SIZE = 2
 COST_WEIGHT = 1.0
+
+train_size = 5000
+val_size = 1000
+test_size = 1000
+
+blobs_dist = 11
+blobs_std = 1.5
+blobs_x2_std = 1.5
+pos_noise_frac = 0.0
+neg_noise_frac = 0.0
+num_epochs = 100
+
+DEFAULT_POS_MEAN_2D = np.array([blobs_dist / 2 + 10, 0])
+DEFAULT_POS_STD_2D = np.array([blobs_std, blobs_x2_std])
+DEFAULT_NEG_MEAN_2D = np.array([-blobs_dist / 2 + 10, 0])
+DEFAULT_NEG_STD_2D = np.array([blobs_std, blobs_x2_std])
+DEFAULT_POS_MEAN_1D = blobs_dist / 2 + 10
+DEFAULT_POS_STD_1D = blobs_std
+DEFAULT_NEG_MEAN_1D = -blobs_dist / 2 + 10
+DEFAULT_NEG_STD_1D = blobs_std
 
 
 class BCEWithLogitsLossPNOne(nn.Module):
@@ -61,15 +80,6 @@ class CustomPruningCallback(Callback):
             raise optuna.exceptions.TrialPruned()
 
 
-TRAIN_DATASET, VAL_DATASET, TEST_DATASET = get_data_set(
-    data_path=DATA_PATH,
-    seed=42,
-    test_frac=0.2,
-    val_frac_from_train=0.2,
-    dtype=torch.float32,
-)
-
-
 def objective(trial: optuna.trial.Trial) -> float:
     """
     The objective function for the hyperparameter optimization using Optuna.
@@ -84,18 +94,46 @@ def objective(trial: optuna.trial.Trial) -> float:
     # Define the hyperparameters to optimize
     lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
     batch_size = trial.suggest_int("batch_size", 16, 256)
-    epochs = trial.suggest_int("epochs", 40, 100)
-    loss_fn = trial.suggest_categorical(
-        "loss_fn", ["hinge", "strategic_hinge", "mse", "bce"]
-    )
-    optimizer_str = trial.suggest_categorical("optimizer", ["adam", "sgd"])
+    epochs = trial.suggest_int("epochs", 40, 120)
+    loss_fn = trial.suggest_categorical("loss_fn", ["hinge", "mse", "bce"])
+    optimizer_str = trial.suggest_categorical("optimizer", ["adam", "sgd", "adagrad"])
+
     linear_reg_str = trial.suggest_categorical("linear_reg", ["none", "l1", "l2"])
     linear_reg_lambda = trial.suggest_float("linear_reg_lambda", 1e-5, 1e-1, log=True)
 
     # Load the data
-    train_dataloader = DataLoader(TRAIN_DATASET, batch_size=batch_size, shuffle=True)
-    val_dataloader = DataLoader(VAL_DATASET, batch_size=batch_size, shuffle=False)
-    test_dataloader = DataLoader(TEST_DATASET, batch_size=batch_size, shuffle=False)
+    train_dataloader = gen_custom_normal_data(
+        num_samples=train_size,
+        x_dim=DATA_ROW_SIZE,
+        pos_mean=DEFAULT_POS_MEAN_2D,
+        pos_std=DEFAULT_POS_STD_2D,
+        neg_mean=DEFAULT_NEG_MEAN_2D,
+        neg_std=DEFAULT_NEG_STD_2D,
+        pos_noise_frac=pos_noise_frac,
+        neg_noise_frac=neg_noise_frac,
+    )
+
+    val_dataloader = gen_custom_normal_data(
+        num_samples=val_size,
+        x_dim=DATA_ROW_SIZE,
+        pos_mean=DEFAULT_POS_MEAN_2D,
+        pos_std=DEFAULT_POS_STD_2D,
+        neg_mean=DEFAULT_NEG_MEAN_2D,
+        neg_std=DEFAULT_NEG_STD_2D,
+        pos_noise_frac=pos_noise_frac,
+        neg_noise_frac=neg_noise_frac,
+    )
+
+    test_dataloader = gen_custom_normal_data(
+        num_samples=test_size,
+        x_dim=DATA_ROW_SIZE,
+        pos_mean=DEFAULT_POS_MEAN_2D,
+        pos_std=DEFAULT_POS_STD_2D,
+        neg_mean=DEFAULT_NEG_MEAN_2D,
+        neg_std=DEFAULT_NEG_STD_2D,
+        pos_noise_frac=pos_noise_frac,
+        neg_noise_frac=neg_noise_frac,
+    )
 
     # Define the model
     model = sml.models.LinearModel(DATA_ROW_SIZE)
@@ -106,8 +144,6 @@ def objective(trial: optuna.trial.Trial) -> float:
 
     if loss_fn == "hinge":
         loss_fn = nn.HingeEmbeddingLoss()
-    elif loss_fn == "strategic_hinge":
-        loss_fn = sml.loss_functions.StrategicHingeLoss(model=model, delta=delta)
     elif loss_fn == "mse":
         loss_fn = MSEPNOne()
     elif loss_fn == "bce":
@@ -119,6 +155,8 @@ def objective(trial: optuna.trial.Trial) -> float:
         optimizer_class = torch.optim.Adam
     elif optimizer_str == "sgd":
         optimizer_class = torch.optim.SGD
+    elif optimizer_str == "adagrad":
+        optimizer_class = torch.optim.Adagrad
     else:
         raise ValueError(f"Invalid optimizer {optimizer_str}")
 
@@ -170,13 +208,11 @@ def objective(trial: optuna.trial.Trial) -> float:
 
 
 if __name__ == "__main__":
-    pruner = optuna.pruners.MedianPruner()
     study = optuna.create_study(
         direction="minimize",
-        pruner=pruner,
     )
 
-    study.optimize(objective, n_trials=500, n_jobs=1)
+    study.optimize(objective, n_trials=500, n_jobs=-1)
     task_id = int(os.environ.get("SLURM_ARRAY_TASK_ID", 0))
     print("Task ID: ", task_id)
 

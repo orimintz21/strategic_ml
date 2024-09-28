@@ -22,6 +22,7 @@ class LinearModel(nn.Module):
         in_features: int,
         weight: Optional[torch.Tensor] = None,
         bias: Optional[torch.Tensor] = None,
+        dtype: Any = torch.float32,
     ) -> None:
         """
         Initializes the LinearModel class.
@@ -30,10 +31,11 @@ class LinearModel(nn.Module):
             in_features (int): Number of input features.
             weight (Optional[torch.Tensor]): Initial weights for the model. Defaults to None.
             bias (Optional[torch.Tensor]): Initial bias for the model. Defaults to None.
+            dtype (Any): Data type for the model. Defaults to torch.float32.
         """
         super(LinearModel, self).__init__()
         self.model: torch.nn.Linear = torch.nn.Linear(
-            in_features=in_features, out_features=1, bias=True
+            in_features=in_features, out_features=1, bias=True, dtype=dtype
         )
         if weight is not None and bias is not None:
             self.set_weight_and_bias(weight, bias)
@@ -117,10 +119,17 @@ class LinearModel(nn.Module):
             weight.shape[0]
         )
         assert (
+            weight.shape == bias.shape
+        ), "The weight and bias shapes should be the same"
+        assert (
+            weight.dtype == self.model.weight.dtype
+        ), "The weight dtype should be the same"
+        assert (
             bias.shape[0] == 1
         ), "This is a binary classification model, the number of outputs should be 1 instead of {}".format(
             bias.shape[0]
         )
+        assert bias.dtype == self.model.bias.dtype, "The bias dtype should be the same"
         # Move weight and bias to the model's device
         device = self.model.weight.device
         weight = weight.to(device)

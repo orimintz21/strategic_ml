@@ -8,9 +8,6 @@ from torch.utils.data import DataLoader, TensorDataset
 import pytorch_lightning as pl
 import unittest
 from pytorch_lightning.loggers import CSVLogger
-import pandas as pd
-import matplotlib.pyplot as plt
-from random import sample
 
 # internal imports
 from strategic_ml import (
@@ -27,6 +24,8 @@ from strategic_ml import (
     LinearL2Regularization,
     StrategicHingeLoss,
 )
+
+from .gen_data_loader import gen_custom_normal_data
 
 DUMMY_RUN = False
 GPUS = 1
@@ -68,7 +67,7 @@ NON_LINEAR_TRAINING_PARAMS: Dict[str, Any] = {
 LINEAR_TRAINING_PARAMS: Dict[str, Any] = {
     "optimizer_class": optim.Adam,
     "optimizer_params": {
-        "lr": 0.001,
+        "lr": 0.01,
     },
 }
 
@@ -81,7 +80,7 @@ def reset_seed():
     torch.manual_seed(SEED)
 
 
-torch.set_default_dtype(torch.float64)
+torch.set_default_dtype(torch.float32)
 if torch.cuda.is_available():
     train_size = 500000
     val_size = 10000
@@ -105,58 +104,14 @@ else:
     neg_noise_frac = 0.0
     num_epochs = 100
 
-
-def gen_custom_normal_data(
-    num_samples,
-    x_dim,
-    pos_mean,
-    pos_std,
-    neg_mean,
-    neg_std,
-    pos_noise_frac=0.01,
-    neg_noise_frac=0.01,
-):
-    reset_seed()
-    pos_samples_num = num_samples // 2
-    neg_samples_num = num_samples - pos_samples_num
-    posX = (
-        torch.randn((pos_samples_num, x_dim), dtype=torch.float64) * pos_std + pos_mean
-    )
-    negX = (
-        torch.randn((neg_samples_num, x_dim), dtype=torch.float64) * neg_std + neg_mean
-    )
-
-    X = torch.cat((posX, negX), 0).to(torch.float64)  # Ensure X is float64
-
-    Y = torch.unsqueeze(
-        torch.cat(
-            (
-                torch.from_numpy(
-                    np.random.choice(
-                        [1, -1], len(posX), p=[1 - pos_noise_frac, pos_noise_frac]
-                    )
-                )
-                .float()
-                .to(torch.float64),  # Convert to float64
-                torch.from_numpy(
-                    np.random.choice(
-                        [-1, 1], len(posX), p=[1 - neg_noise_frac, neg_noise_frac]
-                    )
-                )
-                .float()
-                .to(torch.float64),  # Convert to float64
-            ),
-            0,
-        ),
-        1,
-    )
-
-    if torch.cuda.is_available():
-        batch_size = 1000
-    else:
-        batch_size = 100
-    dataset = TensorDataset(X, Y)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8)
+DEFAULT_POS_MEAN_2D = np.array([blobs_dist / 2 + 10, 0])
+DEFAULT_POS_STD_2D = np.array([blobs_std, blobs_x2_std])
+DEFAULT_NEG_MEAN_2D = np.array([-blobs_dist / 2 + 10, 0])
+DEFAULT_NEG_STD_2D = np.array([blobs_std, blobs_x2_std])
+DEFAULT_POS_MEAN_1D = blobs_dist / 2 + 10
+DEFAULT_POS_STD_1D = blobs_std
+DEFAULT_NEG_MEAN_1D = -blobs_dist / 2 + 10
+DEFAULT_NEG_STD_1D = blobs_std
 
 
 def print_if_verbose(message: str) -> None:
@@ -211,67 +166,67 @@ class TestModelSuit(unittest.TestCase):
 
     def setUp(self):
         self.train_dataLoader = gen_custom_normal_data(
-            train_size,
-            2,
-            np.array([blobs_dist / 2 + 10, 0]),
-            np.array([blobs_std, blobs_x2_std]),
-            np.array([-blobs_dist / 2 + 10, 0]),
-            np.array([blobs_std, blobs_x2_std]),
+            num_samples=train_size,
+            x_dim=2,
+            pos_mean=DEFAULT_POS_MEAN_2D,
+            pos_std=DEFAULT_POS_STD_2D,
+            neg_mean=DEFAULT_NEG_MEAN_2D,
+            neg_std=DEFAULT_NEG_STD_2D,
             pos_noise_frac=pos_noise_frac,
             neg_noise_frac=neg_noise_frac,
         )
 
         self.val_dataLoader = gen_custom_normal_data(
-            val_size,
-            2,
-            np.array([blobs_dist / 2 + 10, 0]),
-            np.array([blobs_std, blobs_x2_std]),
-            np.array([-blobs_dist / 2 + 10, 0]),
-            np.array([blobs_std, blobs_x2_std]),
+            num_samples=val_size,
+            x_dim=2,
+            pos_mean=DEFAULT_POS_MEAN_2D,
+            pos_std=DEFAULT_POS_STD_2D,
+            neg_mean=DEFAULT_NEG_MEAN_2D,
+            neg_std=DEFAULT_NEG_STD_2D,
             pos_noise_frac=pos_noise_frac,
             neg_noise_frac=neg_noise_frac,
         )
 
         self.test_dataLoader = gen_custom_normal_data(
-            test_size,
-            2,
-            np.array([blobs_dist / 2 + 10, 0]),
-            np.array([blobs_std, blobs_x2_std]),
-            np.array([-blobs_dist / 2 + 10, 0]),
-            np.array([blobs_std, blobs_x2_std]),
+            num_samples=test_size,
+            x_dim=2,
+            pos_mean=DEFAULT_POS_MEAN_2D,
+            pos_std=DEFAULT_POS_STD_2D,
+            neg_mean=DEFAULT_NEG_MEAN_2D,
+            neg_std=DEFAULT_NEG_STD_2D,
             pos_noise_frac=pos_noise_frac,
             neg_noise_frac=neg_noise_frac,
         )
 
         self.train_dataLoader_one_dim = gen_custom_normal_data(
-            train_size,
-            1,
-            blobs_dist / 2 + 10,
-            blobs_std,
-            -blobs_dist / 2 + 10,
-            blobs_std,
+            num_samples=train_size,
+            x_dim=1,
+            pos_mean=DEFAULT_POS_MEAN_1D,
+            pos_std=DEFAULT_POS_STD_1D,
+            neg_mean=DEFAULT_NEG_MEAN_1D,
+            neg_std=DEFAULT_NEG_STD_1D,
             pos_noise_frac=pos_noise_frac,
             neg_noise_frac=neg_noise_frac,
         )
 
         self.val_dataLoader_one_dim = gen_custom_normal_data(
-            val_size,
-            1,
-            blobs_dist / 2 + 10,
-            blobs_std,
-            -blobs_dist / 2 + 10,
-            blobs_std,
+            num_samples=val_size,
+            x_dim=1,
+            pos_mean=DEFAULT_POS_MEAN_1D,
+            pos_std=DEFAULT_POS_STD_1D,
+            neg_mean=DEFAULT_NEG_MEAN_1D,
+            neg_std=DEFAULT_NEG_STD_1D,
             pos_noise_frac=pos_noise_frac,
             neg_noise_frac=neg_noise_frac,
         )
 
         self.test_dataLoader_one_dim = gen_custom_normal_data(
-            test_size,
-            1,
-            blobs_dist / 2 + 10,
-            blobs_std,
-            -blobs_dist / 2 + 10,
-            blobs_std,
+            num_samples=test_size,
+            x_dim=1,
+            pos_mean=DEFAULT_POS_MEAN_1D,
+            pos_std=DEFAULT_POS_STD_1D,
+            neg_mean=DEFAULT_NEG_MEAN_1D,
+            neg_std=DEFAULT_NEG_STD_1D,
             pos_noise_frac=pos_noise_frac,
             neg_noise_frac=neg_noise_frac,
         )
@@ -300,7 +255,7 @@ class TestModelSuit(unittest.TestCase):
             cost_weight=0.5,
             strategic_model=self.non_linear_model,
             training_params=DELTA_TRAINING_PARAMS,
-            save_dir="./tests/model_suit/delta_data",
+            save_dir="./tests/artificial_data_set/delta_data",
         )
 
     def test_linear_model(self):
@@ -329,9 +284,7 @@ class TestModelSuit(unittest.TestCase):
         )
 
     def test_identity_delta(self):
-        w = torch.tensor([[1.0, 0]], dtype=torch.float64)
-        b = torch.tensor([-10], dtype=torch.float64)
-        linear_model = LinearModel(2, weight=w, bias=b)
+        linear_model = LinearModel(2)
         delta = IdentityDelta(cost=None, strategic_model=linear_model)
 
         identity_model = ModelSuit(
@@ -573,7 +526,7 @@ class TestModelSuit(unittest.TestCase):
             cost_weight=0.5,
             strategic_model=non_linear_model,
             training_params=DELTA_TRAINING_PARAMS,
-            save_dir="./tests/model_suit/delta_data",
+            save_dir="./tests/artificial_data_test/delta_data",
         )
 
         non_linear_train_suite = ModelSuit(
