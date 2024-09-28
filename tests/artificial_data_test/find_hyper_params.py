@@ -4,7 +4,6 @@ from typing import List, Optional
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 import optuna
 from pytorch_lightning.callbacks import Callback
@@ -111,6 +110,9 @@ def objective(trial: optuna.trial.Trial) -> float:
         neg_std=DEFAULT_NEG_STD_2D,
         pos_noise_frac=pos_noise_frac,
         neg_noise_frac=neg_noise_frac,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
     )
 
     val_dataloader = gen_custom_normal_data(
@@ -122,6 +124,9 @@ def objective(trial: optuna.trial.Trial) -> float:
         neg_std=DEFAULT_NEG_STD_2D,
         pos_noise_frac=pos_noise_frac,
         neg_noise_frac=neg_noise_frac,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
     )
 
     test_dataloader = gen_custom_normal_data(
@@ -133,6 +138,9 @@ def objective(trial: optuna.trial.Trial) -> float:
         neg_std=DEFAULT_NEG_STD_2D,
         pos_noise_frac=pos_noise_frac,
         neg_noise_frac=neg_noise_frac,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
     )
 
     # Define the model
@@ -184,9 +192,11 @@ def objective(trial: optuna.trial.Trial) -> float:
         training_params=training_params,
         linear_regularization=linear_reg,
     )
+
+    trial_number = trial.number
     callback = CustomPruningCallback(trial, monitor="val_zero_one_loss")
     trainer = pl.Trainer(
-        logger=CSVLogger(save_dir=LOG_DIR, name="find_hyper_params"),
+        logger=CSVLogger(save_dir=LOG_DIR, name=f"trial_{trial_number}"),
         max_epochs=epochs,
         enable_checkpointing=False,
         accelerator="auto",
@@ -212,7 +222,7 @@ if __name__ == "__main__":
         direction="minimize",
     )
 
-    study.optimize(objective, n_trials=500, n_jobs=-1)
+    study.optimize(objective, n_trials=500, n_jobs=5)
     task_id = int(os.environ.get("SLURM_ARRAY_TASK_ID", 0))
     print("Task ID: ", task_id)
 

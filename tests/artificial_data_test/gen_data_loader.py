@@ -24,6 +24,9 @@ def gen_custom_normal_data(
     neg_std: Union[np.ndarray, float],
     pos_noise_frac: float = 0.01,
     neg_noise_frac: float = 0.01,
+    batch_size: int = 32,
+    shuffle: bool = False,
+    num_workers: int = 0,
 ) -> DataLoader:
     reset_seed()
     pos_samples_num = num_samples // 2
@@ -60,9 +63,7 @@ def gen_custom_normal_data(
         1,
     )
 
-    if torch.cuda.is_available():
-        batch_size = 1000
-    else:
-        batch_size = 100
     dataset = TensorDataset(X, Y)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8)
+    return DataLoader(
+        dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
+    )

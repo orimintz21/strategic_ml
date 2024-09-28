@@ -15,9 +15,10 @@ import strategic_ml as sml
 from .data_handle import get_data_set
 
 # Constants
-LOG_DIR = "tests/real_data_test/logs/find_hyper_params"
-VISUALIZATION_DIR = "tests/real_data_test/visualizations/"
-DATA_DIR = "tests/real_data_test/data"
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_DIR = os.path.join(THIS_DIR, "logs/find_hyper_params")
+VISUALIZATION_DIR = os.path.join(THIS_DIR, "/visualizations/")
+DATA_DIR = os.path.join(THIS_DIR, "data")
 DATA_NAME = "creditcard.csv"
 DATA_PATH = os.path.join(DATA_DIR, DATA_NAME)
 DATA_ROW_SIZE = 29
@@ -84,11 +85,11 @@ def objective(trial: optuna.trial.Trial) -> float:
     # Define the hyperparameters to optimize
     lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
     batch_size = trial.suggest_int("batch_size", 16, 256)
-    epochs = trial.suggest_int("epochs", 40, 100)
+    epochs = trial.suggest_int("epochs", 40, 140)
     loss_fn = trial.suggest_categorical(
         "loss_fn", ["hinge", "strategic_hinge", "mse", "bce"]
     )
-    optimizer_str = trial.suggest_categorical("optimizer", ["adam", "sgd"])
+    optimizer_str = trial.suggest_categorical("optimizer", ["adam", "sgd", "adagrad"])
     linear_reg_str = trial.suggest_categorical("linear_reg", ["none", "l1", "l2"])
     linear_reg_lambda = trial.suggest_float("linear_reg_lambda", 1e-5, 1e-1, log=True)
 
@@ -119,6 +120,8 @@ def objective(trial: optuna.trial.Trial) -> float:
         optimizer_class = torch.optim.Adam
     elif optimizer_str == "sgd":
         optimizer_class = torch.optim.SGD
+    elif optimizer_str == "adagrad":
+        optimizer_class = torch.optim.Adagrad
     else:
         raise ValueError(f"Invalid optimizer {optimizer_str}")
 
@@ -146,9 +149,10 @@ def objective(trial: optuna.trial.Trial) -> float:
         training_params=training_params,
         linear_regularization=linear_reg,
     )
+    trail_number = trial.number
     callback = CustomPruningCallback(trial, monitor="val_zero_one_loss")
     trainer = pl.Trainer(
-        logger=CSVLogger(save_dir=LOG_DIR, name="find_hyper_params"),
+        logger=CSVLogger(save_dir=LOG_DIR, name=f"trial_{trail_number}"),
         max_epochs=epochs,
         enable_checkpointing=False,
         accelerator="auto",
@@ -170,10 +174,8 @@ def objective(trial: optuna.trial.Trial) -> float:
 
 
 if __name__ == "__main__":
-    pruner = optuna.pruners.MedianPruner()
     study = optuna.create_study(
         direction="minimize",
-        pruner=pruner,
     )
 
     study.optimize(objective, n_trials=500, n_jobs=1)
