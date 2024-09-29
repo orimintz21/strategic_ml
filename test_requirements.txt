@@ -2,5 +2,7 @@ numpy
 torch>=2.1.0
 matplotlib
 scikit-learn
-pytorch-lightning
+pytorch-lightning >= 2
 pandas
+optuna
+optuna-integration[pytorch_lightning]

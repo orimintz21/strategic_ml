@@ -1,8 +1,3 @@
-"""
-:file: __init__.py
-This is the init file for the strategic_ml package.
-"""
-
 # Package metadata
 __version__ = "0.1.0"
 __author__ = "Ori Mintz & Kfir Cohen"
@@ -17,14 +12,15 @@ from .cost_functions import (
     CostNormLInf,
 )
 
-from .regularization import (
-    _StrategicRegularization,
-    SocialBurden,
-    Recourse,
-    ExpectedUtility,
-)
 
-from .loss_functions import StrategicHingeLoss
+from .models import (
+    LinearModel,
+    _LinearRegularization,
+    LinearL2Regularization,
+    LinearL1Regularization,
+    LinearElasticNetRegularization,
+    LinearInfRegularization,
+)
 
 from .gsc import (
     _GSC,
@@ -37,13 +33,13 @@ from .gsc import (
     NonLinearAdvDelta,
 )
 
-from .models import (
-    LinearModel,
-    L2Regularization,
-    L1Regularization,
-    ElasticNetRegularization,
-    InfRegularization,
-    _LinearRegularization,
+from .loss_functions import StrategicHingeLoss
+
+from .regularization import (
+    _StrategicRegularization,
+    SocialBurden,
+    Recourse,
+    ExpectedUtility,
 )
 
 from .model_suit import ModelSuit
@@ -77,10 +73,10 @@ __all__: list = [
     "NonLinearAdvDelta",
     # Linear Model
     "LinearModel",
-    "L2Regularization",
-    "L1Regularization",
-    "ElasticNetRegularization",
-    "InfRegularization",
+    "LinearL2Regularization",
+    "LinearL1Regularization",
+    "LinearElasticNetRegularization",
+    "LinearInfRegularization",
     "_LinearRegularization",
     # Model Suit
     "ModelSuit",
