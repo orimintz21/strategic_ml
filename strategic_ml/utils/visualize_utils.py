@@ -17,6 +17,7 @@ def visualize_data_and_delta_2D(
     grid_size=100,
     display_percentage=1.0,
     prefix="",
+    dtype=torch.float32,
 ):
     """
     Visualizes a binary classification model's decision boundary and data points in 2D.
@@ -101,8 +102,8 @@ def visualize_data_and_delta_2D(
     if delta is not None:
         X_selected = X[displayed_indices]  # Only selected points
         x_prime = delta.forward(
-            torch.from_numpy(X_selected).to(torch.float64),
-            torch.from_numpy(Y[displayed_indices]).to(torch.float64),
+            torch.from_numpy(X_selected).to(dtype),
+            torch.from_numpy(Y[displayed_indices]).to(dtype),
         )  # Compute for selected points
         deltas = (x_prime - torch.from_numpy(X_selected)).detach().cpu().numpy()
 

@@ -119,9 +119,6 @@ class LinearModel(nn.Module):
             weight.shape[0]
         )
         assert (
-            weight.shape == bias.shape
-        ), "The weight and bias shapes should be the same"
-        assert (
             weight.dtype == self.model.weight.dtype
         ), "The weight dtype should be the same"
         assert (

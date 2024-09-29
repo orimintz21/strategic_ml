@@ -1,13 +1,12 @@
+
 # External Imports
 import os
-import sys
 from typing import List, Optional
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 import optuna
-from optuna.integration import PyTorchLightningPruningCallback
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.callbacks import EarlyStopping
@@ -18,14 +17,13 @@ from .data_handle import get_data_set
 
 # Constants
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-LOG_DIR = os.path.join(THIS_DIR, "logs/find_hyper_params")
+LOG_DIR = os.path.join(THIS_DIR, "logs/find_hyper_params_non_linear")
 VISUALIZATION_DIR = os.path.join(THIS_DIR, "/visualizations/")
 DATA_DIR = os.path.join(THIS_DIR, "data")
 DATA_NAME = "creditcard.csv"
 DATA_PATH = os.path.join(DATA_DIR, DATA_NAME)
 DATA_ROW_SIZE = 29
 OUTPUT_DIR = os.path.join(THIS_DIR, "output")
-COSTS = [0.1, 0.5, 1, 2, 10, float("inf")] 
 
 class BCEWithLogitsLossPNOne(nn.Module):
     def __init__(self):
@@ -49,6 +47,7 @@ class MSEPNOne(nn.Module):
         return self.loss(input, target)
 
 
+
 TRAIN_DATASET, VAL_DATASET, TEST_DATASET = get_data_set(
     data_path=DATA_PATH,
     seed=42,
@@ -69,15 +68,25 @@ def objective(trial: optuna.trial.Trial) -> float:
         float: The computed loss.
     """
 
+    batch_size = 126
+    epochs = 75
+    model_optimizer = torch.optim.SGD
+    lr =0.017
+    linear_reg = sml.LinearL2Regularization(lambda_=0.03)
+    loss_fn = BCEWithLogitsLossPNOne()
+    
+
     # Define the hyperparameters to optimize
-    lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
-    batch_size = trial.suggest_int("batch_size", 16, 256)
-    epochs = trial.suggest_int("epochs", 40, 140)
-    early_stopping = trial.suggest_int("early_stopping", 10, 40)
-    loss_fn = trial.suggest_categorical("loss_fn", ["hinge", "mse", "bce"])
-    optimizer_str = trial.suggest_categorical("optimizer", ["adam", "sgd", "adagrad"])
-    linear_reg_str = trial.suggest_categorical("linear_reg", ["none", "l1", "l2"])
-    linear_reg_lambda = trial.suggest_float("linear_reg_lambda", 1e-5, 1e-1, log=True)
+    delta_lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+    delta_optimizer_str = trial.suggest_categorical("optimizer", ["adam", "sgd", "adagrad"])
+    temp = trial.suggest_float("temp", 0.1, 50)
+    num_delta_epochs = trial.suggest_int("num_delta_epochs", 40, 100)
+
+    model_suit_training_params = {
+        "optimizer_class": model_optimizer,
+        "optimizer_params": {"lr": lr},
+    }
+
 
     # Load the data
     train_dataloader = DataLoader(
@@ -90,81 +99,79 @@ def objective(trial: optuna.trial.Trial) -> float:
         TEST_DATASET, batch_size=batch_size, shuffle=False, num_workers=0
     )
 
-    if loss_fn == "hinge":
-        loss_fn = nn.HingeEmbeddingLoss()
-    elif loss_fn == "mse":
-        loss_fn = MSEPNOne()
-    elif loss_fn == "bce":
-        loss_fn = BCEWithLogitsLossPNOne()
-    else:
-        raise ValueError(f"Invalid loss function {loss_fn}")
     # Define the model
 
-    if optimizer_str == "adam":
+    if delta_optimizer_str == "adam":
         optimizer_class = torch.optim.Adam
-    elif optimizer_str == "sgd":
+    elif delta_optimizer_str == "sgd":
         optimizer_class = torch.optim.SGD
-    elif optimizer_str == "adagrad":
+    elif delta_optimizer_str == "adagrad":
         optimizer_class = torch.optim.Adagrad
     else:
-        raise ValueError(f"Invalid optimizer {optimizer_str}")
+        raise ValueError(f"Invalid optimizer {delta_optimizer_str}")
+    
+    delta_training_params = {
+        "optimizer_class": optimizer_class,
+        "optimizer_params": {"lr": delta_lr},
+        "num_epochs": num_delta_epochs,
+        "temp": temp,
+    }
 
-    model = sml.models.LinearModel(DATA_ROW_SIZE)
-    if linear_reg_str == "none":
-        linear_reg: Optional[List[sml._LinearRegularization]] = None
-    elif linear_reg_str == "l1":
-        linear_reg = [sml.LinearL1Regularization(lambda_=linear_reg_lambda)]
-    elif linear_reg_str == "l2":
-        linear_reg = [sml.LinearL2Regularization(lambda_=linear_reg_lambda)]
-    else:
-        raise ValueError(f"Invalid linear regularization {linear_reg_str}")
-    cost_fn = sml.cost_functions.CostNormL2(dim=1)
+    linear_model_linear_delta = sml.models.LinearModel(
+        DATA_ROW_SIZE
+    )
+    linear_model_non_linear_delta = sml.models.LinearModel(
+        DATA_ROW_SIZE
+    )
+    cost = sml.CostNormL2(dim=1)
 
-    sum_loss = 0
-    for cost_weight in COSTS:
-        if cost_weight == float("inf"):
-            delta = sml.gsc.IdentityDelta(strategic_model=model, cost=cost_fn)
-        else:
-            delta = sml.gsc.LinearStrategicDelta(
-                strategic_model=model, cost=cost_fn, cost_weight=cost_weight
-            )
-        
+    linear_delta = sml.LinearStrategicDelta(cost=cost, strategic_model=linear_model_linear_delta)
 
-        training_params = {
-            "optimizer_class": optimizer_class,
-            "optimizer_param": lr,
-        }
+    save_dir = os.path.join(LOG_DIR, f"trial_{trial.number}")
+    non_linear_delta = sml.NonLinearStrategicDelta(cost=cost, strategic_model=linear_model_non_linear_delta, save_dir=save_dir, training_params=delta_training_params)
 
-        model_suit = sml.ModelSuit(
-            model=model,
-            delta=delta,
-            loss_fn=loss_fn,
-            train_loader=train_dataloader,
-            validation_loader=val_dataloader,
-            test_loader=test_dataloader,
-            training_params=training_params,
-            linear_regularization=linear_reg,
-        )
-        trail_number = trial.number
-        early_stopping_callback = EarlyStopping(monitor="val_zero_one_loss_epoch", patience=early_stopping)
-        trainer = pl.Trainer(
-            logger=CSVLogger(save_dir=LOG_DIR, name=f"trial_{trail_number}"),
-            max_epochs=epochs,
-            enable_checkpointing=False,
-            accelerator="auto",
-            callbacks=[early_stopping_callback],
-        )
+    model_suit_linear = sml.ModelSuit(
+        model=linear_model_linear_delta,
+        delta=linear_delta,
+        loss_fn=loss_fn,
+        train_loader=train_dataloader,
+        validation_loader=val_dataloader,
+        test_loader=test_dataloader,
+        training_params=model_suit_training_params,
+    )
 
-        # Train the model
-        trainer.fit(model_suit)
-        out = trainer.test(model_suit)
-        loss = out[0]["test_zero_one_loss_epoch"]
-        if cost_weight == 0.1:
-            loss = loss * 0.5
+    trainer_save_dir = os.path.join(LOG_DIR, f"linear_csv_{trial.number}")
+    trainer = pl.Trainer(
+        max_epochs=epochs,
+        logger=CSVLogger(trainer_save_dir),
+    )
 
-        sum_loss += loss
+    trainer.fit(model_suit_linear)
+    output = trainer.test(model_suit_linear)
+    linear_output = output[0]["test_loss_epoch"]
 
-    return sum_loss 
+    model_suit_non_linear = sml.ModelSuit(
+        model=linear_model_non_linear_delta,
+        delta=non_linear_delta,
+        loss_fn=loss_fn,
+        train_loader=train_dataloader,
+        validation_loader=val_dataloader,
+        test_loader=test_dataloader,
+        training_params=model_suit_training_params,
+    )
+
+    trainer_save_dir = os.path.join(LOG_DIR, f"non_linear_csv_{trial.number}")
+    trainer = pl.Trainer(
+        max_epochs=epochs,
+        logger=CSVLogger(trainer_save_dir),
+    )
+    trainer.fit(model_suit_non_linear)
+    model_suit_non_linear.train_delta_for_test()
+    output = trainer.test(model_suit_non_linear)
+    non_linear_output = output[0]["test_loss_epoch"]
+
+    return abs(linear_output - non_linear_output)
+
 
 
 def create_study():
@@ -172,7 +179,7 @@ def create_study():
         direction="minimize",
     )
 
-    study.optimize(objective, n_trials=200, n_jobs=5)
+    study.optimize(objective, n_trials=150, n_jobs=5)
     task_id = int(os.environ.get("SLURM_ARRAY_TASK_ID", 0))
     print("Task ID: ", task_id)
 
