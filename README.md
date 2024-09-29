@@ -329,6 +329,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ---
 
-Thank you for using the Strategic Machine Learning Library! We hope it aids in your research and applications involving strategic behavior in machine learning models.
-
-If you have any questions or need support, feel free to open an issue on the repository or contact the maintainers.
+Thank you for using the Strategic Machine Learning Library! We hope it aids in your research and applications.
