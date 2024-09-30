@@ -1,4 +1,3 @@
-
 # External Imports
 import os
 from typing import List, Optional
@@ -25,6 +24,7 @@ DATA_PATH = os.path.join(DATA_DIR, DATA_NAME)
 DATA_ROW_SIZE = 29
 OUTPUT_DIR = os.path.join(THIS_DIR, "output")
 
+
 class BCEWithLogitsLossPNOne(nn.Module):
     def __init__(self):
         super(BCEWithLogitsLossPNOne, self).__init__()
@@ -45,7 +45,6 @@ class MSEPNOne(nn.Module):
         target = (target + 1) / 2
         input = (input + 1) / 2
         return self.loss(input, target)
-
 
 
 TRAIN_DATASET, VAL_DATASET, TEST_DATASET = get_data_set(
@@ -71,14 +70,15 @@ def objective(trial: optuna.trial.Trial) -> float:
     batch_size = 126
     epochs = 75
     model_optimizer = torch.optim.SGD
-    lr =0.017
+    lr = 0.017
     linear_reg = sml.LinearL2Regularization(lambda_=0.03)
     loss_fn = BCEWithLogitsLossPNOne()
-    
 
     # Define the hyperparameters to optimize
     delta_lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
-    delta_optimizer_str = trial.suggest_categorical("optimizer", ["adam", "sgd", "adagrad"])
+    delta_optimizer_str = trial.suggest_categorical(
+        "optimizer", ["adam", "sgd", "adagrad"]
+    )
     temp = trial.suggest_float("temp", 0.1, 50)
     num_delta_epochs = trial.suggest_int("num_delta_epochs", 40, 100)
 
@@ -86,7 +86,6 @@ def objective(trial: optuna.trial.Trial) -> float:
         "optimizer_class": model_optimizer,
         "optimizer_params": {"lr": lr},
     }
-
 
     # Load the data
     train_dataloader = DataLoader(
@@ -109,7 +108,7 @@ def objective(trial: optuna.trial.Trial) -> float:
         optimizer_class = torch.optim.Adagrad
     else:
         raise ValueError(f"Invalid optimizer {delta_optimizer_str}")
-    
+
     delta_training_params = {
         "optimizer_class": optimizer_class,
         "optimizer_params": {"lr": delta_lr},
@@ -117,18 +116,21 @@ def objective(trial: optuna.trial.Trial) -> float:
         "temp": temp,
     }
 
-    linear_model_linear_delta = sml.models.LinearModel(
-        DATA_ROW_SIZE
-    )
-    linear_model_non_linear_delta = sml.models.LinearModel(
-        DATA_ROW_SIZE
-    )
+    linear_model_linear_delta = sml.models.LinearModel(DATA_ROW_SIZE)
+    linear_model_non_linear_delta = sml.models.LinearModel(DATA_ROW_SIZE)
     cost = sml.CostNormL2(dim=1)
 
-    linear_delta = sml.LinearStrategicDelta(cost=cost, strategic_model=linear_model_linear_delta)
+    linear_delta = sml.LinearStrategicDelta(
+        cost=cost, strategic_model=linear_model_linear_delta
+    )
 
     save_dir = os.path.join(LOG_DIR, f"trial_{trial.number}")
-    non_linear_delta = sml.NonLinearStrategicDelta(cost=cost, strategic_model=linear_model_non_linear_delta, save_dir=save_dir, training_params=delta_training_params)
+    non_linear_delta = sml.NonLinearStrategicDelta(
+        cost=cost,
+        strategic_model=linear_model_non_linear_delta,
+        save_dir=save_dir,
+        training_params=delta_training_params,
+    )
 
     model_suit_linear = sml.ModelSuit(
         model=linear_model_linear_delta,
@@ -138,7 +140,7 @@ def objective(trial: optuna.trial.Trial) -> float:
         validation_loader=val_dataloader,
         test_loader=test_dataloader,
         training_params=model_suit_training_params,
-        linear_regularization=[linear_reg]
+        linear_regularization=[linear_reg],
     )
 
     trainer_save_dir = os.path.join(LOG_DIR, f"linear_csv_{trial.number}")
@@ -146,7 +148,7 @@ def objective(trial: optuna.trial.Trial) -> float:
         max_epochs=epochs,
         logger=CSVLogger(trainer_save_dir),
     )
-    
+
     trainer.fit(model_suit_linear)
     output = trainer.test(model_suit_linear)
     linear_output = output[0]["test_loss_epoch"]
@@ -159,7 +161,7 @@ def objective(trial: optuna.trial.Trial) -> float:
         validation_loader=val_dataloader,
         test_loader=test_dataloader,
         training_params=model_suit_training_params,
-        linear_regularization=[linear_reg]
+        linear_regularization=[linear_reg],
     )
 
     trainer_save_dir = os.path.join(LOG_DIR, f"non_linear_csv_{trial.number}")
@@ -173,7 +175,6 @@ def objective(trial: optuna.trial.Trial) -> float:
     non_linear_output = output[0]["test_loss_epoch"]
 
     return abs(linear_output - non_linear_output)
-
 
 
 def create_study():

@@ -358,8 +358,10 @@ class TestModelSuit(unittest.TestCase):
     #     )
 
     def test_linear_regularization_with_s_hinge(self):
-        
-        linear_model = LinearModel(2, weight=torch.Tensor([[1.0, 0.0]]), bias=torch.Tensor([-10.0]))
+
+        linear_model = LinearModel(
+            2, weight=torch.Tensor([[1.0, 0.0]]), bias=torch.Tensor([-10.0])
+        )
         linear_delta = LinearStrategicDelta(
             cost=self.cost, strategic_model=linear_model
         )

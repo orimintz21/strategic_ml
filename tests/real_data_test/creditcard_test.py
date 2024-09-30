@@ -64,9 +64,9 @@ class CreditCardTest(unittest.TestCase):
         seed = 0
         test_frac = 0.2
         val_frac_from_train = 0.2
-        batch_size_train = 34 
+        batch_size_train = 34
         batch_size_val = 34
-        batch_size_test = 34 
+        batch_size_test = 34
         dtype = torch.float32
         self.train_loader, self.val_loader, self.test_loader = load_data(
             data_path=DATA_PATH,
@@ -274,7 +274,7 @@ class CreditCardTest(unittest.TestCase):
         """ """
         print("Test reg weights")
         TESTED_COST_WEIGHTS = [0.1, 0.5, 1.0, 2.0, 10.0, float("inf")]
-        MAX_EPOCHS =  116
+        MAX_EPOCHS = 116
         model = LinearModel(in_features=DATA_ROW_SIZE)
         loss_fn = BCEWithLogitsLossPNOne()
         cost = CostNormL2(dim=1)

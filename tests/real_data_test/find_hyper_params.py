@@ -23,7 +23,8 @@ DATA_NAME = "creditcard.csv"
 DATA_PATH = os.path.join(DATA_DIR, DATA_NAME)
 DATA_ROW_SIZE = 29
 OUTPUT_DIR = os.path.join(THIS_DIR, "output")
-COSTS = [0.1, 0.5, 1, 2, 10, float("inf")] 
+COSTS = [0.1, 0.5, 1, 2, 10, float("inf")]
+
 
 class BCEWithLogitsLossPNOne(nn.Module):
     def __init__(self):
@@ -126,7 +127,6 @@ def objective(trial: optuna.trial.Trial) -> float:
             delta = sml.gsc.LinearAdvDelta(
                 strategic_model=model, cost=cost_fn, cost_weight=cost_weight
             )
-        
 
         training_params = {
             "optimizer_class": optimizer_class,
@@ -144,7 +144,9 @@ def objective(trial: optuna.trial.Trial) -> float:
             linear_regularization=linear_reg,
         )
         trail_number = trial.number
-        early_stopping_callback = EarlyStopping(monitor="val_zero_one_loss_epoch", patience=early_stopping)
+        early_stopping_callback = EarlyStopping(
+            monitor="val_zero_one_loss_epoch", patience=early_stopping
+        )
         trainer = pl.Trainer(
             logger=CSVLogger(save_dir=LOG_DIR, name=f"trial_{trail_number}"),
             max_epochs=epochs,
@@ -162,7 +164,7 @@ def objective(trial: optuna.trial.Trial) -> float:
 
         sum_loss += loss
 
-    return sum_loss 
+    return sum_loss
 
 
 def create_study():
