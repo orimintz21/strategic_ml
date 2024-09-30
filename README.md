@@ -34,7 +34,7 @@ The Strategic Machine Learning Library provides a comprehensive framework to mod
 To install the library, you can clone the repository and install the required packages:
 
 ```bash
-git clone https://github.com/your_username/strategic_ml.git
+git clone https://github.com/orimintz21/strategic_ml.git
 cd strategic_ml
 pip install -r requirements.txt
 ```
