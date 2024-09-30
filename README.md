@@ -81,11 +81,15 @@ model_suit = sml.ModelSuit(
     validation_loader=validation_loader,
     test_loader=test_loader,
     training_params=training_params,
+    # you can add test_delta if you want to test the model using diffrent delta than
+    # what you have trained on
 )
 
 # Train the model
 trainer = sml.Trainer(max_epochs=10)
 trainer.fit(model_suit)
+# model_suit.train_delta_for_test() # Add that if you use non-linear delta for testing
+output = trainer.test(model_suit)
 ```
 
 ## Key Concepts
