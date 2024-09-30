@@ -54,16 +54,8 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 import strategic_ml as sml
 
-# Generate some synthetic data
-X = torch.randn(1000, 10)
-y = torch.sign(X.sum(dim=1))
-
-# Create a DataLoader
-dataset = TensorDataset(X, y)
-train_loader = DataLoader(dataset, batch_size=32)
-
 # Define the model
-model = sml.LinearModel(in_features=10)
+model = sml.LinearModel(in_features=IN_FEATURES)
 
 # Define the cost function
 cost_fn = sml.CostNormL2(dim=1)
@@ -86,8 +78,8 @@ model_suit = sml.ModelSuit(
     delta=delta,
     loss_fn=loss_fn,
     train_loader=train_loader,
-    validation_loader=train_loader,
-    test_loader=train_loader,
+    validation_loader=validation_loader,
+    test_loader=test_loader,
     training_params=training_params,
 )
 
