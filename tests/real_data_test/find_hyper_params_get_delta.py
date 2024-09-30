@@ -138,6 +138,7 @@ def objective(trial: optuna.trial.Trial) -> float:
         validation_loader=val_dataloader,
         test_loader=test_dataloader,
         training_params=model_suit_training_params,
+        linear_regularization=[linear_reg]
     )
 
     trainer_save_dir = os.path.join(LOG_DIR, f"linear_csv_{trial.number}")
@@ -145,7 +146,7 @@ def objective(trial: optuna.trial.Trial) -> float:
         max_epochs=epochs,
         logger=CSVLogger(trainer_save_dir),
     )
-
+    
     trainer.fit(model_suit_linear)
     output = trainer.test(model_suit_linear)
     linear_output = output[0]["test_loss_epoch"]
@@ -158,6 +159,7 @@ def objective(trial: optuna.trial.Trial) -> float:
         validation_loader=val_dataloader,
         test_loader=test_dataloader,
         training_params=model_suit_training_params,
+        linear_regularization=[linear_reg]
     )
 
     trainer_save_dir = os.path.join(LOG_DIR, f"non_linear_csv_{trial.number}")
@@ -179,7 +181,7 @@ def create_study():
         direction="minimize",
     )
 
-    study.optimize(objective, n_trials=150, n_jobs=5)
+    study.optimize(objective, n_trials=300, n_jobs=5)
     task_id = int(os.environ.get("SLURM_ARRAY_TASK_ID", 0))
     print("Task ID: ", task_id)
 
@@ -199,7 +201,7 @@ def create_study():
     with open(
         os.path.join(
             OUTPUT_DIR,
-            f"task_{task_id}_best_values.txt",
+            f"task_{task_id}_find_delta_best_values.txt",
         ),
         "w",
     ) as f:

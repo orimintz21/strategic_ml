@@ -7,8 +7,6 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 import optuna
-from optuna.integration import PyTorchLightningPruningCallback
-from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.callbacks import EarlyStopping
 
@@ -125,7 +123,7 @@ def objective(trial: optuna.trial.Trial) -> float:
         if cost_weight == float("inf"):
             delta = sml.gsc.IdentityDelta(strategic_model=model, cost=cost_fn)
         else:
-            delta = sml.gsc.LinearStrategicDelta(
+            delta = sml.gsc.LinearAdvDelta(
                 strategic_model=model, cost=cost_fn, cost_weight=cost_weight
             )
         
@@ -192,7 +190,7 @@ def create_study():
     with open(
         os.path.join(
             OUTPUT_DIR,
-            f"task_{task_id}_best_values.txt",
+            f"task_{task_id}_adv_test_best_values.txt",
         ),
         "w",
     ) as f:
