@@ -182,3 +182,65 @@ def visualize_reg_weight_test(
 
     path = os.path.join(save_dir, "reg_weight_test_zero_one_loss.png")
     plt.savefig(path)
+
+def visualize_full_connected_2_layers(
+    output_dict: Dict[
+        int, Dict[bool, Tuple[float, float]]
+    ],
+    save_dir: str,
+):
+    """
+    This function visualize the results of the cost weight test.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    data = output_dict
+    layers = sorted(data.keys())
+
+    # Initialize lists to hold the extracted values
+    loss_delta = []
+    loss_no_delta = []
+    zero_one_loss_delta = []
+    zero_one_loss_no_delta = []
+
+    # Extract the loss and zero-one loss values for each layer
+    for layer in layers:
+        delta_data = data[layer][True]
+        no_delta_data = data[layer][False]
+        loss_delta.append(delta_data[0])
+        zero_one_loss_delta.append(delta_data[1])
+        loss_no_delta.append(no_delta_data[0])
+        zero_one_loss_no_delta.append(no_delta_data[1])
+
+    # Define the width of each bar and the positions
+    bar_width = 0.35
+    x = np.arange(len(layers))  # The label locations
+    # Plot Loss vs Number of Layers
+    # Plot Loss vs Number of Layers (Bar Chart)
+    plt.figure(figsize=(10, 5))
+    plt.bar(x - bar_width/2, loss_delta, width=bar_width, label='Loss with Delta')
+    plt.bar(x + bar_width/2, loss_no_delta, width=bar_width, label='Loss without Delta')
+    plt.xlabel('Number of Layers')
+    plt.ylabel('Loss')
+    plt.title('Loss vs Number of Layers')
+    plt.xticks(x, layers)
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    path = os.path.join(save_dir, "full_connected_2_layers_loss.png")
+    plt.savefig(path)
+
+    # Plot Zero-One Loss vs Number of Layers (Bar Chart)
+    plt.figure(figsize=(10, 5))
+    plt.bar(x - bar_width/2, zero_one_loss_delta, width=bar_width, label='Zero-One Loss with Delta')
+    plt.bar(x + bar_width/2, zero_one_loss_no_delta, width=bar_width, label='Zero-One Loss without Delta')
+    plt.xlabel('Number of Layers')
+    plt.ylabel('Zero-One Loss')
+    plt.title('Zero-One Loss vs Number of Layers')
+    plt.xticks(x, layers)
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    path = os.path.join(save_dir, "full_connected_2_layers_zero_one_loss.png")
+    plt.savefig(path)

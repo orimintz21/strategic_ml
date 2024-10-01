@@ -16,6 +16,7 @@ from strategic_ml import (
     LinearStrategicDelta,
     CostNormL2,
     LinearL1Regularization,
+    NonLinearStrategicDelta,
     LinearAdvDelta,
     StrategicHingeLoss,
     IdentityDelta,
@@ -25,16 +26,28 @@ from strategic_ml import (
 )
 
 from .data_handle import load_data
-from .visualization import visualize_cost_weight_test, visualize_reg_weight_test
+from .visualization import visualize_cost_weight_test, visualize_reg_weight_test, visualize_full_connected_2_layers
 
 # Constants
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_DIR = os.path.join(THIS_DIR, "logs/")
+DELTA_LOG_DIR = os.path.join(THIS_DIR, "delta_logs/")
 VISUALIZATION_DIR = os.path.join(THIS_DIR, "visualizations/")
 DATA_DIR = os.path.join(THIS_DIR, "data/")
 DATA_NAME = "creditcard.csv"
 DATA_PATH = os.path.join(DATA_DIR, DATA_NAME)
 DATA_ROW_SIZE = 29
+
+class FullyConnected2Layers(nn.Module):
+    def __init__(self, in_features: int, hidden_size: int = 100):
+        super(FullyConnected2Layers, self).__init__()
+        self.fc1 = nn.Linear(in_features, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, 1)
+
+    def forward(self, x):
+        x = torch.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
 
 
 class BCEWithLogitsLossPNOne(nn.Module):
@@ -81,7 +94,7 @@ class CreditCardTest(unittest.TestCase):
             val_num_workers=1,
             test_num_workers=1,
         )
-        self.fast_dev_run = False
+        self.fast_dev_run = False 
 
     # def test_cost_weighs_strategic(self):
     #     """
@@ -270,97 +283,191 @@ class CreditCardTest(unittest.TestCase):
     #         save_dir=os.path.join(VISUALIZATION_DIR, "adv_cost_weight_test"),
     #     )
 
-    def test_reg_weights(self):
-        """ """
-        print("Test reg weights")
-        TESTED_COST_WEIGHTS = [0.1, 0.5, 1.0, 2.0, 10.0, float("inf")]
+    # def test_reg_weights(self):
+    #     """ """
+    #     print("Test reg weights")
+    #     TESTED_COST_WEIGHTS = [0.1, 0.5, 1.0, 2.0, 10.0, float("inf")]
+    #     MAX_EPOCHS = 116
+    #     model = LinearModel(in_features=DATA_ROW_SIZE)
+    #     loss_fn = BCEWithLogitsLossPNOne()
+    #     cost = CostNormL2(dim=1)
+    #     l2_reg = LinearL1Regularization(0.011)
+    #     training_params = {
+    #         "optimizer": torch.optim.Adam,
+    #         "lr": 0.00018,
+    #     }
+    #     TESTED_REG_WEIGHTS = [0, 0.5, 1.0, 2.0, 10.0]
+    #     reg_functions = ["expected_utility", "recourse", "social_burden"]
+    #     cost_reg_loss: Dict[float, Dict[float, Tuple[float, float]]] = {}
+    #     for reg_function in reg_functions:
+    #         for cost_weight in TESTED_COST_WEIGHTS:
+    #             cost_reg_loss[cost_weight] = {}
+    #             print(f"test weight: {cost_weight}")
+    #             for reg_weight in TESTED_REG_WEIGHTS:
+    #                 print(f"Test reg weight: {reg_weight}")
+    #                 model = LinearModel(in_features=DATA_ROW_SIZE)
+    #                 if cost_weight == float("inf"):
+    #                     delta: Union[IdentityDelta, LinearStrategicDelta] = (
+    #                         IdentityDelta(cost=cost, strategic_model=model)
+    #                     )
+    #                 else:
+    #                     delta = LinearStrategicDelta(
+    #                         strategic_model=model,
+    #                         cost=cost,
+    #                         cost_weight=cost_weight,
+    #                     )
+
+    #                 if reg_weight == 0:
+    #                     reg = None
+    #                 else:
+    #                     if reg_function == "social_burden":
+    #                         reg = SocialBurden(linear_delta=delta)
+    #                     elif reg_function == "expected_utility":
+    #                         reg = ExpectedUtility(tanh_temp=10)
+    #                     elif reg_function == "recourse":
+    #                         reg = Recourse(sigmoid_temp=10)
+    #                     else:
+    #                         raise ValueError(f"Unknown reg function: {reg_function}")
+
+    #                 model_suit = ModelSuit(
+    #                     model=model,
+    #                     delta=delta,
+    #                     loss_fn=loss_fn,
+    #                     train_loader=self.train_loader,
+    #                     validation_loader=self.val_loader,
+    #                     test_loader=self.test_loader,
+    #                     training_params=training_params,
+    #                     regularization=reg,
+    #                     regularization_weight=reg_weight,
+    #                 )
+
+    #                 trainer = pl.Trainer(
+    #                     fast_dev_run=self.fast_dev_run,
+    #                     max_epochs=MAX_EPOCHS,
+    #                     logger=CSVLogger(
+    #                         LOG_DIR,
+    #                         name=f"test_{reg_function}_reg_{reg_weight}_cost_{cost_weight}",
+    #                     ),
+    #                 )
+    #                 trainer.fit(model_suit)
+    #                 trainer.test(model_suit)
+
+    #                 output = trainer.test(model_suit)
+    #                 mean_loss = np.mean(
+    #                     [output[i]["test_loss_epoch"] for i in range(len(output))]
+    #                 ).item()
+    #                 mean_zero_one_loss = np.mean(
+    #                     [
+    #                         output[i]["test_zero_one_loss_epoch"]
+    #                         for i in range(len(output))
+    #                     ]
+    #                 ).item()
+
+    #                 cost_reg_loss[cost_weight][reg_weight] = (
+    #                     mean_loss,
+    #                     mean_zero_one_loss,
+    #                 )
+
+    #         visualize_reg_weight_test(
+    #             cost_reg_loss,
+    #             save_dir=os.path.join(
+    #                 VISUALIZATION_DIR, f"reg_{reg_function}_weight_test"
+    #             ),
+    #         )
+    
+
+    def test_fully_connected_2_layers(self):
+        """We check the effect of learning with delta on a fully connected 2 layers model
+        for different sizes of the hidden layer. We use the BCEWithLogitsLossPNOne loss function
+        """
+
         MAX_EPOCHS = 116
-        model = LinearModel(in_features=DATA_ROW_SIZE)
         loss_fn = BCEWithLogitsLossPNOne()
         cost = CostNormL2(dim=1)
-        l2_reg = LinearL1Regularization(0.011)
         training_params = {
             "optimizer": torch.optim.Adam,
             "lr": 0.00018,
         }
-        TESTED_REG_WEIGHTS = [0, 0.5, 1.0, 2.0, 10.0]
-        reg_functions = ["expected_utility", "recourse", "social_burden"]
-        cost_reg_loss: Dict[float, Dict[float, Tuple[float, float]]] = {}
-        for reg_function in reg_functions:
-            for cost_weight in TESTED_COST_WEIGHTS:
-                cost_reg_loss[cost_weight] = {}
-                print(f"test weight: {cost_weight}")
-                for reg_weight in TESTED_REG_WEIGHTS:
-                    print(f"Test reg weight: {reg_weight}")
-                    model = LinearModel(in_features=DATA_ROW_SIZE)
-                    if cost_weight == float("inf"):
-                        delta: Union[IdentityDelta, LinearStrategicDelta] = (
-                            IdentityDelta(cost=cost, strategic_model=model)
-                        )
-                    else:
-                        delta = LinearStrategicDelta(
-                            strategic_model=model,
-                            cost=cost,
-                            cost_weight=cost_weight,
-                        )
+        delta_train_params = {
+            "optimizer_class": torch.optim.SGD,
+            "optimizer_param": {"lr": 0.0017},
+            "temp": 27,
+            "num_epochs": 61,
+        }
+        TRAIN_DELTA_DIR = os.path.join(DELTA_LOG_DIR, "train_delta")
+        TEST_DELTA_DIR = os.path.join(DELTA_LOG_DIR, "test_delta")
+        hidden_layer_sizes = [1, 3, 5, 10, 15, 50, 100]
 
-                    if reg_weight == 0:
-                        reg = None
-                    else:
-                        if reg_function == "social_burden":
-                            reg = SocialBurden(linear_delta=delta)
-                        elif reg_function == "expected_utility":
-                            reg = ExpectedUtility(tanh_temp=10)
-                        elif reg_function == "recourse":
-                            reg = Recourse(sigmoid_temp=10)
-                        else:
-                            raise ValueError(f"Unknown reg function: {reg_function}")
-
-                    model_suit = ModelSuit(
-                        model=model,
-                        delta=delta,
-                        loss_fn=loss_fn,
-                        train_loader=self.train_loader,
-                        validation_loader=self.val_loader,
-                        test_loader=self.test_loader,
-                        training_params=training_params,
-                        regularization=reg,
-                        regularization_weight=reg_weight,
-                    )
-
-                    trainer = pl.Trainer(
-                        fast_dev_run=self.fast_dev_run,
-                        max_epochs=MAX_EPOCHS,
-                        logger=CSVLogger(
-                            LOG_DIR,
-                            name=f"test_{reg_function}_reg_{reg_weight}_cost_{cost_weight}",
-                        ),
-                    )
-                    trainer.fit(model_suit)
-                    trainer.test(model_suit)
-
-                    output = trainer.test(model_suit)
-                    mean_loss = np.mean(
-                        [output[i]["test_loss_epoch"] for i in range(len(output))]
-                    ).item()
-                    mean_zero_one_loss = np.mean(
-                        [
-                            output[i]["test_zero_one_loss_epoch"]
-                            for i in range(len(output))
-                        ]
-                    ).item()
-
-                    cost_reg_loss[cost_weight][reg_weight] = (
-                        mean_loss,
-                        mean_zero_one_loss,
-                    )
-
-            visualize_reg_weight_test(
-                cost_reg_loss,
-                save_dir=os.path.join(
-                    VISUALIZATION_DIR, f"reg_{reg_function}_weight_test"
+        output_dict : Dict[int, Dict[bool, Tuple[float,float]]] = {}
+        for hidden_layer_size in hidden_layer_sizes:
+            print(f"Hidden layer size: {hidden_layer_size}")
+            model_no_delta_train = FullyConnected2Layers(in_features=DATA_ROW_SIZE, hidden_size=hidden_layer_size)
+            test_delta_non_strategic = NonLinearStrategicDelta(
+                cost=cost, strategic_model=model_no_delta_train,
+                save_dir=os.path.join(TEST_DELTA_DIR, f"test_{hidden_layer_size}_no_delta"),
+                training_params= delta_train_params
+            )
+            model_suited_no_delta = ModelSuit(
+                model=model_no_delta_train,
+                delta=IdentityDelta(cost=cost, strategic_model=model_no_delta_train),
+                loss_fn=loss_fn,
+                train_loader=self.train_loader,
+                validation_loader=self.val_loader,
+                test_loader=self.test_loader,
+                training_params=training_params,
+                train_delta_every=1
+            )
+            trainer = pl.Trainer(
+                fast_dev_run=self.fast_dev_run,
+                max_epochs=MAX_EPOCHS,
+                logger=CSVLogger(
+                    LOG_DIR,
+                    name=f"credit_card_test_fully_connected_2_layers_hidden_{hidden_layer_size}_no_delta",
                 ),
             )
+            trainer.fit(model_suited_no_delta)
+            model_suited_no_delta.train_delta_for_test()
+            output = trainer.test(model_suited_no_delta)
+            output_dict[hidden_layer_size] = {}
+            output_dict[hidden_layer_size][False] = (output[0]["test_loss_epoch"], output[0]["test_zero_one_loss_epoch"])
+
+            model_delta_train = FullyConnected2Layers(in_features=DATA_ROW_SIZE, hidden_size=hidden_layer_size)
+            delta_strategic = NonLinearStrategicDelta(
+                cost=cost, strategic_model=model_delta_train,
+                save_dir=os.path.join(TRAIN_DELTA_DIR, f"{hidden_layer_size}_delta"),
+                training_params= delta_train_params
+            )
+            model_suit_delta = ModelSuit(
+                model=model_delta_train,
+                delta=delta_strategic,
+                loss_fn=loss_fn,
+                train_loader=self.train_loader,
+                validation_loader=self.val_loader,
+                test_loader=self.test_loader,
+                training_params=training_params,
+                train_delta_every=1
+            )
+            trainer = pl.Trainer(
+                fast_dev_run=self.fast_dev_run,
+                max_epochs=MAX_EPOCHS,
+                logger=CSVLogger(
+                    LOG_DIR,
+                    name=f"credit_card_test_fully_connected_2_layers_hidden_{hidden_layer_size}_delta",
+                ),
+            )
+            trainer.fit(model_suit_delta)
+            model_suit_delta.train_delta_for_test()
+            output = trainer.test(model_suit_delta)
+            output_dict[hidden_layer_size][True] = (output[0]["test_loss_epoch"], output[0]["test_zero_one_loss_epoch"])
+            
+        save_dir = os.path.join(VISUALIZATION_DIR, "full_connected_2_layers")
+        os.makedirs(save_dir, exist_ok=True)
+        visualize_full_connected_2_layers(output_dict, save_dir=save_dir)
+            
+
+
+
+
 
 
 if __name__ == "__main__":
