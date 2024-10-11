@@ -7,8 +7,6 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 import optuna
-from optuna.integration import PyTorchLightningPruningCallback
-from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.callbacks import EarlyStopping
 
@@ -25,7 +23,8 @@ DATA_NAME = "creditcard.csv"
 DATA_PATH = os.path.join(DATA_DIR, DATA_NAME)
 DATA_ROW_SIZE = 29
 OUTPUT_DIR = os.path.join(THIS_DIR, "output")
-COSTS = [0.1, 0.5, 1, 2, 10, float("inf")] 
+COSTS = [0.1, 0.5, 1, 2, 10, float("inf")]
+
 
 class BCEWithLogitsLossPNOne(nn.Module):
     def __init__(self):
@@ -74,7 +73,6 @@ def objective(trial: optuna.trial.Trial) -> float:
     batch_size = trial.suggest_int("batch_size", 16, 256)
     epochs = trial.suggest_int("epochs", 40, 140)
     early_stopping = trial.suggest_int("early_stopping", 10, 40)
-    loss_fn = trial.suggest_categorical("loss_fn", ["hinge", "mse", "bce"])
     optimizer_str = trial.suggest_categorical("optimizer", ["adam", "sgd", "adagrad"])
     linear_reg_str = trial.suggest_categorical("linear_reg", ["none", "l1", "l2"])
     linear_reg_lambda = trial.suggest_float("linear_reg_lambda", 1e-5, 1e-1, log=True)
@@ -90,14 +88,6 @@ def objective(trial: optuna.trial.Trial) -> float:
         TEST_DATASET, batch_size=batch_size, shuffle=False, num_workers=0
     )
 
-    if loss_fn == "hinge":
-        loss_fn = nn.HingeEmbeddingLoss()
-    elif loss_fn == "mse":
-        loss_fn = MSEPNOne()
-    elif loss_fn == "bce":
-        loss_fn = BCEWithLogitsLossPNOne()
-    else:
-        raise ValueError(f"Invalid loss function {loss_fn}")
     # Define the model
 
     if optimizer_str == "adam":
@@ -109,7 +99,6 @@ def objective(trial: optuna.trial.Trial) -> float:
     else:
         raise ValueError(f"Invalid optimizer {optimizer_str}")
 
-    model = sml.models.LinearModel(DATA_ROW_SIZE)
     if linear_reg_str == "none":
         linear_reg: Optional[List[sml._LinearRegularization]] = None
     elif linear_reg_str == "l1":
@@ -118,53 +107,42 @@ def objective(trial: optuna.trial.Trial) -> float:
         linear_reg = [sml.LinearL2Regularization(lambda_=linear_reg_lambda)]
     else:
         raise ValueError(f"Invalid linear regularization {linear_reg_str}")
+
+    model = sml.models.LinearModel(DATA_ROW_SIZE)
     cost_fn = sml.cost_functions.CostNormL2(dim=1)
+    delta = sml.gsc.LinearAdvDelta(strategic_model=model, cost=cost_fn)
 
-    sum_loss = 0
-    for cost_weight in COSTS:
-        if cost_weight == float("inf"):
-            delta = sml.gsc.IdentityDelta(strategic_model=model, cost=cost_fn)
-        else:
-            delta = sml.gsc.LinearStrategicDelta(
-                strategic_model=model, cost=cost_fn, cost_weight=cost_weight
-            )
-        
+    training_params = {
+        "optimizer_class": optimizer_class,
+        "optimizer_param": lr,
+    }
+    loss_fn = sml.StrategicHingeLoss(model=model, delta=delta)
 
-        training_params = {
-            "optimizer_class": optimizer_class,
-            "optimizer_param": lr,
-        }
+    model_suit = sml.ModelSuit(
+        model=model,
+        delta=delta,
+        loss_fn=loss_fn,
+        train_loader=train_dataloader,
+        validation_loader=val_dataloader,
+        test_loader=test_dataloader,
+        training_params=training_params,
+        linear_regularization=linear_reg,
+    )
+    trail_number = trial.number
+    early_stopping_callback = EarlyStopping(
+        monitor="val_zero_one_loss_epoch", patience=early_stopping
+    )
+    trainer = pl.Trainer(
+        logger=CSVLogger(save_dir=LOG_DIR, name=f"trial_{trail_number}"),
+        max_epochs=epochs,
+        enable_checkpointing=False,
+        accelerator="auto",
+        callbacks=[early_stopping_callback],
+    )
 
-        model_suit = sml.ModelSuit(
-            model=model,
-            delta=delta,
-            loss_fn=loss_fn,
-            train_loader=train_dataloader,
-            validation_loader=val_dataloader,
-            test_loader=test_dataloader,
-            training_params=training_params,
-            linear_regularization=linear_reg,
-        )
-        trail_number = trial.number
-        early_stopping_callback = EarlyStopping(monitor="val_zero_one_loss_epoch", patience=early_stopping)
-        trainer = pl.Trainer(
-            logger=CSVLogger(save_dir=LOG_DIR, name=f"trial_{trail_number}"),
-            max_epochs=epochs,
-            enable_checkpointing=False,
-            accelerator="auto",
-            callbacks=[early_stopping_callback],
-        )
-
-        # Train the model
-        trainer.fit(model_suit)
-        out = trainer.test(model_suit)
-        loss = out[0]["test_zero_one_loss_epoch"]
-        if cost_weight == 0.1:
-            loss = loss * 0.5
-
-        sum_loss += loss
-
-    return sum_loss 
+    # Train the model
+    trainer.fit(model_suit)
+    return trainer.callback_metrics["val_loss_epoch"].item()
 
 
 def create_study():
@@ -192,7 +170,7 @@ def create_study():
     with open(
         os.path.join(
             OUTPUT_DIR,
-            f"task_{task_id}_best_values.txt",
+            f"task_{task_id}_adv_test_best_values.txt",
         ),
         "w",
     ) as f:
