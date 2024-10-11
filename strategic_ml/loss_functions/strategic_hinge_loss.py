@@ -15,10 +15,11 @@ class StrategicHingeLoss(nn.Module):
     features to achieve better classification outcomes.
 
     The loss function maintains a differentiable form, allowing for optimization. The s-hinge loss
-    assumes that the model is linear, the delta is a Linear Delta, and the cost function is the L2 norm.
+    assumes that the model is linear, the delta is a Linear Delta, the cost function is the L2 norm
+    and the cost weight is 1.
 
     The s-hinge loss is defined as:
-    L(x, z, y; w, b) = max(0, 1 - y * (w^T * x + b) - 2 * cost_weight * z * y * (||w||_2 + ||b||_2))
+    L(x, z, y; w, b) = max(0, 1 - y * (w^T * x + b) - 2 * z * y * ||w||_2)
 
     Reference: "Generalized Strategic Classification and the Case of Aligned Incentives"
     """
@@ -44,6 +45,7 @@ class StrategicHingeLoss(nn.Module):
             delta, _LinearGP
         ), f"delta should be an instance of linear gp , but it is {type(delta)}"
         self.delta = delta
+        assert self.delta.get_cost_weight() == 1.0, "cost weight should be 1.0"
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
@@ -75,15 +77,10 @@ class StrategicHingeLoss(nn.Module):
         w = w.to(device=device, dtype=dtype)
         b = b.to(device=device, dtype=dtype)
 
-        cost_weight = self.delta.get_cost_weight()
-
         linear_output = torch.matmul(x, w.T) + b
         w_norm = torch.linalg.norm(w, ord=2, dtype=dtype)
-        b_norm = torch.abs(b).squeeze()  # b is a scalar
 
-        norm = w_norm + b_norm
-
-        additional_term = 2 * cost_weight * z * y * norm
+        additional_term = 2 * z * y * w_norm
 
         loss = torch.clamp(1 - y * linear_output - additional_term, min=0)
 
