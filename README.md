@@ -39,7 +39,7 @@ cd strategic_ml
 pip install -r requirements.txt
 ```
 
-Alternatively, if the library is available on PyPI, you can install it via pip:
+Alternatively, you can install it via pip:
 
 ```bash
 pip install strategic-ml
